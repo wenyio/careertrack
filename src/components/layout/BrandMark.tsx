@@ -43,7 +43,7 @@ export default function BrandMark({
         style={{
           position: 'absolute',
           right: size * 0.208333,
-          bottom: size * 0.1875,
+          bottom: size * 0.1,
           width: size * 0.416667,
           height: Math.max(2, size * 0.083333),
           borderRadius: 999,

@@ -10,7 +10,7 @@
     font-size="36"
     font-weight="800"
   >职</text>
-  <rect x="24" y="48" width="27" height="5.5" rx="2.75" fill="white" fill-opacity="0.84"/>
+  <rect x="24" y="52" width="27" height="5.5" rx="2.75" fill="white" fill-opacity="0.84"/>
   <defs>
     <linearGradient id="brandGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
       <stop stop-color="#1677FF"/>
