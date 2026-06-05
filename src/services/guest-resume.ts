@@ -16,7 +16,7 @@ import type { UpdateResumeRequest } from '@/types/resume'
  */
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return generateId()
+    return crypto.randomUUID()
   }
   // fallback: 用 Math.random 生成 UUID v4 格式
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
