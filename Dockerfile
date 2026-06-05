@@ -9,8 +9,8 @@
 # ============================================
 FROM node:20-alpine AS builder
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 安装原生模块编译依赖（better-sqlite3 等）
+RUN apk add --no-cache python3 make g++
 
 # 创建项目目录
 WORKDIR /app
@@ -31,9 +31,6 @@ RUN npm run build
 # 运行阶段
 # ============================================
 FROM node:20-alpine AS runner
-
-# 安装 pnpm
-RUN npm install -g pnpm
 
 # 创建非 root 用户
 RUN addgroup --system --gid 1001 nodejs
