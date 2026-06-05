@@ -52,9 +52,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // 游客模式：显示 GuestHeader
   if (navMode === 'guest') {
     return (
-      <div style={{ minHeight: '100vh' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <GuestHeader />
-        <div style={{ paddingTop: 56 }}>{children}</div>
+        <div style={{ paddingTop: 56, flex: 1 }}>{children}</div>
+        <Footer style={{
+          textAlign: 'center',
+          padding: '12px 50px',
+          background: 'transparent',
+          color: '#999',
+          fontSize: 12,
+        }}>
+          职迹 CareerTrack v{process.env.NEXT_PUBLIC_VERSION || 'dev'}
+        </Footer>
       </div>
     )
   }
