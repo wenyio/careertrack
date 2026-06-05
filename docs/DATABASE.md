@@ -35,10 +35,12 @@ SQLite 使用以下类型映射：`UUID → TEXT`，`JSONB → TEXT`，`BOOLEAN 
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || ...),  -- UUID v4
     username VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),            -- GitHub-only 用户可为 NULL
     otp_secret VARCHAR(100),
     otp_enabled INTEGER DEFAULT 0,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
+    auth_provider INTEGER NOT NULL DEFAULT 1,  -- 登录方式位掩码：PASSWORD=1, GITHUB=2
+    disabled_at TEXT,                      -- 禁用时间，NULL 表示正常
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -71,6 +73,9 @@ CREATE TABLE IF NOT EXISTS resumes (
     is_public INTEGER DEFAULT 0,
     public_slug VARCHAR(50) UNIQUE,
     modules_order TEXT DEFAULT '[...]',    -- JSON 数组
+    module_titles TEXT DEFAULT '{}',       -- JSON 对象，自定义模块标题
+    basic_info_display TEXT DEFAULT '{}',  -- JSON 对象，字段图标/头像位置
+    preview_config TEXT DEFAULT '{}',      -- JSON 对象，字号/行距
     template VARCHAR(20) DEFAULT 'classic',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -89,6 +94,36 @@ CREATE TABLE IF NOT EXISTS mcp_keys (
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_keys_user_id ON mcp_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_mcp_keys_hash ON mcp_keys(hash);
+
+-- OAuth 账号绑定表
+CREATE TABLE IF NOT EXISTS user_oauth_accounts (
+    id TEXT PRIMARY KEY DEFAULT ...,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,         -- 提供商：github
+    provider_account_id VARCHAR(255) NOT NULL,  -- 第三方平台用户 ID
+    provider_username VARCHAR(255),        -- 第三方平台用户名
+    email VARCHAR(255),                    -- 第三方平台邮箱
+    avatar_url TEXT,                       -- 第三方平台头像
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(provider, provider_account_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_oauth_user_id ON user_oauth_accounts(user_id);
+
+-- 注册码表
+CREATE TABLE IF NOT EXISTS registration_codes (
+    id TEXT PRIMARY KEY DEFAULT ...,
+    code_hash VARCHAR(64) NOT NULL UNIQUE, -- 注册码 SHA-256 哈希
+    label VARCHAR(100),                    -- 备注标签
+    created_by TEXT REFERENCES users(id),  -- 创建者
+    used_by_user_id TEXT REFERENCES users(id),  -- 使用者
+    expires_at TEXT,                       -- 过期时间，NULL 表示永不过期
+    disabled_at TEXT,                      -- 禁用时间，NULL 表示可用
+    used_at TEXT,                          -- 使用时间
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
 ```
 
 > 完整的建表 SQL 见 `src/lib/storage/schema.ts`。
@@ -103,10 +138,12 @@ CREATE INDEX IF NOT EXISTS idx_mcp_keys_hash ON mcp_keys(hash);
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),            -- GitHub-only 用户可为 NULL
     otp_secret VARCHAR(100),           -- TOTP 密钥，NULL 表示未启用 OTP
     otp_enabled BOOLEAN DEFAULT FALSE,
     role VARCHAR(20) NOT NULL DEFAULT 'user',  -- 用户角色：user / admin
+    auth_provider INTEGER NOT NULL DEFAULT 1,  -- 登录方式位掩码：PASSWORD=1, GITHUB=2, OTHER=4
+    disabled_at TIMESTAMP WITH TIME ZONE,  -- 禁用时间，NULL 表示正常
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -118,10 +155,12 @@ CREATE INDEX idx_users_username ON users(username);
 **字段说明:**
 - `id`: 用户唯一标识，使用 UUID 避免 ID 猜测
 - `username`: 登录用户名，唯一
-- `password_hash`: bcrypt 加密后的密码
+- `password_hash`: bcrypt 加密后的密码，GitHub-only 用户可为 NULL
 - `otp_secret`: TOTP 密钥，启用 OTP 时生成
 - `otp_enabled`: 是否启用 OTP 二次验证
 - `role`: 用户角色，`user`（普通用户）或 `admin`（管理员），新注册默认 `user`
+- `auth_provider`: 登录方式位掩码，`1`=密码, `2`=GitHub, `4`=其他
+- `disabled_at`: 禁用时间戳，NULL 表示账号正常
 
 ### profiles 个人信息表
 
@@ -267,6 +306,7 @@ CREATE TABLE resumes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL DEFAULT '未命名简历',
+    template VARCHAR(20) DEFAULT 'classic',
 
     -- 模块开关配置
     modules_config JSONB DEFAULT '{
@@ -292,6 +332,15 @@ CREATE TABLE resumes (
     -- 模块排序
     modules_order JSONB DEFAULT '["basic_info", "education", "skills", "work_experience", "projects", "portfolio", "awards", "other_experience", "research", "summary"]',
 
+    -- 自定义模块标题
+    module_titles JSONB DEFAULT '{}',
+
+    -- 基本信息显示配置
+    basic_info_display JSONB DEFAULT '{}',
+
+    -- 预览配置（字号、行距等）
+    preview_config JSONB DEFAULT '{}',
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -299,6 +348,7 @@ CREATE TABLE resumes (
 -- 索引
 CREATE INDEX idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX idx_resumes_public_slug ON resumes(public_slug) WHERE public_slug IS NOT NULL;
+CREATE INDEX idx_resumes_template ON resumes(template);
 ```
 
 ### mcp_keys MCP Key 表
@@ -322,14 +372,64 @@ CREATE INDEX idx_mcp_keys_user_id ON mcp_keys(user_id);
 CREATE INDEX idx_mcp_keys_hash ON mcp_keys(hash);
 ```
 
+### user_oauth_accounts OAuth 绑定表
+
+存储用户的第三方 OAuth 账号绑定关系。
+
+```sql
+CREATE TABLE user_oauth_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,             -- 提供商：github
+    provider_account_id VARCHAR(255) NOT NULL, -- 第三方平台用户 ID
+    provider_username VARCHAR(255),            -- 第三方平台用户名
+    email VARCHAR(255),                        -- 第三方平台邮箱
+    avatar_url TEXT,                           -- 第三方平台头像
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(provider, provider_account_id)
+);
+
+-- 索引
+CREATE INDEX idx_user_oauth_user_id ON user_oauth_accounts(user_id);
+```
+
 **字段说明:**
-- `id`: Key 唯一标识
-- `user_id`: 关联用户，级联删除
-- `prefix`: Key 前缀（12 字符），用于在列表中展示，不足以还原完整 Key
-- `hash`: Key 明文的 SHA-256 哈希，用于鉴权验证
-- `scope`: 权限范围，`read_write`（读写）或 `read_only`（只读）
-- `last_used_at`: 每次鉴权成功时更新
-- `revoked_at`: 撤销时写入时间戳，撤销后 Key 立即失效
+- `provider`: OAuth 提供商标识，如 `github`
+- `provider_account_id`: 第三方平台的用户唯一标识
+- `provider_username`: 第三方平台的用户名
+- `email`: 第三方平台的邮箱地址
+- `avatar_url`: 第三方平台的头像 URL
+
+### registration_codes 注册码表
+
+存储邀请注册码，用于控制用户注册。
+
+```sql
+CREATE TABLE registration_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code_hash VARCHAR(64) NOT NULL UNIQUE,   -- 注册码 SHA-256 哈希
+    label VARCHAR(100),                      -- 备注标签
+    created_by UUID REFERENCES users(id),    -- 创建者（管理员）
+    used_by_user_id UUID REFERENCES users(id), -- 使用者
+    expires_at TIMESTAMP WITH TIME ZONE,     -- 过期时间，NULL 表示永不过期
+    disabled_at TIMESTAMP WITH TIME ZONE,    -- 禁用时间，NULL 表示可用
+    used_at TIMESTAMP WITH TIME ZONE,        -- 使用时间
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 索引
+CREATE INDEX idx_registration_codes_hash ON registration_codes(code_hash);
+```
+
+**字段说明:**
+- `code_hash`: 注册码明文的 SHA-256 哈希，明文只在创建时返回一次
+- `label`: 管理员备注，方便识别注册码用途
+- `created_by`: 创建该注册码的管理员
+- `used_by_user_id`: 使用该注册码注册的用户
+- `expires_at`: 过期时间，NULL 表示永不过期
+- `disabled_at`: 禁用时间，非 NULL 表示已禁用
 
 **content 字段说明:**
 
@@ -351,16 +451,20 @@ CREATE INDEX idx_mcp_keys_hash ON mcp_keys(hash);
 ```
 users (1) ──── (1) profiles
   │
-  │
   ├──── (N) resumes
   │
+  ├──── (N) mcp_keys
   │
-  └──── (N) mcp_keys
+  ├──── (N) user_oauth_accounts
+  │
+  └──── created (N) registration_codes
 ```
 
 - 一个用户对应一份个人信息（1:1）
 - 一个用户可以有多份简历（1:N）
 - 一个用户可以有多个 MCP Key（1:N）
+- 一个用户可以绑定多个 OAuth 账号（1:N）
+- 一个管理员可以创建多个注册码（1:N）
 - 简历内容可以引用或覆盖个人信息
 
 ## 扩展性设计
@@ -391,13 +495,7 @@ users (1) ──── (1) profiles
 }
 ```
 
-### 3. 多用户扩展
-
-当前设计已支持多用户，只需：
-- 添加用户注册接口
-- 修改前端为多用户流程
-
-### 4. 模版系统扩展
+### 3. 模版系统扩展
 
 未来可添加 `templates` 表：
 ```sql
@@ -419,10 +517,4 @@ SQLite 使用自动建表策略。首次启动时，`src/lib/storage/schema.ts` 
 
 ### PostgreSQL
 
-PostgreSQL 的迁移通过 SQL 文件手动执行。迁移文件位于 `migrations/` 目录。
-
-```bash
-# 使用 psql 执行迁移
-psql -U postgres -d careertrack -f migrations/add_user_role.sql
-psql -U postgres -d careertrack -f migrations/add_modules_order_and_template.sql
-```
+PostgreSQL 使用相同的自动建表策略。首次启动时自动创建所有表和索引。

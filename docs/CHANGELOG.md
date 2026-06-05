@@ -10,6 +10,11 @@
 
 首个开源版本，整合此前所有功能迭代。
 
+### 文档更新
+- README.md — 补充 GitHub OAuth、游客模式、注册码系统等功能描述，更新环境变量说明
+- API.md — 补充 GitHub OAuth、注册码、账户管理、管理员注册码管理等接口文档
+- DATABASE.md — 新增 `user_oauth_accounts`、`registration_codes` 表，更新 `users` 表字段
+
 ### 新增
 - **游客模式** — 本地离线创建和编辑简历，无需注册
 - **GitHub OAuth 登录** — 支持 GitHub 账号注册与登录

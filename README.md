@@ -12,14 +12,15 @@ An Open-Source Career Portfolio & Resume Platform
 
 - **个人信息管理** - 统一维护教育经历、工作经历、项目经历等 10 个模块的基础信息
 - **简历管理** - 创建、编辑、删除、复制简历，支持多份简历维护
-- **模块化编辑** - 10 个简历模块，拖拽排序，自由组合配置
-- **实时预览** - 编辑简历时实时查看效果，支持 4 套简历模板
+- **模块化编辑** - 10 个简历模块，拖拽排序，自由组合配置，支持自定义模块标题和字段隐藏
+- **实时预览** - 编辑简历时实时查看效果，支持 4 套简历模板（classic、modern、minimal、black-white）
 - **PDF 导出** - 一键导出高质量 PDF 简历（浏览器原生打印方案）
 - **简历公开** - 生成公开链接，可作为个人主页访问，支持 SEO 优化和分享预览图
-- **安全认证** - 支持登录 + 可选 OTP 二次验证
+- **安全认证** - JWT 认证 + 可选 TOTP 二次验证 + GitHub OAuth 登录
+- **游客模式** - 无需注册即可本地离线创建和编辑简历，注册后可一键导入
 - **MCP 服务** - 通过 MCP 协议供 AI Agent 访问和编辑简历数据
 - **Gravatar 头像** - 通过邮箱自动获取头像，内置证件照处理工具
-- **后台管理** - 用户管理、简历管理、系统统计
+- **后台管理** - 用户管理、简历管理、注册码管理、系统统计
 
 ## 🛠️ 技术栈
 
@@ -27,7 +28,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **UI 组件库**: Ant Design 6
 - **状态管理**: Zustand (客户端) + TanStack Query (服务端)
 - **数据库**: SQLite (默认) / PostgreSQL 15 (可选)
-- **认证**: JWT + TOTP (OTP)
+- **认证**: JWT + TOTP + GitHub OAuth
 - **语言**: TypeScript
 
 ## 📁 项目结构
@@ -37,32 +38,36 @@ CareerTrack/
 ├── src/
 │   ├── app/
 │   │   ├── api/                # API Routes (Next.js App Router)
-│   │   │   ├── auth/           # 认证（登录/注册/OTP）
+│   │   │   ├── auth/           # 认证（登录/注册/OTP/OAuth）
 │   │   │   ├── profile/        # 个人信息
 │   │   │   ├── resumes/        # 简历管理
 │   │   │   ├── public/         # 公开简历
 │   │   │   ├── mcp/            # MCP 服务端点
 │   │   │   ├── mcp-keys/       # MCP Key 管理
 │   │   │   └── admin/          # 后台管理
-│   │   ├── auth/               # 登录/注册页面
+│   │   ├── auth/               # 登录/注册/迁移页面
 │   │   ├── resumes/            # 简历页面
 │   │   ├── admin/              # 后台管理页面
-│   │   └── settings/           # 设置页面
+│   │   ├── settings/           # 设置页面（个人信息、安全、MCP、头像）
+│   │   └── resume/             # 公开简历和预览页面
 │   ├── components/             # 可复用组件
-│   │   └── resume/             # 简历相关组件（编辑器、预览、PDF 模板）
+│   │   └── resume/             # 简历相关组件（编辑器、预览、模板）
 │   ├── config/                 # 模块配置
 │   ├── hooks/                  # React Hooks
 │   ├── lib/                    # 服务端工具库
 │   │   ├── storage/            # 数据库存储层（SQLite/PostgreSQL）
 │   │   ├── services/           # 业务服务层
+│   │   ├── guest/              # 游客模式本地存储
+│   │   ├── mcp/                # MCP 服务端实现
 │   │   ├── auth.ts             # 认证工具
 │   │   └── api.ts              # API 工具
 │   ├── services/               # 前端 API 调用
 │   ├── stores/                 # Zustand 状态
 │   ├── types/                  # TypeScript 类型
 │   └── utils/                  # 工具函数
-├── migrations/                 # PostgreSQL 迁移文件
+├── tests/e2e/                  # Playwright E2E 测试
 ├── docs/                       # 项目文档
+├── migrations/                 # PostgreSQL 迁移文件
 ├── deploy.sh                   # 部署打包脚本
 ├── start.sh                    # 启动脚本
 └── Dockerfile                  # Docker 构建文件
@@ -104,6 +109,8 @@ npm run dev
 | `DATABASE_URL` | ❌* | - | PostgreSQL 连接串，`postgres` 模式必填 |
 | `SQLITE_DB_PATH` | ❌ | `.careertrack/careertrack.db` | SQLite 数据库文件路径 |
 | `NEXT_PUBLIC_SITE_URL` | ❌ | `http://localhost:3000` | 公开站点地址 |
+| `GITHUB_CLIENT_ID` | ❌ | - | GitHub OAuth App Client ID |
+| `GITHUB_CLIENT_SECRET` | ❌ | - | GitHub OAuth App Client Secret |
 
 **存储驱动选择逻辑：**
 - 设置 `STORAGE_DRIVER=postgres` → 使用 PostgreSQL
@@ -120,6 +127,8 @@ npm run build
 # 启动
 npm start
 ```
+
+详细部署方案见 [部署指南](docs/DEPLOYMENT.md)。
 
 ## 📚 文档
 
