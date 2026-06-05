@@ -70,7 +70,7 @@ docker run -d \
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/careertrack.git
+git clone https://github.com/wenyio/careertrack.git
 cd careertrack
 
 # 构建 Docker 镜像
@@ -86,6 +86,8 @@ docker run -d \
   -p 3000:3000 \
   -v careertrack-data:/app/.careertrack \
   -e JWT_SECRET=your-secret-key \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=your-strong-password \
   careertrack
 
 # PostgreSQL 模式
@@ -93,6 +95,8 @@ docker run -d \
   --name careertrack \
   -p 3000:3000 \
   -e JWT_SECRET=your-secret-key \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=your-strong-password \
   -e STORAGE_DRIVER=postgres \
   -e DATABASE_URL=postgres://user:password@host:5432/careertrack \
   careertrack
@@ -158,6 +162,8 @@ node .next/standalone/server.js
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | - | JWT 签名密钥，生产环境必须设置强随机值 |
+| `ADMIN_USERNAME` | ❌ | - | 首次启动自动创建的管理员用户名 |
+| `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥6 位） |
 | `STORAGE_DRIVER` | ❌ | 自动检测 | `sqlite` 或 `postgres` |
 | `DATABASE_URL` | ❌* | - | PostgreSQL 连接串，`postgres` 模式必填 |
 | `SQLITE_DB_PATH` | ❌ | `.careertrack/careertrack.db` | SQLite 数据库文件路径 |
@@ -170,6 +176,38 @@ node .next/standalone/server.js
 - 设置 `STORAGE_DRIVER=sqlite` → 使用 SQLite
 - 未设置 `STORAGE_DRIVER`，有 `DATABASE_URL` → 使用 PostgreSQL（向后兼容）
 - 未设置 `STORAGE_DRIVER`，无 `DATABASE_URL` → 使用 SQLite（默认）
+
+---
+
+## 管理员账号
+
+首次启动时，如果数据库中没有管理员账号，系统会检查 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 环境变量，自动创建一个管理员。
+
+```bash
+# .env.local 示例
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-strong-password
+```
+
+**行为说明：**
+- 数据库中已有管理员 → 跳过，不做任何操作
+- 无管理员 + 环境变量已设置 → 自动创建并输出日志
+- 无管理员 + 未设置环境变量 → 输出警告，可通过管理面板手动操作数据库
+
+创建成功后，管理员可登录后台管理注册码、用户等。环境变量可在创建后删除（不影响已有账号）。
+
+### Docker 示例
+
+```bash
+docker run -d \
+  --name careertrack \
+  -p 3000:3000 \
+  -v careertrack-data:/app/.careertrack \
+  -e JWT_SECRET=your-secret-key \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=your-strong-password \
+  careertrack
+```
 
 ---
 
@@ -297,6 +335,7 @@ bash deploy.sh
 ## 生产环境检查清单
 
 - [ ] `JWT_SECRET` 已设置为强随机值
+- [ ] `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 已配置（首次启动）
 - [ ] `NEXT_PUBLIC_SITE_URL` 设置为实际域名
 - [ ] 已配置 HTTPS
 - [ ] 数据库备份策略已就位

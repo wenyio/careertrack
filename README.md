@@ -92,9 +92,9 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，至少设置 JWT_SECRET
+# 编辑 .env.local，至少设置 JWT_SECRET 和管理员账号
 
-# 启动开发服务器（首次启动自动创建 SQLite 数据库）
+# 启动开发服务器（首次启动自动创建数据库和管理员账号）
 npm run dev
 ```
 
@@ -105,6 +105,8 @@ npm run dev
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | - | JWT 签名密钥 |
+| `ADMIN_USERNAME` | ❌ | - | 首次启动自动创建的管理员用户名 |
+| `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥6 位） |
 | `STORAGE_DRIVER` | ❌ | 自动检测 | `sqlite` 或 `postgres` |
 | `DATABASE_URL` | ❌* | - | PostgreSQL 连接串，`postgres` 模式必填 |
 | `SQLITE_DB_PATH` | ❌ | `.careertrack/careertrack.db` | SQLite 数据库文件路径 |

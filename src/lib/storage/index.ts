@@ -10,6 +10,7 @@
 
 import { query as sqliteQuery, getDb } from './sqlite'
 import { query as pgQuery, getPool as getPgPool } from './postgres'
+import { ensureAdmin } from '../bootstrap'
 
 /** 判断使用的存储驱动 */
 const driver =
@@ -20,6 +21,9 @@ const driver =
 
 /** 导出 query 函数：API Routes 统一通过此接口访问数据库 */
 export const query = driver === 'postgres' ? pgQuery : sqliteQuery
+
+// 首次数据库访问时自动检查并创建管理员
+ensureAdmin(query)
 
 /**
  * 导出 getPool：返回底层数据库连接实例
