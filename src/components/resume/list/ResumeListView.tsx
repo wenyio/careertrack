@@ -8,8 +8,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button, Row, Col, Empty, Spin, App } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { PlusOutlined, UserOutlined } from '@ant-design/icons'
 import PageContainer from '@/components/layout/PageContainer'
 import ResumeListCard from './ResumeListCard'
 import ResumeCreateModal from './ResumeCreateModal'
@@ -68,6 +69,7 @@ export default function ResumeListView({
   isCreating,
 }: ResumeListViewProps) {
   const { message, modal } = App.useApp()
+  const router = useRouter()
 
   // 弹窗状态
   const [createModalVisible, setCreateModalVisible] = useState(false)
@@ -171,13 +173,24 @@ export default function ResumeListView({
         </Row>
       ) : (
         <Empty description="暂无简历" style={{ marginTop: 120 }}>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalVisible(true)}
-          >
-            创建第一份简历
-          </Button>
+          {showInitFromProfile && (
+            <Button
+              icon={<UserOutlined />}
+              style={{ marginBottom: 12 }}
+              onClick={() => router.push('/settings/profile')}
+            >
+              先完善个人信息
+            </Button>
+          )}
+          <div>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              创建第一份简历
+            </Button>
+          </div>
         </Empty>
       )}
 
