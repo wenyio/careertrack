@@ -53,6 +53,7 @@ export default function DateRangeField({
   picker = 'month',
 }: DateRangeFieldProps) {
   // 直接从 endDate 派生"至今"状态，无需额外 state 同步
+  // '' = 至今，其他值（含 null/undefined）= 非至今
   const isPresent = endDate === ''
 
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
@@ -65,11 +66,11 @@ export default function DateRangeField({
 
   const handlePresentChange = (checked: boolean) => {
     if (checked) {
-      // 勾选"至今"时清空结束日期
+      // 勾选"至今"时清空结束日期（空字符串 = 至今）
       onChange(startDate || '', '')
     } else {
-      // 取消勾选时清空结束日期，让用户重新选择
-      onChange(startDate || '', '')
+      // 取消勾选时清空，让用户重新选择结束日期
+      onChange(startDate || '', null as unknown as string)
     }
   }
 
