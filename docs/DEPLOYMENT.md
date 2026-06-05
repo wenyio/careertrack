@@ -16,7 +16,7 @@ CareerTrack 是 Next.js 全栈应用，前端和 API 部署在同一个进程中
 
 ### 前置要求
 
-- Node.js >= 18
+- Node.js >= 20
 
 ### 步骤（SQLite 默认模式）
 

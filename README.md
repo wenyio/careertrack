@@ -77,7 +77,7 @@ CareerTrack/
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 20
 - PostgreSQL >= 15（可选，默认使用 SQLite，无需安装数据库）
 
 ### 本地开发

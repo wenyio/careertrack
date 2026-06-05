@@ -5,7 +5,7 @@
   "repository": "https://github.com/wenyio/careertrack.git",
   "license": "GPL-3.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "dev": "next dev",
