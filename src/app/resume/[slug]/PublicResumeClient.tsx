@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef, type TouchEvent } from 'react'
 import Link from 'next/link'
-import { Typography, Spin } from 'antd'
+import { Typography, Spin, Button, Result } from 'antd'
 import { getPublicResume } from '@/services/resume'
 import { ResumeLivePreview } from '@/components/resume/ResumeLivePreview'
 import BrandMark from '@/components/layout/BrandMark'
@@ -391,9 +391,16 @@ export default function PublicResumeClient({ slug, initialData }: PublicResumeCl
         justifyContent: 'center',
         background: '#f7f8fa',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <Typography.Title level={3} type="secondary">{error || '简历不存在'}</Typography.Title>
-        </div>
+        <Result
+          status="404"
+          title="简历不存在或未公开"
+          subTitle={error || '该简历可能已被删除或取消公开'}
+          extra={
+            <Link href="/">
+              <Button type="primary">创建我的简历</Button>
+            </Link>
+          }
+        />
       </div>
     )
   }
