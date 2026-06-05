@@ -1,0 +1,16 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>职迹 CareerTrack black and white brand mark</title>
+  <rect width="128" height="128" rx="28" fill="#111827"/>
+  <text
+    x="64"
+    y="72"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    fill="white"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+    font-size="64"
+    font-weight="800"
+  >职</text>
+  <rect x="22" y="22" width="8" height="84" rx="4" fill="white" fill-opacity="0.9"/>
+  <rect x="70" y="92" width="38" height="8" rx="4" fill="white" fill-opacity="0.9"/>
+</svg>

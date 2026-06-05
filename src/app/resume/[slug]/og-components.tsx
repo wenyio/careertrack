@@ -8,7 +8,7 @@ import type { CSSProperties } from 'react'
 import { truncate, BRAND_BLUE, BRAND_BLUE_DARK, TAG_BG } from './og-helpers'
 
 /** 品牌 Logo 圆角方块 */
-export function BrandLogo({ size = 40, fontSize = 20 }: { size?: number; fontSize?: number }) {
+export function BrandLogo({ size = 40, fontSize = Math.round(size * 0.56) }: { size?: number; fontSize?: number }) {
   return (
     <div
       style={{
@@ -19,13 +19,26 @@ export function BrandLogo({ size = 40, fontSize = 20 }: { size?: number; fontSiz
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
         color: '#fff',
         fontSize,
-        fontWeight: 700,
+        fontWeight: 800,
         flexShrink: 0,
       }}
     >
       职
+      <div
+        style={{
+          position: 'absolute',
+          right: size * 0.208333,
+          bottom: size * 0.1875,
+          width: size * 0.416667,
+          height: Math.max(2, size * 0.083333),
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.84)',
+        }}
+      />
     </div>
   )
 }
@@ -73,7 +86,7 @@ export function BrandBar({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <BrandLogo size={40} fontSize={20} />
+        <BrandLogo size={40} />
         <span style={{ fontSize, color: light ? 'rgba(255,255,255,0.7)' : '#999', fontWeight: 500 }}>
           职迹 CareerTrack
         </span>

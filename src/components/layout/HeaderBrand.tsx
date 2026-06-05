@@ -4,6 +4,8 @@
 
 'use client'
 
+import BrandMark from './BrandMark'
+
 interface HeaderBrandProps {
   onClick?: () => void
   ariaLabel?: string
@@ -21,9 +23,7 @@ export default function HeaderBrand({
         onClick={onClick}
         aria-label={ariaLabel}
       >
-        <span className="header-brand-mark" aria-hidden="true">
-          职
-        </span>
+        <BrandMark className="header-brand-mark" />
         <span className="header-brand-text">职迹</span>
       </button>
 
@@ -40,20 +40,6 @@ export default function HeaderBrand({
           cursor: pointer;
           line-height: 1;
           white-space: nowrap;
-        }
-
-        .header-brand-mark {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-          font-size: 16px;
-          font-weight: 700;
-          flex-shrink: 0;
         }
 
         .header-brand-text {

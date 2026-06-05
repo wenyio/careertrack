@@ -15,6 +15,12 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://careertrack
 /** 站点名称 */
 export const SITE_NAME = '职迹 CareerTrack'
 
+/** 品牌主标识 */
+export const BRAND_MARK_URL = `${SITE_URL}/brand/brand-mark.svg`
+
+/** 品牌横版 Logo */
+export const BRAND_LOGO_URL = `${SITE_URL}/brand/logo.svg`
+
 /** 绝不放入 metadata / JSON-LD 的隐私字段关键词 */
 const PRIVACY_PATTERNS = [
   /[\w.-]+@[\w.-]+\.\w+/g,                    // 邮箱
@@ -309,6 +315,27 @@ export function generateResumeJsonLd(content: ResumeContent, slug: string) {
   return {
     '@context': 'https://schema.org',
     '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${SITE_URL}#website`,
+        url: SITE_URL,
+        name: SITE_NAME,
+        inLanguage: 'zh-CN',
+        publisher: { '@id': `${SITE_URL}#organization` },
+      },
+      {
+        '@type': 'Organization',
+        '@id': `${SITE_URL}#organization`,
+        name: SITE_NAME,
+        url: SITE_URL,
+        logo: {
+          '@type': 'ImageObject',
+          url: BRAND_LOGO_URL,
+          width: 420,
+          height: 112,
+        },
+        image: BRAND_MARK_URL,
+      },
       {
         '@type': 'ProfilePage',
         '@id': `${pageUrl}#webpage`,

@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { Typography, Spin } from 'antd'
 import { getPublicResume } from '@/services/resume'
 import { ResumeLivePreview } from '@/components/resume/ResumeLivePreview'
+import BrandMark from '@/components/layout/BrandMark'
 import type { ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
 
@@ -428,8 +429,18 @@ export default function PublicResumeClient({ slug, initialData }: PublicResumeCl
         ready={ready}
       />
       <div style={{ textAlign: 'center', marginTop: 24 }}>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text
+          type="secondary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            fontSize: 13,
+          }}
+        >
           由
+          <BrandMark size={16} radius={4} />
           <Link
             href="/"
             style={{ color: 'inherit', textDecoration: 'none', margin: '0 4px' }}

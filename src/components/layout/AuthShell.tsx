@@ -8,6 +8,7 @@
 'use client'
 
 import { Card, Typography } from 'antd'
+import BrandMark from './BrandMark'
 
 const { Title, Text } = Typography
 
@@ -40,24 +41,15 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
       >
         {/* Logo + 标题 */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div
+          <BrandMark
+            size={48}
+            fontSize={27}
+            radius={14}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontSize: 22,
-              fontWeight: 700,
               margin: '0 auto 12px',
               boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)',
             }}
-          >
-            职
-          </div>
+          />
           <Title level={4} style={{ marginBottom: 2 }}>
             {title}
           </Title>

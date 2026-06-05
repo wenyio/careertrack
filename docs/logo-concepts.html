@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>职迹 CareerTrack Logo Concepts</title>
+    <style>
+      :root {
+        --blue-6: #1677ff;
+        --blue-7: #0958d9;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #e6eaf2;
+        --panel: #ffffff;
+        --paper: #f7f9fc;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f4f7fb;
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+
+      .hero {
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--blue-7);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .intro {
+        max-width: 720px;
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.75;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .concept {
+        min-height: 272px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 22px;
+        box-shadow: 0 12px 30px rgba(23, 32, 51, 0.06);
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .mark {
+        position: relative;
+        display: inline-flex;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        color: #fff;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .wordmark {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .name {
+        font-size: 21px;
+        font-weight: 750;
+        line-height: 1;
+      }
+
+      .latin {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .concept h2 {
+        margin: 22px 0 8px;
+        font-size: 17px;
+        line-height: 1.35;
+        letter-spacing: 0;
+      }
+
+      .concept p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .tag {
+        border: 1px solid #dde5f1;
+        border-radius: 999px;
+        padding: 4px 9px;
+        color: #475467;
+        background: #fbfcfe;
+        font-size: 12px;
+      }
+
+      .mark-a {
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--blue-6) 0%, var(--blue-7) 100%);
+        box-shadow: 0 10px 20px rgba(22, 119, 255, 0.26);
+      }
+
+      .mark-a::after {
+        position: absolute;
+        right: 10px;
+        bottom: 9px;
+        width: 20px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.84);
+        content: "";
+      }
+
+      .mark-a-thin::after {
+        bottom: 10px;
+        height: 1.5px;
+        opacity: 0.9;
+      }
+
+      .mark-b {
+        border-radius: 14px;
+        background: #102a56;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .mark-b::before {
+        position: absolute;
+        right: 7px;
+        bottom: 8px;
+        width: 25px;
+        height: 18px;
+        border-right: 3px solid #62d2ff;
+        border-bottom: 3px solid #62d2ff;
+        border-radius: 0 0 18px 0;
+        content: "";
+      }
+
+      .mark-b::after {
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #62d2ff;
+        content: "";
+      }
+
+      .mark-c {
+        border-radius: 13px;
+        background: linear-gradient(135deg, #1e7b6f 0%, #0f5f58 100%);
+      }
+
+      .mark-c::before {
+        position: absolute;
+        inset: 8px 9px 7px;
+        border: 2px solid rgba(255, 255, 255, 0.34);
+        border-radius: 5px;
+        content: "";
+      }
+
+      .mark-c::after {
+        position: absolute;
+        top: 9px;
+        right: 9px;
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0 50%, transparent 50%);
+        content: "";
+      }
+
+      .mark-d {
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f2f6ff 0%, #dce9ff 100%);
+        color: var(--blue-7);
+        box-shadow: inset 0 0 0 1px #c9dcff;
+      }
+
+      .mark-d::before {
+        position: absolute;
+        left: 9px;
+        bottom: 9px;
+        width: 6px;
+        height: 8px;
+        background: #89b4ff;
+        box-shadow:
+          9px -5px 0 #4d91ff,
+          18px -12px 0 var(--blue-7);
+        content: "";
+      }
+
+      .mark-e {
+        border-radius: 50%;
+        background: #ffffff;
+        color: #163a73;
+        box-shadow:
+          inset 0 0 0 2px #163a73,
+          0 8px 18px rgba(16, 42, 86, 0.12);
+      }
+
+      .mark-e::before {
+        position: absolute;
+        inset: 6px;
+        border: 2px solid #51b6ff;
+        border-left-color: transparent;
+        border-radius: 50%;
+        content: "";
+      }
+
+      .mark-e::after {
+        position: absolute;
+        top: 8px;
+        right: 9px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--blue-6);
+        content: "";
+      }
+
+      .mark-f {
+        border-radius: 10px;
+        background: #111827;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .mark-f::before,
+      .mark-f::after {
+        position: absolute;
+        background: #ffffff;
+        opacity: 0.9;
+        content: "";
+      }
+
+      .mark-f::before {
+        left: 9px;
+        top: 9px;
+        width: 3px;
+        height: 30px;
+        border-radius: 999px;
+      }
+
+      .mark-f::after {
+        right: 8px;
+        bottom: 9px;
+        width: 21px;
+        height: 3px;
+        border-radius: 999px;
+      }
+
+      .alt-on-blue {
+        margin-top: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #102a56 0%, #1677ff 100%);
+        padding: 22px;
+      }
+
+      .alt-on-blue .concept {
+        min-height: 0;
+        border-color: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
+      .alt-on-blue .name,
+      .alt-on-blue .latin,
+      .alt-on-blue h2,
+      .alt-on-blue p {
+        color: #fff;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 620px) {
+        .page {
+          padding: 30px 16px 42px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">CareerTrack logo directions</p>
+        <h1>职迹的 7 个品牌标识方向</h1>
+        <p class="intro">
+          保留现有“职”方章的亲切识别，把“职业轨迹、简历档案、成长路径、个人名片”四个关键词拆成不同视觉方向。
+        </p>
+      </section>
+
+      <section class="grid" aria-label="logo concepts">
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-a">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>01 方章基准</h2>
+          <p>最接近当前实现。蓝色渐变方章更稳，底部短横暗示“轨迹”和简历分隔线，适合直接替换现有 Header。</p>
+          <div class="tags">
+            <span class="tag">稳妥</span>
+            <span class="tag">产品感</span>
+            <span class="tag">低迁移成本</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-a mark-a-thin">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>01B 方章细线</h2>
+          <p>在 01 的基础上把底部横线收细，视觉更精致，减少“按钮感”，更像一个轻量品牌印记。</p>
+          <div class="tags">
+            <span class="tag">精致</span>
+            <span class="tag">轻量</span>
+            <span class="tag">主标候选</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-b">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>02 轨迹点</h2>
+          <p>深蓝底加一段转折路径和终点光点，更强调 CareerTrack 的 Track，适合做 App 图标和公开简历水印。</p>
+          <div class="tags">
+            <span class="tag">记忆点强</span>
+            <span class="tag">科技感</span>
+            <span class="tag">适合 favicon</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-c">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>03 简历纸</h2>
+          <p>把 mark 看成一张简历纸，右上角折页呼应“档案、模板、公开主页”，整体更专业，也有一点开源工具的质感。</p>
+          <div class="tags">
+            <span class="tag">简历语义</span>
+            <span class="tag">可信赖</span>
+            <span class="tag">偏 B 端</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-d">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>04 成长阶梯</h2>
+          <p>浅色章面配向上阶梯，表达职业成长和履历积累。比纯蓝方章更轻，适合后台、设置页等长期使用场景。</p>
+          <div class="tags">
+            <span class="tag">轻量</span>
+            <span class="tag">成长感</span>
+            <span class="tag">耐看</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-e">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>05 职业星环</h2>
+          <p>圆形章强调“个人主页/职业名片”的头像感，外环是一条持续运动的轨迹，品牌气质更开放、偏社区。</p>
+          <div class="tags">
+            <span class="tag">圆标</span>
+            <span class="tag">个人品牌</span>
+            <span class="tag">社区感</span>
+          </div>
+        </article>
+
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-f">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>06 黑白印章</h2>
+          <p>极简黑白，适合简历模板页、打印场景和黑白主题。视觉克制，有“专业工具”的沉稳气质。</p>
+          <div class="tags">
+            <span class="tag">高级</span>
+            <span class="tag">打印友好</span>
+            <span class="tag">模板感</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="alt-on-blue">
+        <article class="concept">
+          <div class="brand-row">
+            <span class="mark mark-a">职</span>
+            <span class="wordmark">
+              <span class="name">职迹</span>
+              <span class="latin">CareerTrack</span>
+            </span>
+          </div>
+          <h2>推荐落地方向</h2>
+          <p>
+            如果要兼顾现有界面、认知成本和品牌延展，我建议先用 01 作为主标，02 作为 favicon/移动端图标备选，06 用在黑白简历模板和打印输出里。
+          </p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
