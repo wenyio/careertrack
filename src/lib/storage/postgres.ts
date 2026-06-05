@@ -2,10 +2,11 @@
  * PostgreSQL 存储适配器
  *
  * 使用 pg (node-postgres) 连接 PostgreSQL 数据库
- * 逻辑从原 src/lib/db.ts 迁移，保持完全兼容
+ * 首次连接时自动建表（CREATE TABLE IF NOT EXISTS）
  */
 
 import { Pool } from 'pg'
+import { PG_SCHEMA_SQL } from './schema'
 
 /**
  * 全局连接池
@@ -15,6 +16,22 @@ import { Pool } from 'pg'
  */
 const globalForDb = globalThis as unknown as {
   pool: Pool | undefined
+  schemaInitialized: boolean
+}
+
+/**
+ * 初始化数据库 Schema
+ * 首次连接时执行 CREATE TABLE IF NOT EXISTS
+ */
+async function initSchema(pool: Pool): Promise<void> {
+  if (globalForDb.schemaInitialized) return
+  try {
+    await pool.query(PG_SCHEMA_SQL)
+    globalForDb.schemaInitialized = true
+  } catch (error) {
+    // 数据库不存在等错误不阻塞，后续请求会重试
+    console.warn('[postgres] Schema 初始化失败（可能数据库尚未就绪）:', error instanceof Error ? error.message : error)
+  }
 }
 
 /**
@@ -34,6 +51,9 @@ export function getPool(): Pool {
     globalForDb.pool.on('error', (err) => {
       console.error('数据库连接池错误:', err)
     })
+
+    // 自动建表（异步，不阻塞启动）
+    initSchema(globalForDb.pool)
   }
 
   return globalForDb.pool

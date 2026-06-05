@@ -109,3 +109,112 @@ CREATE TABLE IF NOT EXISTS registration_codes (
 CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
 CREATE INDEX IF NOT EXISTS idx_registration_codes_created_by ON registration_codes(created_by);
 `;
+
+/**
+ * PostgreSQL Schema
+ *
+ * 使用 CREATE TABLE IF NOT EXISTS 实现首次启动自动建表
+ * 与 SQLite 版本结构一致，使用 PostgreSQL 原生类型
+ */
+export const PG_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    otp_secret VARCHAR(100),
+    otp_enabled BOOLEAN DEFAULT FALSE,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    auth_provider INTEGER NOT NULL DEFAULT 1,
+    disabled_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    basic_info JSONB DEFAULT '{}',
+    education JSONB DEFAULT '[]',
+    skills JSONB DEFAULT '[]',
+    work_experience JSONB DEFAULT '[]',
+    projects JSONB DEFAULT '[]',
+    portfolio JSONB DEFAULT '[]',
+    awards JSONB DEFAULT '[]',
+    other_experience JSONB DEFAULT '[]',
+    research JSONB DEFAULT '[]',
+    summary TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+
+CREATE TABLE IF NOT EXISTS resumes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL DEFAULT '未命名简历',
+    modules_config JSONB DEFAULT '{"basic_info":true,"education":true,"skills":true,"work_experience":true,"projects":true,"portfolio":false,"awards":false,"other_experience":false,"research":false,"summary":false}',
+    content JSONB DEFAULT '{}',
+    is_public BOOLEAN DEFAULT FALSE,
+    public_slug VARCHAR(50) UNIQUE,
+    modules_order JSONB DEFAULT '["basic_info","summary","education","work_experience","projects","skills","awards","portfolio","research","other_experience"]',
+    module_titles JSONB DEFAULT '{}',
+    basic_info_display JSONB DEFAULT '{}',
+    preview_config JSONB DEFAULT '{}',
+    template VARCHAR(20) DEFAULT 'classic',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
+CREATE INDEX IF NOT EXISTS idx_resumes_public_slug ON resumes(public_slug) WHERE public_slug IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_resumes_template ON resumes(template);
+
+CREATE TABLE IF NOT EXISTS mcp_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    prefix VARCHAR(20) NOT NULL,
+    hash VARCHAR(64) NOT NULL,
+    scope VARCHAR(20) NOT NULL DEFAULT 'read_write',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_keys_user_id ON mcp_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_mcp_keys_hash ON mcp_keys(hash);
+
+CREATE TABLE IF NOT EXISTS user_oauth_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,
+    provider_account_id VARCHAR(255) NOT NULL,
+    provider_username VARCHAR(255),
+    email VARCHAR(255),
+    avatar_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (provider, provider_account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_oauth_accounts_user_id ON user_oauth_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_oauth_accounts_provider ON user_oauth_accounts(provider, provider_account_id);
+
+CREATE TABLE IF NOT EXISTS registration_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code_hash VARCHAR(64) NOT NULL,
+    label VARCHAR(255),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    used_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ,
+    disabled_at TIMESTAMPTZ,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
+CREATE INDEX IF NOT EXISTS idx_registration_codes_created_by ON registration_codes(created_by);
+`;

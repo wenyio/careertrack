@@ -64,8 +64,15 @@ export async function ensureAdmin(
     console.log(`[bootstrap] 管理员账号已创建: ${username}`)
     globalForBootstrap.adminEnsured = true
   } catch (error) {
-    // 用户名已存在等情况不阻塞启动
-    console.error('[bootstrap] 创建管理员账号失败:', error)
-    globalForBootstrap.adminEnsured = true
+    // 数据库不存在、用户名已存在等情况不阻塞启动
+    // 数据库不存在时会在后续请求中由 schema init 自动创建
+    const msg = error instanceof Error ? error.message : String(error)
+    if (msg.includes('does not exist') || msg.includes('ECONNREFUSED')) {
+      // 数据库尚未就绪，下次请求时重试
+      console.warn('[bootstrap] 数据库未就绪，稍后重试:', msg)
+    } else {
+      console.error('[bootstrap] 创建管理员账号失败:', error)
+      globalForBootstrap.adminEnsured = true
+    }
   }
 }
