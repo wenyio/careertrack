@@ -1,0 +1,67 @@
+# Claude Code
+.claude/
+
+# 依赖目录
+node_modules/
+target/
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 构建产物
+dist/
+build/
+.next/
+out/
+deploy/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 测试产物（测试源码 tests/ 和配置 playwright.config.js 需入库）
+coverage/
+test-results/
+test-report.md
+e2e-test.js
+playwright-report/
+screenshots/
+
+# 临时文件
+.tmp-claude-settings.json
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Rust
+Cargo.lock
+
+# 上传文件
+uploads/
+*.tsbuildinfo
+
+# SQLite 本地数据库
+.careertrack/
+
+# 分析脚本与临时数据
+scripts/
+tmp/
+
+# Next.js 自动生成
+next-env.d.ts
+deploy-*.tar.gz
