@@ -94,14 +94,20 @@ export function renderSkillsModule({
   return (
     <>
       <SectionTitle styles={styles}>{getResolvedModuleTitle('skills', content)}</SectionTitle>
-      {skills.map((skill, i) => renderSubItem('skills', i, skills.length, (
-        <div style={styles.entry}>
-          <div style={styles.entryTitle}>{skill.name}</div>
-          {skill.description && (
-            <DescriptionHtml value={skill.description} style={{ ...styles.description, marginTop: 2 }} />
-          )}
-        </div>
-      )))}
+      {skills.map((skill, i) => {
+        const showName = skill.name && !isFieldHiddenOnItem(skill, 'name')
+        return renderSubItem('skills', i, skills.length, (
+          <div style={styles.entry}>
+            {showName && <div style={styles.entryTitle}>{skill.name}</div>}
+            {skill.description && (
+              <DescriptionHtml
+                value={skill.description}
+                style={{ ...styles.description, marginTop: showName ? 2 : 0 }}
+              />
+            )}
+          </div>
+        ))
+      })}
     </>
   )
 }

@@ -145,3 +145,18 @@ describe('MODULE_RENDERERS projects subtitle 隐藏字段', () => {
     expect(subtitle).toBeUndefined()
   })
 })
+
+describe('MODULE_RENDERERS skills title 隐藏字段', () => {
+  const skillsRenderer = MODULE_RENDERERS.skills!
+
+  it('默认显示技能名称', () => {
+    const item = { id: '1', name: 'React' }
+    expect(skillsRenderer.getTitle(item)).toBe('React')
+  })
+
+  it('name 隐藏后标题为空，但原值仍保留', () => {
+    const item = { id: '1', name: 'React', _hidden_fields: ['name'] }
+    expect(skillsRenderer.getTitle(item)).toBe('')
+    expect(item.name).toBe('React')
+  })
+})

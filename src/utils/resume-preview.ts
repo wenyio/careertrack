@@ -312,7 +312,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   },
   skills: {
     getItems: (c) => c.skills || [],
-    getTitle: (s) => s.name || '',
+    getTitle: (s) => isFieldHiddenOnItem(s, 'name') ? '' : (s.name || ''),
     getDescription: (s) => s.description,
   },
   awards: {

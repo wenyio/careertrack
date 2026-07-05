@@ -88,6 +88,6 @@ export const RESEARCH_FIELDS: ModuleFieldConfig[] = [
 
 /** 专业技能字段 */
 export const SKILLS_FIELDS: ModuleFieldConfig[] = [
-  { field: 'name', label: '技能名称', kind: 'input', placeholder: '例如：JavaScript、React' },
+  { field: 'name', label: '技能名称', kind: 'input', placeholder: '例如：JavaScript、React', hideable: true },
   { field: 'description', label: '技能描述', kind: 'richText', placeholder: '请描述您的技能水平和使用经验...', span: 'full' },
 ]
