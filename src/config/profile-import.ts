@@ -36,6 +36,10 @@ function truncateDescription(desc: DescriptionField | undefined, maxLen = 60): s
   return text.slice(0, maxLen) + '...'
 }
 
+function normalizeText(value: string | undefined): string {
+  return (value || '').trim().toLowerCase()
+}
+
 export const PROFILE_IMPORT_CONFIG = {
   education: {
     modalTitle: '从个人信息导入教育经历',
@@ -54,7 +58,10 @@ export const PROFILE_IMPORT_CONFIG = {
     emptyText: '个人信息中暂无专业技能',
     getItemTitle: (item: Skill) => item.name || '未填写技能',
     getItemSubtitle: (item: Skill) => truncateDescription(item.description) || undefined,
-    getSignature: (item: Skill) => `skill:${item.name}`,
+    getSignature: (item: Skill) => {
+      const name = normalizeText(item.name)
+      return name ? `skill:${name}` : ''
+    },
   } satisfies ArrayModuleImportConfig<Skill>,
 
   work_experience: {

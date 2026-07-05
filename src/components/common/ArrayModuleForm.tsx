@@ -16,6 +16,7 @@ import type { ModuleFieldConfig } from '@/config/module-fields'
 import type { ArrayModuleImportConfig } from '@/config/profile-import'
 import type { DescriptionField } from '@/types/resume'
 import { isFieldHiddenOnItem, toggleHiddenFieldOnItem } from '@/utils/resume-preview'
+import { buildExistingImportSignatures, isDuplicateImportItem } from '@/utils/profile-import'
 import RichTextEditor from '@/components/resume/editor/RichTextEditor'
 import { ArrayFormItemCard, AddItemButton } from '@/components/common/ArrayFormCard'
 import DateRangeField from '@/components/common/DateRangeField'
@@ -67,21 +68,14 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 
   // 构建已有条目的去重签名集合
   const existingSignatures = useMemo(() => {
-    if (!importConfig) return new Set<string>()
-    const sigs = new Set<string>()
-    for (const item of items) {
-      if (item.id) sigs.add(item.id)
-      sigs.add(importConfig.getSignature(item as T))
-    }
-    return sigs
+    return buildExistingImportSignatures(items, importConfig)
   }, [items, importConfig])
 
   // 可导入的条目（排除已存在的）
   const availableImportItems = useMemo(() => {
     if (!importItems || !importConfig) return []
     return importItems.map((item, index) => {
-      const isDuplicate = (item.id && existingSignatures.has(item.id))
-        || existingSignatures.has(importConfig.getSignature(item))
+      const isDuplicate = isDuplicateImportItem(item, importConfig, existingSignatures)
       return { item, index, isDuplicate }
     })
   }, [importItems, importConfig, existingSignatures])
