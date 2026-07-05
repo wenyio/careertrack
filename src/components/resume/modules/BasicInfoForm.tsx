@@ -257,10 +257,11 @@ export default function BasicInfoForm({
             </Form.Item>
           </Col>
         </Row>
-        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <GravatarToggle
             avatar={data?.avatar}
             email={data?.email}
+            showManualInput={!isProfileMode}
             onAvatarChange={(url) => handleChange('avatar', url)}
           />
           {onDisplayConfigChange && (

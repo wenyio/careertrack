@@ -8,7 +8,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Switch, Tooltip, Space, Avatar, message } from 'antd'
+import { Switch, Tooltip, Space, Avatar, Input, message } from 'antd'
 import { QuestionCircleOutlined, UserOutlined } from '@ant-design/icons'
 import { getGravatarUrl, isGravatarUrl } from '@/utils/avatar'
 
@@ -34,12 +34,20 @@ interface GravatarToggleProps {
   avatar?: string
   /** 当前邮箱 */
   email?: string
+  /** 关闭 Gravatar 时是否显示手动头像链接输入框 */
+  showManualInput?: boolean
   /** 头像变更回调 */
   onAvatarChange: (avatar: string) => void
 }
 
-export default function GravatarToggle({ avatar, email, onAvatarChange }: GravatarToggleProps) {
+export default function GravatarToggle({
+  avatar,
+  email,
+  showManualInput = false,
+  onAvatarChange,
+}: GravatarToggleProps) {
   const [loading, setLoading] = useState(false)
+  const usingGravatar = isGravatarUrl(avatar)
 
   const handleToggle = async (on: boolean) => {
     if (on) {
@@ -59,19 +67,30 @@ export default function GravatarToggle({ avatar, email, onAvatarChange }: Gravat
   }
 
   return (
-    <Space size={8} align="center">
-      <Switch
-        size="small"
-        checked={isGravatarUrl(avatar)}
-        loading={loading}
-        onChange={handleToggle}
-        disabled={!email}
-      />
-      <span style={{ fontSize: 14 }}>使用 Gravatar 头像</span>
-      <Tooltip title={TOOLTIP_CONTENT}>
-        <QuestionCircleOutlined style={{ color: '#999', cursor: 'help' }} />
-      </Tooltip>
-      {isGravatarUrl(avatar) && avatar && (
+    <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 360px', flexWrap: 'wrap', gap: 8 }}>
+      <Space size={8} align="center">
+        <Switch
+          size="small"
+          checked={usingGravatar}
+          loading={loading}
+          onChange={handleToggle}
+          disabled={!email}
+        />
+        <span style={{ fontSize: 14 }}>使用 Gravatar 头像</span>
+        <Tooltip title={TOOLTIP_CONTENT}>
+          <QuestionCircleOutlined style={{ color: '#999', cursor: 'help' }} />
+        </Tooltip>
+      </Space>
+      {showManualInput && !usingGravatar && (
+        <Input
+          value={avatar}
+          onChange={(e) => onAvatarChange(e.target.value)}
+          placeholder="请输入头像图片链接"
+          allowClear
+          style={{ flex: '1 1 260px', minWidth: 220, maxWidth: 420 }}
+        />
+      )}
+      {avatar && (
         <Avatar
           size={24}
           src={avatar}
@@ -79,6 +98,6 @@ export default function GravatarToggle({ avatar, email, onAvatarChange }: Gravat
           style={{ flexShrink: 0 }}
         />
       )}
-    </Space>
+    </div>
   )
 }
