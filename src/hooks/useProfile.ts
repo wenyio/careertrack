@@ -32,18 +32,19 @@ export function useProfile(enabled = true) {
 /**
  * 更新个人信息 Hook
  */
-export function useUpdateProfile() {
+export function useUpdateProfile(options?: { silent?: boolean }) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const silent = options?.silent ?? false
 
   return useMutation({
     mutationFn: (profile: Partial<Profile>) => updateProfile(profile),
     onSuccess: (data) => {
       queryClient.setQueryData(PROFILE_QUERY_KEY, data)
-      message.success('保存成功')
+      if (!silent) message.success('保存成功')
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '保存失败'))
+      if (!silent) message.error(getErrorMessage(error, '保存失败'))
     },
   })
 }
