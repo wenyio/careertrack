@@ -261,7 +261,7 @@ export default function BasicInfoForm({
           <GravatarToggle
             avatar={data?.avatar}
             email={data?.email}
-            showManualInput={!isProfileMode}
+            showManualInput
             onAvatarChange={(url) => handleChange('avatar', url)}
           />
           {onDisplayConfigChange && (
