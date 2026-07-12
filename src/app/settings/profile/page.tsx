@@ -7,7 +7,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Button, App, Space } from 'antd'
+import { Button, App } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout'
@@ -43,12 +43,12 @@ const FORM_COMPONENTS: Record<ResumeModuleType, React.ComponentType<any>> = {
 
 type ProfileSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
-const SAVE_STATUS_MAP: Record<ProfileSaveStatus, { text: string; color: string }> = {
-  idle: { text: '', color: '#8c8c8c' },
-  pending: { text: '将自动保存', color: '#faad14' },
-  saving: { text: '保存中...', color: '#1677ff' },
-  saved: { text: '已保存', color: '#52c41a' },
-  error: { text: '保存失败', color: '#ff4d4f' },
+const SAVE_STATUS_MAP: Record<ProfileSaveStatus, { text: string; color: string; background: string; border: string }> = {
+  idle: { text: '', color: '#8c8c8c', background: '#fff', border: '#e5e7eb' },
+  pending: { text: '将自动保存', color: '#ad6800', background: '#fffbe6', border: '#ffe58f' },
+  saving: { text: '保存中...', color: '#0958d9', background: '#e6f4ff', border: '#91caff' },
+  saved: { text: '已保存', color: '#237804', background: '#f6ffed', border: '#b7eb8f' },
+  error: { text: '保存失败，请重试', color: '#cf1322', background: '#fff1f0', border: '#ffa39e' },
 }
 
 function hasProfileChanges(data: Partial<Profile>) {
@@ -197,6 +197,7 @@ export default function ProfilePage() {
   const effectiveSaveStatus: ProfileSaveStatus = isSaving || isAutoSaving ? 'saving' : saveStatus
   const status = SAVE_STATUS_MAP[effectiveSaveStatus]
   const showFloatingSave = hasChanges || effectiveSaveStatus !== 'idle'
+  const showFloatingAction = hasChanges
   const saveButtonDisabled = !hasChanges || isSaving || isAutoSaving
 
   return (
@@ -210,23 +211,16 @@ export default function ProfilePage() {
         loading={isLoading}
         size="lg"
         extra={
-          <Space size={12} align="center">
-            {status.text && (
-              <span style={{ fontSize: 13, color: status.color }}>
-                {status.text}
-              </span>
-            )}
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              loading={isSaving}
-              disabled={saveButtonDisabled}
-              style={{ borderRadius: 8, height: 38, paddingLeft: 20, paddingRight: 20 }}
-            >
-              保存更改
-            </Button>
-          </Space>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            loading={isSaving}
+            disabled={saveButtonDisabled}
+            style={{ borderRadius: 8, height: 38, paddingLeft: 20, paddingRight: 20 }}
+          >
+            保存更改
+          </Button>
         }
       >
         <FormComponent
@@ -238,37 +232,75 @@ export default function ProfilePage() {
 
       {showFloatingSave && (
         <div
-          style={{
-            position: 'fixed',
-            right: 32,
-            bottom: 32,
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '10px 12px',
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.16)',
-          }}
+          className="profile-save-float"
+          style={{ backgroundColor: status.background, borderColor: status.border }}
         >
           {status.text && (
-            <span style={{ fontSize: 13, color: status.color, whiteSpace: 'nowrap' }}>
-              {status.text}
+            <span className="profile-save-status" style={{ color: status.color }}>
+              <span className="profile-save-dot" style={{ backgroundColor: status.color }} />
+              <span>{status.text}</span>
             </span>
           )}
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSave}
-            loading={isSaving}
-            disabled={saveButtonDisabled}
-          >
-            保存
-          </Button>
+          {showFloatingAction && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={isSaving}
+              disabled={saveButtonDisabled}
+              style={{ borderRadius: 6 }}
+            >
+              保存
+            </Button>
+          )}
         </div>
       )}
+
+      <style jsx global>{`
+        .profile-save-float {
+          position: fixed;
+          right: 32px;
+          bottom: 32px;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-height: 44px;
+          padding: 8px 10px 8px 14px;
+          border: 1px solid;
+          border-radius: 999px;
+          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+        }
+
+        .profile-save-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 13px;
+          font-weight: 500;
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        .profile-save-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+          .profile-save-float {
+            right: 16px;
+            left: 16px;
+            bottom: 18px;
+            justify-content: space-between;
+            border-radius: 10px;
+            padding: 10px 12px;
+          }
+        }
+      `}</style>
     </>
   )
 }
