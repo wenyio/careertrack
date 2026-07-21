@@ -78,6 +78,14 @@ export default function RegistrationCodesPage() {
     }
   }
 
+  const handleCopyRegistrationLink = () => {
+    if (newCode) {
+      const registrationLink = `${window.location.origin}/auth/register?code=${encodeURIComponent(newCode)}`
+      navigator.clipboard.writeText(registrationLink)
+      message.success('注册链接已复制到剪贴板')
+    }
+  }
+
   const handleToggleDisable = (record: RegistrationCode) => {
     const isDisabled = !!record.disabled_at
     if (isDisabled) {
@@ -233,13 +241,22 @@ export default function RegistrationCodesPage() {
                 >
                   {newCode}
                 </Text>
-                <Button
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={handleCopyCode}
-                >
-                  复制
-                </Button>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopyRegistrationLink}
+                  >
+                    复制注册链接
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopyCode}
+                  >
+                    复制注册码
+                  </Button>
+                </Space>
               </div>
             </div>
           }

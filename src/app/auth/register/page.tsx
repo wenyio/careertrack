@@ -9,8 +9,8 @@
 
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Form, Input, Button, Steps, App } from 'antd'
 import { KeyOutlined, UserOutlined, LockOutlined, GithubOutlined } from '@ant-design/icons'
 import Link from 'next/link'
@@ -22,12 +22,14 @@ import AuthShell from '@/components/layout/AuthShell'
 import { COOKIE_MAX_AGE } from '@/constants'
 import { getErrorMessage } from '@/utils/error'
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const [form] = Form.useForm()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const registrationCode = searchParams.get('code') || undefined
   const { loginSuccess } = useAuthStore()
   const { message } = App.useApp()
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentStep, setCurrentStep] = useState(registrationCode ? 1 : 0)
   const [loading, setLoading] = useState(false)
 
   // Step 0 → 1: 校验注册码后前进
@@ -96,6 +98,7 @@ export default function RegisterPage() {
         form={form}
         autoComplete="off"
         size="large"
+        initialValues={{ registration_code: registrationCode }}
         onFinish={handleSubmit}
       >
         {/* Step 0: 输入注册码 */}
@@ -185,5 +188,13 @@ export default function RegisterPage() {
         </span>
       </div>
     </AuthShell>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageContent />
+    </Suspense>
   )
 }
