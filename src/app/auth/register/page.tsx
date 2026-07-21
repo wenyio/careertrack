@@ -50,7 +50,8 @@ function RegisterPageContent() {
       return
     }
 
-    const values = form.getFieldsValue()
+    // 第一步的注册码字段在第二步不会渲染；读取完整表单状态以保留该值。
+    const values = form.getFieldsValue(true)
     if (values.password !== values.confirmPassword) {
       message.error('两次输入的密码不一致')
       return

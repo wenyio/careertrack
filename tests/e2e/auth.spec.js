@@ -72,6 +72,24 @@ test.describe('认证与表单校验', () => {
     await screenshot(page, '注册登录', '有效注册码注册成功')
   })
 
+  test('注册链接会预填注册码并完成注册', async ({ page, request }) => {
+    const codeRecord = await createRegistrationCodeByApi(request, 'registration-link-test')
+    const username = `E2E_TEST_link_${Date.now()}`
+    const password = 'E2eTest123456!'
+
+    await goto(page, `/auth/register?code=${encodeURIComponent(codeRecord.code)}`)
+    await expect(page.getByPlaceholder('用户名')).toBeVisible()
+    await page.getByPlaceholder('用户名').fill(username)
+    await page.getByPlaceholder('密码', { exact: true }).fill(password)
+    await page.getByPlaceholder('确认密码').fill(password)
+    await Promise.all([
+      page.waitForURL(/\/resumes/, { timeout: 20_000 }),
+      page.getByRole('button', { name: /注\s*册/ }).click(),
+    ])
+
+    await expect(page.getByText('我的简历')).toBeVisible()
+  })
+
   test('注册后可使用账号登录，且刷新受保护页不应丢失登录态', async ({ page, request }) => {
     const codeRecord = await createRegistrationCodeByApi(request, 'login-flow-test')
     const username = `E2E_TEST_UI_${Date.now()}`
