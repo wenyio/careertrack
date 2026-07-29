@@ -19,6 +19,7 @@ import {
   StandardBasicInfoHeader,
   DescriptionHtml,
   SectionTitle,
+  renderSummaryModule,
   renderSkillsModule,
   DEFAULT_INTENTION_RESOLVE_OVERRIDES,
 } from '../common'
@@ -194,6 +195,8 @@ function BlackWhiteRenderer({
 
     // 其余模块使用默认渲染
     switch (module) {
+      case 'summary':
+        return renderSummaryModule({ content, styles })
       case 'education':
       case 'work_experience':
       case 'research':
