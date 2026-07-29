@@ -15,21 +15,21 @@ export function createEmptyItem(module: ResumeModuleType): Record<string, unknow
   const id = generateId()
   switch (module) {
     case 'education':
-      return { id, school: '', major: '', degree: '', start_date: '', end_date: '', degree_type: '全日制', college: '', city: '', description: '' }
+      return { id, school: '', major: '', degree: '', start_date: '', end_date: null, degree_type: '全日制', college: '', city: '', description: '' }
     case 'skills':
       return { id, name: '', description: '' }
     case 'work_experience':
-      return { id, company: '', department: '', position: '', city: '', start_date: '', end_date: '', description: '' }
+      return { id, company: '', department: '', position: '', city: '', start_date: '', end_date: null, description: '' }
     case 'projects':
-      return { id, name: '', role: '', city: '', link: '', start_date: '', end_date: '', description: '' }
+      return { id, name: '', role: '', city: '', link: '', start_date: '', end_date: null, description: '' }
     case 'portfolio':
       return { id, name: '', link: '', image: '', description: '' }
     case 'awards':
       return { id, name: '', date: '', description: '' }
     case 'other_experience':
-      return { id, name: '', role: '', department: '', city: '', start_date: '', end_date: '', description: '' }
+      return { id, name: '', role: '', department: '', city: '', start_date: '', end_date: null, description: '' }
     case 'research':
-      return { id, name: '', role: '', department: '', city: '', start_date: '', end_date: '', description: '' }
+      return { id, name: '', role: '', department: '', city: '', start_date: '', end_date: null, description: '' }
     default:
       return { id }
   }

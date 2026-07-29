@@ -26,13 +26,15 @@ export function formatDate(date: string | dayjs.Dayjs | null | undefined, format
  * 格式化日期范围
  *
  * @param startDate 开始日期
- * @param endDate 结束日期（null 表示至今）
+ * @param endDate 结束日期（空字符串表示至今，null/undefined 表示未填写）
  * @param format 格式模板
  * @returns 格式化后的日期范围字符串
  *
  * @example
  * formatDateRange('2020-07', '2023-12') // '2020-07 ~ 2023-12'
- * formatDateRange('2020-07', null) // '2020-07 ~ 至今'
+ * formatDateRange('2020-07', '') // '2020-07 ~ 至今'
+ * formatDateRange('2020-07', null) // '2020-07'
+ * formatDateRange(null, null) // ''
  */
 export function formatDateRange(
   startDate: string | null | undefined,
@@ -40,9 +42,10 @@ export function formatDateRange(
   format = 'YYYY-MM'
 ): string {
   const start = startDate ? formatDate(startDate, format) : ''
-  const end = endDate ? formatDate(endDate, format) : '至今'
+  const end = endDate === '' ? '至今' : endDate ? formatDate(endDate, format) : ''
 
   if (!start) return end
+  if (!end) return start
   return `${start} ~ ${end}`
 }
 

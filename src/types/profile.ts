@@ -48,7 +48,7 @@ export interface Education {
   major: string         // 专业
   degree: string        // 学历
   start_date: string    // 开始时间
-  end_date: string      // 结束时间
+  end_date: string | null // 结束时间（空字符串表示至今，null 表示未填写）
   degree_type: string   // 学历类型：全日制/非全日制
   college: string       // 学院
   city: string          // 所在城市
@@ -67,7 +67,7 @@ export interface WorkExperience {
   id: string
   company: string       // 公司名称
   start_date: string    // 开始时间
-  end_date: string      // 结束时间（null 表示至今）
+  end_date: string | null // 结束时间（空字符串表示至今，null 表示未填写）
   department: string    // 部门名称
   position: string      // 岗位名称
   city: string          // 工作城市
@@ -79,7 +79,7 @@ export interface Project {
   id: string
   name: string          // 项目名称
   start_date: string    // 开始时间
-  end_date: string      // 结束时间（null 表示至今）
+  end_date: string | null // 结束时间（空字符串表示至今，null 表示未填写）
   role: string          // 担任角色
   city: string          // 所在城市
   link: string          // 项目链接
@@ -108,7 +108,7 @@ export interface OtherExperience {
   id: string
   name: string          // 经历名称
   start_date: string    // 开始时间
-  end_date: string      // 结束时间
+  end_date: string | null // 结束时间（空字符串表示至今，null 表示未填写）
   role: string          // 角色
   department: string    // 部门
   city: string          // 城市
@@ -120,7 +120,7 @@ export interface Research {
   id: string
   name: string          // 项目名称
   start_date: string    // 开始时间
-  end_date: string      // 结束时间
+  end_date: string | null // 结束时间（空字符串表示至今，null 表示未填写）
   role: string          // 角色
   department: string    // 部门
   city: string          // 城市
@@ -144,4 +144,3 @@ export interface Profile {
   created_at: string
   updated_at: string
 }
-

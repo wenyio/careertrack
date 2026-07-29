@@ -151,9 +151,9 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 
       case 'dateRange': {
         // dateRange 字段使用 field 和 field + '_end'（实际是 start_date/end_date）
-        const startDate = (item as Record<string, unknown>)[field.field] as string
+        const startDate = (item as Record<string, unknown>)[field.field] as string | null | undefined
         const endDateField = field.field === 'start_date' ? 'end_date' : field.field.replace('start_', 'end_')
-        const endDate = (item as Record<string, unknown>)[endDateField] as string
+        const endDate = (item as Record<string, unknown>)[endDateField] as string | null | undefined
         input = (
           <DateRangeField
             startDate={startDate}

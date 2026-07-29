@@ -12,11 +12,11 @@ import dayjs from 'dayjs'
 
 interface DateRangeFieldProps {
   /** 开始日期值 */
-  startDate?: string
+  startDate?: string | null
   /** 结束日期值 */
-  endDate?: string
+  endDate?: string | null
   /** 日期变更回调 */
-  onChange: (startDate: string, endDate: string) => void
+  onChange: (startDate: string, endDate: string | null) => void
   /** 标签文本 */
   label?: string
   /** 占位符 */
@@ -29,7 +29,7 @@ interface DateRangeFieldProps {
  * 安全解析日期字符串为 dayjs 对象
  * 空字符串或无效日期返回 null
  */
-function safeParseDate(date?: string): dayjs.Dayjs | null {
+function safeParseDate(date?: string | null): dayjs.Dayjs | null {
   if (!date) return null
   const d = dayjs(date)
   return d.isValid() ? d : null
@@ -57,11 +57,11 @@ export default function DateRangeField({
   const isPresent = endDate === ''
 
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
-    onChange(date ? date.format('YYYY-MM') : '', isPresent ? '' : endDate || '')
+    onChange(date ? date.format('YYYY-MM') : '', isPresent ? '' : endDate ?? null)
   }
 
   const handleEndDateChange = (date: dayjs.Dayjs | null) => {
-    onChange(startDate || '', date ? date.format('YYYY-MM') : '')
+    onChange(startDate || '', date ? date.format('YYYY-MM') : null)
   }
 
   const handlePresentChange = (checked: boolean) => {
@@ -70,7 +70,7 @@ export default function DateRangeField({
       onChange(startDate || '', '')
     } else {
       // 取消勾选时清空，让用户重新选择结束日期
-      onChange(startDate || '', null as unknown as string)
+      onChange(startDate || '', null)
     }
   }
 
