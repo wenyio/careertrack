@@ -6,14 +6,18 @@
 
 import { NextResponse } from 'next/server'
 import { getResumeBySlug } from '@/lib/services/resume'
+import { parseRouteParams } from '@/lib/api-validation'
+import { publicSlugPathParamsSchema } from '@/lib/validation/params'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  try {
-    const { slug } = await params
+  const parsedParams = await parseRouteParams(params, publicSlugPathParamsSchema)
+  if (!parsedParams.success) return parsedParams.response
 
+  try {
+    const { slug } = parsedParams.data
     const resume = await getResumeBySlug(slug)
     if (!resume) {
       return NextResponse.json(

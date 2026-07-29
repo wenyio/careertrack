@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { resolveRequestAuthSession } from '@/lib/security/auth-session'
+import { parseSearchParams } from '@/lib/api-validation'
+import { githubOAuthStartQuerySchema } from '@/lib/validation/params'
 
 /**
  * 获取用户实际访问的 base URL
@@ -41,7 +43,9 @@ export async function GET(request: Request) {
   const redirectUri = process.env.GITHUB_OAUTH_REDIRECT_URI
 
   const url = new URL(request.url)
-  const mode = url.searchParams.get('mode') || 'login'
+  const parsedQuery = parseSearchParams(request, githubOAuthStartQuerySchema)
+  if (!parsedQuery.success) return parsedQuery.response
+  const { mode } = parsedQuery.data
 
   // bind 模式的错误跳回设置页，login 模式的错误返回 JSON
   const bindError = (reason: string) =>

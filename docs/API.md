@@ -23,6 +23,22 @@
 这些客户端输入错误的 HTTP 状态均为 `400`，不会作为服务器 `500` 错误处理。
 MCP Key 和注册码创建接口的请求字段全部可选，因此允许空 HTTP body；其他 JSON 写接口必须提供有效请求体。
 
+动态资源路径中的 `:id`、`:oauthAccountId` 必须是 UUID；公开 `:slug` 最长 50 个字符，只能包含中英文、数字、下划线和连字符。查询参数同样经过 Zod 校验，重复的单值参数、未知枚举值或超过 100 字符的后台搜索条件返回 `400 VALIDATION_ERROR`。
+
+通用错误响应保持 `{ code, message }` 格式，按 HTTP 语义使用以下稳定错误码：
+
+| HTTP 状态 | 错误码 | 含义 |
+|------|------|------|
+| 400 | `VALIDATION_ERROR` / `BAD_REQUEST` | 输入结构无效 / 业务前置条件不满足 |
+| 401 | `UNAUTHORIZED` | 未登录或会话无效 |
+| 403 | `FORBIDDEN` / `ACCOUNT_DISABLED` | 权限不足 / 账号被禁用 |
+| 404 | `NOT_FOUND` | 资源不存在或不属于当前用户 |
+| 409 | `CONFLICT` | 乐观并发版本冲突 |
+| 429 | `RATE_LIMITED` | 请求超过配额 |
+| 500 | `INTERNAL_ERROR` | 未预期的服务端错误 |
+
+认证流程还会返回 `OTP_REQUIRED`、`TOTP_ERROR` 等业务专用错误码。
+
 ---
 
 ## 认证相关
@@ -186,10 +202,10 @@ MCP Key 和注册码创建接口的请求字段全部可选，因此允许空 HT
 **查询参数:**
 | 参数 | 说明 |
 |------|------|
-| `mode` | `login`（登录/注册，默认）或 `bind`（绑定已有账号） |
+| `mode` | `login`（默认）、`register` 或 `bind`（绑定已有账号） |
 
 **行为:**
-- `login` 模式：已注册用户直接登录，新用户自动创建账号（无需注册码）
+- `login` / `register` 模式：已有绑定直接登录，无绑定则自动创建账号（无需注册码）
 - `bind` 模式：将 GitHub 账号绑定到当前已登录的用户
 
 ### GET /api/auth/github/callback
@@ -472,6 +488,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 撤销 MCP Key（需认证）
 
 撤销后的 Key 将立即失效，无法恢复。
+传入 `?action=delete` 时物理删除 Key；其他 `action` 值会被拒绝，不会退化为撤销操作。
 
 ---
 
@@ -501,6 +518,7 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 | `/api/admin/users/batch-delete` | POST | 批量删除用户 |
 | `/api/admin/users/batch-role` | POST | 批量修改角色 |
 
+用户列表支持 `q` 模糊搜索，最多 100 个字符。
 批量用户和简历接口的 `ids` 必须是非空字符串数组，单次最多 100 个 ID；重复 ID 会自动去重。
 
 ### 简历管理
@@ -511,6 +529,8 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 | `/api/admin/resumes/:id` | GET/DELETE | 简历详情/删除 |
 | `/api/admin/resumes/batch-delete` | POST | 批量删除简历 |
 
+简历列表支持 `q` 模糊搜索和 `public=all|true|false` 公开状态筛选。
+
 ### 注册码管理
 
 | 端点 | 方法 | 说明 |
@@ -519,6 +539,8 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 | `/api/admin/registration-codes` | POST | 生成注册码 |
 | `/api/admin/registration-codes/:id` | DELETE | 删除未使用的注册码 |
 | `/api/admin/registration-codes/:id/status` | PATCH | 启用/禁用注册码 |
+
+注册码列表的 `status` 支持 `all`、`unused`、`used`、`disabled` 和 `expired`。
 
 **POST /api/admin/registration-codes 请求体:**
 ```json

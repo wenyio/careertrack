@@ -7,15 +7,19 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { getAdminResume, deleteAdminResume } from '@/lib/services/admin'
+import { parseRouteParams } from '@/lib/api-validation'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    try {
-      const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
+    try {
+      const { id } = parsedParams.data
       const resume = await getAdminResume(id)
       if (!resume) {
         return error('简历不存在', 404)
@@ -34,9 +38,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    try {
-      const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
+    try {
+      const { id } = parsedParams.data
       const deleted = await deleteAdminResume(id)
       if (!deleted) {
         return error('简历不存在', 404)

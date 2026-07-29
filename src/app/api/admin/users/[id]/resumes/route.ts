@@ -6,15 +6,19 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { listAdminResumes } from '@/lib/services/admin'
+import { parseRouteParams } from '@/lib/api-validation'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    try {
-      const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
+    try {
+      const { id } = parsedParams.data
       const resumes = await listAdminResumes({ userId: id })
       return success(resumes)
     } catch (err) {

@@ -17,9 +17,22 @@ export function success<T>(data: T, status = 200) {
 /**
  * 错误响应
  */
-export function error(message: string, status = 400) {
+const ERROR_CODE_BY_STATUS: Record<number, string> = {
+  400: 'BAD_REQUEST',
+  401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  409: 'CONFLICT',
+  500: 'INTERNAL_ERROR',
+}
+
+export function error(
+  message: string,
+  status = 400,
+  code = ERROR_CODE_BY_STATUS[status] || 'ERROR',
+) {
   return NextResponse.json(
-    { code: 'ERROR', message },
+    { code, message },
     { status }
   )
 }
@@ -55,7 +68,11 @@ export async function withAuth(
     return error('未授权', 401)
   }
   if (user.disabled_at) {
-    return error('账号已被禁用，请联系管理员', 403)
+    return error(
+      '账号已被禁用，请联系管理员',
+      403,
+      'ACCOUNT_DISABLED',
+    )
   }
   return handler(user)
 }
@@ -79,7 +96,11 @@ export async function withAdminAuth(
     return error('未授权', 401)
   }
   if (authUser.disabled_at) {
-    return error('账号已被禁用，请联系管理员', 403)
+    return error(
+      '账号已被禁用，请联系管理员',
+      403,
+      'ACCOUNT_DISABLED',
+    )
   }
 
   if (authUser.role !== 'admin') {

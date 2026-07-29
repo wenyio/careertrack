@@ -15,21 +15,24 @@ import {
   disableRegistrationCode,
   enableRegistrationCode,
 } from '@/lib/services/admin'
-import { parseJsonBody } from '@/lib/api-validation'
+import { parseJsonBody, parseRouteParams } from '@/lib/api-validation'
 import { registrationCodeStatusBodySchema } from '@/lib/validation/admin'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
     const parsedBody = await parseJsonBody(
       request,
       registrationCodeStatusBodySchema,
     )
     if (!parsedBody.success) return parsedBody.response
+    const { id } = parsedParams.data
     const { disabled } = parsedBody.data
 
     const code = await getRegistrationCodeById(id)

@@ -8,13 +8,17 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { getAdminUser, getAdminUserOAuthAccounts } from '@/lib/services/admin'
+import { parseRouteParams } from '@/lib/api-validation'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
+    const { id } = parsedParams.data
 
     const user = await getAdminUser(id)
     if (!user) {

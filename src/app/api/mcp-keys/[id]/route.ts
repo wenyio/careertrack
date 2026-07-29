@@ -9,6 +9,14 @@
 
 import { withAuth, error, success } from '@/lib/api'
 import { revokeMcpKey, deleteMcpKey } from '@/lib/services/mcp-key'
+import {
+  parseRouteParams,
+  parseSearchParams,
+} from '@/lib/api-validation'
+import {
+  idPathParamsSchema,
+  mcpKeyActionQuerySchema,
+} from '@/lib/validation/params'
 
 /**
  * 撤销或删除 MCP Key
@@ -18,9 +26,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (user) => {
-    const { id } = await params
-    const url = new URL(request.url)
-    const action = url.searchParams.get('action')
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
+    const parsedQuery = parseSearchParams(request, mcpKeyActionQuerySchema)
+    if (!parsedQuery.success) return parsedQuery.response
+    const { id } = parsedParams.data
+    const { action } = parsedQuery.data
 
     if (action === 'delete') {
       const deleted = await deleteMcpKey(id, user.id)

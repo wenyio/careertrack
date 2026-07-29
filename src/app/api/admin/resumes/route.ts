@@ -6,15 +6,19 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { listAdminResumes } from '@/lib/services/admin'
+import { parseSearchParams } from '@/lib/api-validation'
+import { adminResumesQuerySchema } from '@/lib/validation/params'
 
 export async function GET(request: Request) {
   return withAdminAuth(request, async () => {
-    try {
-      const { searchParams } = new URL(request.url)
-      const q = searchParams.get('q')?.trim() || ''
-      const pub = searchParams.get('public') || 'all'
+    const parsedQuery = parseSearchParams(request, adminResumesQuerySchema)
+    if (!parsedQuery.success) return parsedQuery.response
 
-      const resumes = await listAdminResumes({ q, pub: pub as 'all' | 'true' | 'false' })
+    try {
+      const resumes = await listAdminResumes({
+        q: parsedQuery.data.q,
+        pub: parsedQuery.data.public,
+      })
       return success(resumes)
     } catch (err) {
       console.error('获取简历列表错误:', err)

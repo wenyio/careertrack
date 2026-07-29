@@ -18,7 +18,12 @@ import { query, transaction } from '@/lib/db'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
-import { issueAuthSession } from '@/lib/security/auth-session'
+import {
+  issueAuthSession,
+  resolveRequestAuthSession,
+} from '@/lib/security/auth-session'
+import { parseSearchParams } from '@/lib/api-validation'
+import { githubOAuthCallbackQuerySchema } from '@/lib/validation/params'
 
 interface GitHubUser {
   id: number
@@ -85,27 +90,27 @@ export async function GET(request: Request) {
   })
   if (limited) return limited
 
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET
-  const clientId = process.env.GITHUB_CLIENT_ID
-
-  if (!clientSecret || !clientId) {
-    console.error('[github-oauth] GitHub OAuth 环境变量未配置')
-    return NextResponse.redirect(new URL('/auth/login?error=github_config', getBaseUrl(request)).toString())
-  }
-
   const url = new URL(request.url)
   const requestProto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '')
   const isSecure = requestProto === 'https'
-  const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state')
 
   // 从 cookie 读取 state 和 mode
   // state 含 `:` 会被 GitHub URL 编码为 `%3A`，cookie 保留原始编码，
   // 而 searchParams.get 会自动解码，因此 cookie 值需要 decodeURIComponent
   const cookieHeader = request.headers.get('cookie') || ''
   const stateCookieRaw = getCookie(cookieHeader, 'github_oauth_state')
-  const stateCookie = stateCookieRaw ? decodeURIComponent(stateCookieRaw) : undefined
-  const mode = getCookie(cookieHeader, 'github_oauth_mode') || 'login'
+  let stateCookie: string | undefined
+  try {
+    stateCookie = stateCookieRaw
+      ? decodeURIComponent(stateCookieRaw)
+      : undefined
+  } catch {
+    stateCookie = undefined
+  }
+  const rawMode = getCookie(cookieHeader, 'github_oauth_mode')
+  const mode = rawMode === 'bind' || rawMode === 'register'
+    ? rawMode
+    : 'login'
 
   // 根据 mode 决定错误跳转地址
   const errorRedirect = (reason: string) => {
@@ -116,9 +121,39 @@ export async function GET(request: Request) {
   }
 
   // 校验 code 和 state
-  if (!code || !state || !stateCookie || state !== stateCookie) {
+  const parsedQuery = parseSearchParams(
+    request,
+    githubOAuthCallbackQuerySchema,
+  )
+  if (
+    !parsedQuery.success
+    || !stateCookie
+    || parsedQuery.data.state !== stateCookie
+  ) {
     console.error('[github-oauth] state 校验失败')
     return errorRedirect('github_state')
+  }
+  const { code, state } = parsedQuery.data
+
+  let bindingUserId: string | undefined
+  if (mode === 'bind') {
+    const session = await resolveRequestAuthSession(request)
+    if (!session) return errorRedirect('unauthorized')
+    if (session.user.disabled_at) return errorRedirect('account_disabled')
+
+    const stateUserId = state.split(':')[1]
+    if (!stateUserId || stateUserId !== session.user.id) {
+      return errorRedirect('invalid_state')
+    }
+    bindingUserId = session.user.id
+  }
+
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET
+  const clientId = process.env.GITHUB_CLIENT_ID
+
+  if (!clientSecret || !clientId) {
+    console.error('[github-oauth] GitHub OAuth 环境变量未配置')
+    return NextResponse.redirect(new URL('/auth/login?error=github_config', getBaseUrl(request)).toString())
   }
 
   try {
@@ -157,12 +192,9 @@ export async function GET(request: Request) {
 
     // ========== bind 模式 ==========
     if (mode === 'bind') {
-      // 从 state 中提取用户 ID（格式：randomHex:userId）
-      const parts = state.split(':')
-      if (parts.length < 2) {
-        return NextResponse.redirect(new URL('/settings/security?bind=error&reason=invalid_state&tab=github', getBaseUrl(request)).toString())
-      }
-      const userId = parts.slice(1).join(':') // userId 中不太可能有冒号，但以防万一
+      // 绑定目标来自当前服务端会话，不能只信任客户端可伪造的 state Cookie。
+      if (!bindingUserId) return errorRedirect('invalid_state')
+      const userId = bindingUserId
 
       try {
         await transaction(async (transactionQuery) => {

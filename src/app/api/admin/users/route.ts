@@ -6,14 +6,16 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { listAdminUsers } from '@/lib/services/admin'
+import { parseSearchParams } from '@/lib/api-validation'
+import { adminUsersQuerySchema } from '@/lib/validation/params'
 
 export async function GET(request: Request) {
   return withAdminAuth(request, async () => {
-    try {
-      const { searchParams } = new URL(request.url)
-      const q = searchParams.get('q')?.trim() || ''
+    const parsedQuery = parseSearchParams(request, adminUsersQuerySchema)
+    if (!parsedQuery.success) return parsedQuery.response
 
-      const users = await listAdminUsers({ q })
+    try {
+      const users = await listAdminUsers({ q: parsedQuery.data.q })
       return success(users)
     } catch (err) {
       console.error('获取用户列表错误:', err)

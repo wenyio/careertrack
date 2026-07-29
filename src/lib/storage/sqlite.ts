@@ -29,6 +29,7 @@ const BOOLEAN_COLUMNS = new Set(['otp_enabled', 'is_public'])
  */
 const globalForDb = globalThis as unknown as {
   sqliteDb: Database.Database | undefined
+  sqliteTransactionTail: Promise<void> | undefined
 }
 
 function getDatabasePath(): string {
@@ -229,7 +230,7 @@ export async function query<T = any>(
  * from accidentally joining an async transaction. BEGIN IMMEDIATE serializes
  * writers, while WAL keeps readers available.
  */
-export async function transaction<T>(
+async function runTransaction<T>(
   callback: (query: DatabaseQuery) => Promise<T>,
 ): Promise<T> {
   const dbPath = getDatabasePath()
@@ -252,4 +253,22 @@ export async function transaction<T>(
   } finally {
     db.close()
   }
+}
+
+export function transaction<T>(
+  callback: (query: DatabaseQuery) => Promise<T>,
+): Promise<T> {
+  /*
+   * better-sqlite3 waits for BEGIN IMMEDIATE synchronously. Without this
+   * in-process queue, a second writer can block the event loop while the first
+   * async callback is waiting to resume and commit, turning normal contention
+   * into SQLITE_BUSY after the busy timeout.
+   */
+  const previous = globalForDb.sqliteTransactionTail ?? Promise.resolve()
+  const current = previous.then(() => runTransaction(callback))
+  globalForDb.sqliteTransactionTail = current.then(
+    () => undefined,
+    () => undefined,
+  )
+  return current
 }

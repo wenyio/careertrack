@@ -11,21 +11,23 @@
 import { withAdminAuth, error, success } from '@/lib/api'
 import { query, transaction } from '@/lib/db'
 import { revokeAllAuthSessions } from '@/lib/security/auth-session'
-import { parseJsonBody } from '@/lib/api-validation'
+import { parseJsonBody, parseRouteParams } from '@/lib/api-validation'
 import { adminUserStatusBodySchema } from '@/lib/validation/admin'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async (admin) => {
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
     const parsedBody = await parseJsonBody(request, adminUserStatusBodySchema)
     if (!parsedBody.success) return parsedBody.response
+    const { id } = parsedParams.data
     const { disabled } = parsedBody.data
 
     try {
-      const { id } = await params
-
       // 管理员不能禁用自己
       if (id === admin.id && disabled) {
         return error('不能禁用自己的账号', 400)

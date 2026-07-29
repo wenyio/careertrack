@@ -99,6 +99,82 @@ test.describe('业务请求 Schema', () => {
   })
 })
 
+test.describe('路由参数与错误契约', () => {
+  test('路径和查询参数拒绝非法 UUID、枚举及重复值', async ({ request }) => {
+    const account = await createUserByApi(request, 'route-schema')
+
+    const invalidResumeId = await request.get('/api/resumes/not-a-uuid', {
+      headers: { Cookie: account.token },
+    })
+    expect(invalidResumeId.status()).toBe(400)
+    await expect(invalidResumeId.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: '资源 ID 格式错误',
+    })
+
+    const invalidMcpAction = await request.delete(
+      '/api/mcp-keys/00000000-0000-4000-8000-000000000000?action=purge',
+      { headers: { Cookie: account.token } },
+    )
+    expect(invalidMcpAction.status()).toBe(400)
+
+    const duplicateMcpAction = await request.delete(
+      '/api/mcp-keys/00000000-0000-4000-8000-000000000000?action=delete&action=delete',
+      { headers: { Cookie: account.token } },
+    )
+    expect(duplicateMcpAction.status()).toBe(400)
+
+    const invalidPublicSlug = await request.get('/api/public/invalid.slug')
+    expect(invalidPublicSlug.status()).toBe(400)
+
+    const invalidOAuthMode = await request.get(
+      '/api/auth/github/start?mode=unexpected',
+      { headers: { 'X-Real-IP': testIp('invalid-github-mode') } },
+    )
+    expect(invalidOAuthMode.status()).toBe(400)
+
+    const forgedState = `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:00000000-0000-4000-8000-000000000000`
+    const forgedBinding = await request.get(
+      `/api/auth/github/callback?code=fake-code&state=${forgedState}`,
+      {
+        headers: {
+          Cookie: `github_oauth_state=${encodeURIComponent(forgedState)}; github_oauth_mode=bind`,
+          'X-Real-IP': testIp('forged-github-bind'),
+        },
+        maxRedirects: 0,
+      },
+    )
+    expect(forgedBinding.status()).toBe(307)
+    expect(forgedBinding.headers().location).toContain('reason=unauthorized')
+
+    const mismatchedBinding = await request.get(
+      `/api/auth/github/callback?code=fake-code&state=${forgedState}`,
+      {
+        headers: {
+          Cookie: `${account.token}; github_oauth_state=${encodeURIComponent(forgedState)}; github_oauth_mode=bind`,
+          'X-Real-IP': testIp('mismatched-github-bind'),
+        },
+        maxRedirects: 0,
+      },
+    )
+    expect(mismatchedBinding.status()).toBe(307)
+    expect(mismatchedBinding.headers().location).toContain('reason=invalid_state')
+
+    const adminSession = await getTestAdmin(request)
+    const invalidAdminFilter = await request.get(
+      '/api/admin/resumes?public=yes',
+      { headers: { Cookie: adminSession } },
+    )
+    expect(invalidAdminFilter.status()).toBe(400)
+
+    const duplicateStatus = await request.get(
+      '/api/admin/registration-codes?status=used&status=unused',
+      { headers: { Cookie: adminSession } },
+    )
+    expect(duplicateStatus.status()).toBe(400)
+  })
+})
+
 test.describe('异常场景与安全测试', () => {
   test('API 未授权、越权访问、删除不存在数据和公开接口字段暴露检查', async ({ request }) => {
     const unauth = await request.get('/api/resumes')
@@ -117,6 +193,10 @@ test.describe('异常场景与安全测试', () => {
       headers: { Cookie: owner.token },
     })
     expect(deleteMissing.status()).toBe(404)
+    await expect(deleteMissing.json()).resolves.toMatchObject({
+      code: 'NOT_FOUND',
+      message: '简历不存在',
+    })
 
     const slug = `security-${Date.now()}`
     await publishResumeByApi(request, owner.token, resume.id, slug)

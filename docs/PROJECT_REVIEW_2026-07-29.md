@@ -33,8 +33,8 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | SEC-01 | 已关闭 | JSON-LD 使用统一安全序列化器，转义 HTML 敏感字符并增加 `</script>` 回归测试；公开 API 改用最小 DTO |
 | MCP-01 | 已关闭 | `read_only` 只注册 5 个读取工具；Key 鉴权关联未禁用用户；增加 scope 契约测试 |
 | AUTH-01 | 已关闭 | `start.sh` 删除默认 JWT 密钥，生产强制不少于 32 字符并拒绝已知弱值 |
-| AUTH-02 | 已关闭 | 浏览器改用 HttpOnly Cookie，移除 localStorage token；服务端仅登记 JWT 摘要并支持登出、改密、改名、禁用即时撤销；关键入口限流；密码最小 10 位 |
-| DATA-01 | 已关闭 | SQLite/PostgreSQL 新增事务；注册、注册码原子领取及 GitHub 首次注册纳入事务；注册码哈希唯一 |
+| AUTH-02 | 已关闭 | 浏览器改用 HttpOnly Cookie，移除 localStorage token；服务端仅登记 JWT 摘要并支持登出、改密、改名、禁用即时撤销；GitHub 绑定回调校验实时会话与 state 用户归属；关键入口限流；密码最小 10 位 |
+| DATA-01 | 已关闭 | SQLite/PostgreSQL 新增事务；SQLite 进程内写事务串行化，避免 async 回调与同步 busy wait 互锁；注册、注册码原子领取及 GitHub 首次注册纳入事务；注册码哈希唯一 |
 | DATA-02 | 已关闭 | 简历引入 `revision` 条件写入和 409 冲突；自动保存改为单飞串行队列 |
 | OPS-01 | 已关闭 | Docker 数据固定为 `/data/careertrack.db`，修复 UID 1001 权限，声明 volume 与健康检查 |
 
@@ -44,22 +44,23 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 修复公开页 SSR 404 和动态 sitemap，收紧 standalone 文件追踪；
 - 增加安全响应头、数据库健康检查和专项安全冒烟脚本；
 - 全部 19 个 JSON 写接口接入共享 JSON/Zod 运行时校验，非法输入统一返回 400；
-- ESLint 已清零；单元测试增加到 154 个；
+- 全部 18 个动态 API 路由和 6 组查询参数接入共享校验，通用错误码按 HTTP 语义收敛；
+- ESLint 已清零；单元测试增加到 159 个；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
-仍未关闭、不得被本轮改动掩盖的重点包括：REST 路径/查询参数 schema 与业务错误码统一、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+仍未关闭、不得被本轮改动掩盖的重点包括：请求体大小/富文本深层预算与 request ID、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 16 个测试文件、154 项测试通过 |
+| `npm run test:unit` | 通过 | 18 个测试文件、159 项测试通过 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 42 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 104/104，通过时间 5.7 分钟 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 105/105，通过时间 5.9 分钟 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
 
 本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
@@ -235,7 +236,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 
 项目已经依赖 Zod，但主要用于 MCP。REST route 多数直接消费 `request.json()`：缺少字段长度、枚举、数组形状、slug 规则、批量上限和 body 大小限制。部分错误响应还会直接带出底层错误文本。
 
-**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、注册码和后台批量操作；损坏 JSON 与结构错误有单元和真实接口 E2E。尚待补齐的是路径/查询参数、请求体大小上限、富文本深层预算以及业务错误码 taxonomy。
+**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 6 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举及重复查询参数均有单元和真实接口 E2E。通用错误 envelope 已按 HTTP 语义使用稳定错误码，尚待补齐的是请求体大小上限、富文本深层预算、request ID 和更细粒度的业务专用码。
 
 建议建立共享 schema 层，覆盖：
 

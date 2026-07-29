@@ -9,8 +9,9 @@
 import { withAuth, error, success } from '@/lib/api'
 import { getResume, updateResume, deleteResume, ResumeConflictError } from '@/lib/services/resume'
 import { NextResponse } from 'next/server'
-import { parseJsonBody } from '@/lib/api-validation'
+import { parseJsonBody, parseRouteParams } from '@/lib/api-validation'
 import { updateResumeBodySchema } from '@/lib/validation/business'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 /**
  * 获取简历详情
@@ -20,7 +21,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (user) => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
+    const { id } = parsedParams.data
 
     const resume = await getResume(id, user.id)
     if (!resume) {
@@ -39,9 +42,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (user) => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
     const parsedBody = await parseJsonBody(request, updateResumeBodySchema)
     if (!parsedBody.success) return parsedBody.response
+    const { id } = parsedParams.data
 
     try {
       const resume = await updateResume(id, user.id, parsedBody.data)
@@ -67,7 +72,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (user) => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
+    const { id } = parsedParams.data
 
     const deleted = await deleteResume(id, user.id)
     if (!deleted) {

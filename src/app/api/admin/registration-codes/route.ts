@@ -9,8 +9,9 @@ import { withAdminAuth, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { generateRegistrationCode, hashRegistrationCode } from '@/lib/registration-code'
 import type { RegistrationCode } from '@/types/admin'
-import { parseJsonBody } from '@/lib/api-validation'
+import { parseJsonBody, parseSearchParams } from '@/lib/api-validation'
 import { createRegistrationCodeBodySchema } from '@/lib/validation/admin'
+import { registrationCodesQuerySchema } from '@/lib/validation/params'
 
 /**
  * 生成注册码
@@ -62,8 +63,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   return withAdminAuth(request, async () => {
-    const url = new URL(request.url)
-    const status = url.searchParams.get('status') || 'all'
+    const parsedQuery = parseSearchParams(
+      request,
+      registrationCodesQuerySchema,
+    )
+    if (!parsedQuery.success) return parsedQuery.response
+    const { status } = parsedQuery.data
 
     let sql = `
       SELECT id, label, created_by, used_by_user_id, expires_at, disabled_at, used_at, created_at, updated_at

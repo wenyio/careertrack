@@ -18,13 +18,20 @@ import {
   getAdminUserOAuthAccountById,
   deleteAdminUserOAuthAccount,
 } from '@/lib/services/admin'
+import { parseRouteParams } from '@/lib/api-validation'
+import { userOAuthAccountPathParamsSchema } from '@/lib/validation/params'
 
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string; oauthAccountId: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    const { id, oauthAccountId } = await params
+    const parsedParams = await parseRouteParams(
+      params,
+      userOAuthAccountPathParamsSchema,
+    )
+    if (!parsedParams.success) return parsedParams.response
+    const { id, oauthAccountId } = parsedParams.data
 
     // 校验目标用户存在
     const user = await getAdminUser(id)

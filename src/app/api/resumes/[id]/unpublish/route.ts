@@ -6,13 +6,17 @@
 
 import { withAuth, error, success } from '@/lib/api'
 import { unpublishResume } from '@/lib/services/resume'
+import { parseRouteParams } from '@/lib/api-validation'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (user) => {
-    const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
+    const { id } = parsedParams.data
 
     try {
       await unpublishResume(id, user.id)

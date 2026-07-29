@@ -7,15 +7,19 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { getAdminUser, deleteUser } from '@/lib/services/admin'
+import { parseRouteParams } from '@/lib/api-validation'
+import { idPathParamsSchema } from '@/lib/validation/params'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async () => {
-    try {
-      const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
+    try {
+      const { id } = parsedParams.data
       const user = await getAdminUser(id)
       if (!user) {
         return error('用户不存在', 404)
@@ -34,9 +38,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async (admin) => {
-    try {
-      const { id } = await params
+    const parsedParams = await parseRouteParams(params, idPathParamsSchema)
+    if (!parsedParams.success) return parsedParams.response
 
+    try {
+      const { id } = parsedParams.data
       // 禁止删除自己
       if (id === admin.id) {
         return error('不能删除自己的账号', 400)
