@@ -5,6 +5,11 @@ type ParsedJsonBody<T> =
   | { success: true; data: T }
   | { success: false; response: NextResponse }
 
+interface ParseJsonBodyOptions {
+  /** Treat an empty HTTP body as an empty object for endpoints with defaults. */
+  allowEmpty?: boolean
+}
+
 function validationResponse(message: string): NextResponse {
   return NextResponse.json(
     { code: 'VALIDATION_ERROR', message },
@@ -21,10 +26,22 @@ function validationResponse(message: string): NextResponse {
 export async function parseJsonBody<Schema extends z.ZodType>(
   request: Request,
   schema: Schema,
+  options: ParseJsonBodyOptions = {},
 ): Promise<ParsedJsonBody<z.output<Schema>>> {
   let body: unknown
   try {
-    body = await request.json()
+    const rawBody = await request.text()
+    if (!rawBody.trim()) {
+      if (!options.allowEmpty) {
+        return {
+          success: false,
+          response: validationResponse('请求体必须是有效的 JSON'),
+        }
+      }
+      body = {}
+    } else {
+      body = JSON.parse(rawBody)
+    }
   } catch {
     return {
       success: false,
@@ -38,7 +55,7 @@ export async function parseJsonBody<Schema extends z.ZodType>(
     return {
       success: false,
       response: validationResponse(
-        issue?.path.length === 0
+        issue?.path.length === 0 && issue.code === 'invalid_type'
           ? '请求体必须是 JSON 对象'
           : issue?.message || '请求参数无效',
       ),

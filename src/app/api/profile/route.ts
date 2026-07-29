@@ -7,6 +7,8 @@
 
 import { withAuth, success } from '@/lib/api'
 import { getProfile, updateProfile } from '@/lib/services/profile'
+import { parseJsonBody } from '@/lib/api-validation'
+import { profileUpdateBodySchema } from '@/lib/validation/business'
 
 /**
  * 获取个人信息
@@ -23,9 +25,10 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   return withAuth(request, async (user) => {
-    const body = await request.json()
+    const parsedBody = await parseJsonBody(request, profileUpdateBodySchema)
+    if (!parsedBody.success) return parsedBody.response
 
-    const profile = await updateProfile(user.id, body)
+    const profile = await updateProfile(user.id, parsedBody.data)
 
     return success(profile)
   })

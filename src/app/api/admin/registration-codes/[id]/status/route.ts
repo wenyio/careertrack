@@ -15,6 +15,8 @@ import {
   disableRegistrationCode,
   enableRegistrationCode,
 } from '@/lib/services/admin'
+import { parseJsonBody } from '@/lib/api-validation'
+import { registrationCodeStatusBodySchema } from '@/lib/validation/admin'
 
 export async function PATCH(
   request: Request,
@@ -23,23 +25,19 @@ export async function PATCH(
   return withAdminAuth(request, async () => {
     const { id } = await params
 
-    let body: { disabled?: unknown }
-    try {
-      body = await request.json()
-    } catch {
-      return error('请求体格式错误', 400)
-    }
-
-    if (typeof body.disabled !== 'boolean') {
-      return error('disabled 字段必须是布尔值', 400)
-    }
+    const parsedBody = await parseJsonBody(
+      request,
+      registrationCodeStatusBodySchema,
+    )
+    if (!parsedBody.success) return parsedBody.response
+    const { disabled } = parsedBody.data
 
     const code = await getRegistrationCodeById(id)
     if (!code) {
       return error('注册码不存在', 404)
     }
 
-    if (body.disabled) {
+    if (disabled) {
       // 禁用
       if (code.disabled_at) {
         return error('注册码已被禁用', 400)

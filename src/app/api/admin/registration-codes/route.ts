@@ -9,6 +9,8 @@ import { withAdminAuth, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { generateRegistrationCode, hashRegistrationCode } from '@/lib/registration-code'
 import type { RegistrationCode } from '@/types/admin'
+import { parseJsonBody } from '@/lib/api-validation'
+import { createRegistrationCodeBodySchema } from '@/lib/validation/admin'
 
 /**
  * 生成注册码
@@ -18,8 +20,13 @@ import type { RegistrationCode } from '@/types/admin'
  */
 export async function POST(request: Request) {
   return withAdminAuth(request, async (admin) => {
-    const body = await request.json().catch(() => ({}))
-    const { label, expires_at } = body as { label?: string; expires_at?: string }
+    const parsedBody = await parseJsonBody(
+      request,
+      createRegistrationCodeBodySchema,
+      { allowEmpty: true },
+    )
+    if (!parsedBody.success) return parsedBody.response
+    const { label, expires_at } = parsedBody.data
 
     // 生成注册码
     const code = generateRegistrationCode()

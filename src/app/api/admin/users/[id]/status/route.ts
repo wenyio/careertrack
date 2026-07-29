@@ -11,20 +11,20 @@
 import { withAdminAuth, error, success } from '@/lib/api'
 import { query, transaction } from '@/lib/db'
 import { revokeAllAuthSessions } from '@/lib/security/auth-session'
+import { parseJsonBody } from '@/lib/api-validation'
+import { adminUserStatusBodySchema } from '@/lib/validation/admin'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withAdminAuth(request, async (admin) => {
+    const parsedBody = await parseJsonBody(request, adminUserStatusBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { disabled } = parsedBody.data
+
     try {
       const { id } = await params
-      const body = await request.json()
-      const { disabled } = body as { disabled: boolean }
-
-      if (typeof disabled !== 'boolean') {
-        return error('无效的参数，disabled 必须为布尔值', 400)
-      }
 
       // 管理员不能禁用自己
       if (id === admin.id && disabled) {

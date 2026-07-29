@@ -7,10 +7,11 @@
  * 需要 JWT 认证（与现有 REST API 一致）
  */
 
-import { withAuth, error, success } from '@/lib/api'
+import { withAuth, success } from '@/lib/api'
 import { createMcpKey, listMcpKeys } from '@/lib/services/mcp-key'
-import type { McpScope } from '@/lib/services/mcp-key'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { parseJsonBody } from '@/lib/api-validation'
+import { createMcpKeyBodySchema } from '@/lib/validation/business'
 
 /**
  * 列出 MCP Key（不含 secret，只有 prefix）
@@ -34,14 +35,15 @@ export async function POST(request: Request) {
     }, user.id)
     if (limited) return limited
 
-    const body = await request.json().catch(() => ({}))
-    const scope = body.scope || 'read_write'
+    const parsedBody = await parseJsonBody(
+      request,
+      createMcpKeyBodySchema,
+      { allowEmpty: true },
+    )
+    if (!parsedBody.success) return parsedBody.response
+    const { scope } = parsedBody.data
 
-    if (!['read_write', 'read_only'].includes(scope)) {
-      return error('scope 必须是 read_write 或 read_only')
-    }
-
-    const key = await createMcpKey(user.id, scope as McpScope)
+    const key = await createMcpKey(user.id, scope)
 
     return success({
       id: key.id,

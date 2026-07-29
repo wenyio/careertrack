@@ -5,10 +5,11 @@
  * POST /api/resumes - 创建简历
  */
 
-import { withAuth, error, success } from '@/lib/api'
+import { withAuth, success } from '@/lib/api'
 import { listResumes, createResume, buildInitialContentFromProfile } from '@/lib/services/resume'
 import { getProfile } from '@/lib/services/profile'
-import { MAX_RESUME_NAME_LENGTH } from '@/constants'
+import { parseJsonBody } from '@/lib/api-validation'
+import { createResumeBodySchema } from '@/lib/validation/business'
 
 /**
  * 获取简历列表
@@ -28,15 +29,9 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   return withAuth(request, async (user) => {
-    const body = await request.json()
-    const { name, initialize_from_profile } = body
-
-    if (typeof name !== 'string' || !name.trim()) {
-      return error('简历名称不能为空')
-    }
-    if (name.trim().length > MAX_RESUME_NAME_LENGTH) {
-      return error(`简历名称不能超过 ${MAX_RESUME_NAME_LENGTH} 个字符`)
-    }
+    const parsedBody = await parseJsonBody(request, createResumeBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { name, initialize_from_profile } = parsedBody.data
 
     // 默认从 profile 初始化（向后兼容）
     const shouldInitFromProfile = initialize_from_profile !== false
@@ -47,7 +42,7 @@ export async function POST(request: Request) {
       initialContent = buildInitialContentFromProfile(profile as unknown as Record<string, unknown>)
     }
 
-    const resume = await createResume(user.id, name.trim(), initialContent)
+    const resume = await createResume(user.id, name, initialContent)
 
     return success(resume, 201)
   })

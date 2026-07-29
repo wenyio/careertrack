@@ -38,6 +38,67 @@ test.describe('认证请求 Schema', () => {
   })
 })
 
+test.describe('业务请求 Schema', () => {
+  test('业务与管理写接口拒绝损坏 JSON 和错误顶层结构', async ({ request }) => {
+    const account = await createUserByApi(request, 'business-schema')
+
+    const malformedMcp = await request.post('/api/mcp-keys', {
+      headers: {
+        Cookie: account.token,
+        'Content-Type': 'application/json',
+        'X-Real-IP': testIp('malformed-mcp-key-json'),
+      },
+      data: Buffer.from('{"scope":'),
+    })
+    expect(malformedMcp.status()).toBe(400)
+
+    const invalidProfile = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: { skills: ['TypeScript'] },
+    })
+    expect(invalidProfile.status()).toBe(400)
+
+    const invalidResume = await request.post('/api/resumes', {
+      headers: { Cookie: account.token },
+      data: {
+        name: 'Schema boundary',
+        initialize_from_profile: 'yes',
+      },
+    })
+    expect(invalidResume.status()).toBe(400)
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_SCHEMA_${Date.now()}`,
+    )
+    const invalidSlug = await request.post(`/api/resumes/${resume.id}/publish`, {
+      headers: { Cookie: account.token },
+      data: { slug: '../private' },
+    })
+    expect(invalidSlug.status()).toBe(400)
+
+    const adminSession = await getTestAdmin(request)
+    const invalidBatch = await request.post('/api/admin/users/batch-delete', {
+      headers: { Cookie: adminSession },
+      data: { ids: [{ id: account.user.id }] },
+    })
+    expect(invalidBatch.status()).toBe(400)
+
+    const malformedRegistrationCode = await request.post(
+      '/api/admin/registration-codes',
+      {
+        headers: {
+          Cookie: adminSession,
+          'Content-Type': 'application/json',
+        },
+        data: Buffer.from('{"label":'),
+      },
+    )
+    expect(malformedRegistrationCode.status()).toBe(400)
+  })
+})
+
 test.describe('异常场景与安全测试', () => {
   test('API 未授权、越权访问、删除不存在数据和公开接口字段暴露检查', async ({ request }) => {
     const unauth = await request.get('/api/resumes')

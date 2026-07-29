@@ -9,7 +9,8 @@
 import { withAuth, error, success } from '@/lib/api'
 import { getResume, updateResume, deleteResume, ResumeConflictError } from '@/lib/services/resume'
 import { NextResponse } from 'next/server'
-import { MAX_RESUME_NAME_LENGTH } from '@/constants'
+import { parseJsonBody } from '@/lib/api-validation'
+import { updateResumeBodySchema } from '@/lib/validation/business'
 
 /**
  * 获取简历详情
@@ -39,20 +40,11 @@ export async function PUT(
 ) {
   return withAuth(request, async (user) => {
     const { id } = await params
-    const body = await request.json()
-
-    if (body.name !== undefined) {
-      if (typeof body.name !== 'string' || !body.name.trim()) {
-        return error('简历名称不能为空')
-      }
-      if (body.name.trim().length > MAX_RESUME_NAME_LENGTH) {
-        return error(`简历名称不能超过 ${MAX_RESUME_NAME_LENGTH} 个字符`)
-      }
-      body.name = body.name.trim()
-    }
+    const parsedBody = await parseJsonBody(request, updateResumeBodySchema)
+    if (!parsedBody.success) return parsedBody.response
 
     try {
-      const resume = await updateResume(id, user.id, body)
+      const resume = await updateResume(id, user.id, parsedBody.data)
       return success(resume)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '更新失败'

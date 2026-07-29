@@ -7,19 +7,21 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { batchDeleteUsers } from '@/lib/services/admin'
+import { parseJsonBody } from '@/lib/api-validation'
+import { adminBatchDeleteUsersBodySchema } from '@/lib/validation/admin'
 
 export async function POST(request: Request) {
   return withAdminAuth(request, async (admin) => {
+    const parsedBody = await parseJsonBody(
+      request,
+      adminBatchDeleteUsersBodySchema,
+    )
+    if (!parsedBody.success) return parsedBody.response
+    const { ids } = parsedBody.data
+
     try {
-      const body = await request.json()
-      const { ids } = body
-
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return error('请选择要删除的用户', 400)
-      }
-
       // 过滤掉自己，防止误删
-      const targetIds = ids.filter((id: string) => id !== admin.id)
+      const targetIds = ids.filter((id) => id !== admin.id)
       if (targetIds.length === 0) {
         return error('不能删除自己的账号', 400)
       }

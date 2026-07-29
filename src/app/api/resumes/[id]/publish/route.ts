@@ -6,6 +6,8 @@
 
 import { withAuth, error, success } from '@/lib/api'
 import { publishResume } from '@/lib/services/resume'
+import { parseJsonBody } from '@/lib/api-validation'
+import { publishResumeBodySchema } from '@/lib/validation/business'
 
 export async function POST(
   request: Request,
@@ -13,15 +15,12 @@ export async function POST(
 ) {
   return withAuth(request, async (user) => {
     const { id } = await params
-    const body = await request.json()
-    const { slug } = body
-
-    if (!slug?.trim()) {
-      return error('公开链接不能为空')
-    }
+    const parsedBody = await parseJsonBody(request, publishResumeBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { slug } = parsedBody.data
 
     try {
-      await publishResume(id, user.id, slug.trim())
+      await publishResume(id, user.id, slug)
       return success({ success: true })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '发布失败'

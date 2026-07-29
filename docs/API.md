@@ -11,7 +11,7 @@
 >
 > 登录态 Cookie 在生产环境启用 `Secure`，有效期与 JWT 及服务端会话一致（24 小时），前端 JavaScript 无法读取。JWT 只保存签名身份，服务端同时校验会话摘要、撤销状态、过期时间和当前用户状态。受限接口超过配额时返回 `429 RATE_LIMITED`，并携带 `Retry-After` 与 `X-RateLimit-*` 响应头。
 
-认证写接口使用共享 Zod schema 做运行时校验。损坏 JSON、非对象 JSON 或字段类型/边界错误统一返回：
+所有接收 JSON 的写接口都使用共享 Zod schema 做运行时校验。损坏 JSON、非对象 JSON 或字段类型/边界错误统一返回：
 
 ```json
 {
@@ -21,6 +21,7 @@
 ```
 
 这些客户端输入错误的 HTTP 状态均为 `400`，不会作为服务器 `500` 错误处理。
+MCP Key 和注册码创建接口的请求字段全部可选，因此允许空 HTTP body；其他 JSON 写接口必须提供有效请求体。
 
 ---
 
@@ -338,18 +339,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
     "research": false,
     "summary": false
   },
-  "modules_order": ["basic_info", "education", "skills", "work_experience", "projects"],
-  "module_titles": {
-    "education": "学习经历"
-  },
-  "basic_info_display": {
-    "avatar_left": false,
-    "field_icons": true
-  },
-  "preview_config": {
-    "font_size": 14,
-    "line_height": 1.5
-  },
+  "modules_order": ["basic_info", "education", "skills", "work_experience", "projects", "portfolio", "awards", "other_experience", "research", "summary"],
   "content": {
     "basic_info": {},
     "education": [],
@@ -360,12 +350,24 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
     "awards": [],
     "other_experience": [],
     "research": [],
-    "summary": ""
+    "summary": "",
+    "module_titles": {
+      "education": "学习经历"
+    },
+    "basic_info_display": {
+      "avatar_left": false
+    },
+    "preview_config": {
+      "fontSize": 14,
+      "lineHeight": 1.5
+    }
   }
 }
 ```
 
 `revision` 是推荐携带的乐观并发令牌。每次写入成功后服务端递增并返回新值；提交旧 revision 时返回 `409`，客户端应重新读取最新数据后再决定合并或覆盖。为兼容旧客户端，该字段暂时可省略。
+
+`modules_order` 传入时必须包含全部 10 个模块且不能重复；`modules_config` 继续兼容局部更新。未识别的顶层字段会被忽略。
 
 ### DELETE /api/resumes/:id
 
@@ -385,6 +387,8 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
   "slug": "my-resume"
 }
 ```
+
+`slug` 最长 50 个字符，只能包含中英文、数字、下划线和连字符。
 
 ### DELETE /api/resumes/:id/unpublish
 
@@ -450,6 +454,8 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 }
 ```
 
+请求体可省略，`scope` 默认为 `read_write`。
+
 **响应:**
 ```json
 {
@@ -485,22 +491,24 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 |------|------|------|
 | `/api/admin/stats` | GET | 获取系统统计信息 |
 | `/api/admin/users` | GET | 用户列表 |
-| `/api/admin/users/:id` | GET/PUT/DELETE | 用户详情/更新/删除 |
+| `/api/admin/users/:id` | GET/DELETE | 用户详情/删除 |
 | `/api/admin/users/:id/profile` | GET | 查看用户个人信息 |
 | `/api/admin/users/:id/resumes` | GET | 查看用户简历列表 |
-| `/api/admin/users/:id/role` | PUT | 修改用户角色 |
+| `/api/admin/users/:id/role` | PATCH | 修改用户角色 |
 | `/api/admin/users/:id/status` | PATCH | 启用/禁用用户账号 |
 | `/api/admin/users/:id/oauth-accounts` | GET | 查看用户 OAuth 绑定 |
 | `/api/admin/users/:id/oauth-accounts/:oauthAccountId` | DELETE | 删除用户 OAuth 绑定 |
 | `/api/admin/users/batch-delete` | POST | 批量删除用户 |
 | `/api/admin/users/batch-role` | POST | 批量修改角色 |
 
+批量用户和简历接口的 `ids` 必须是非空字符串数组，单次最多 100 个 ID；重复 ID 会自动去重。
+
 ### 简历管理
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/api/admin/resumes` | GET | 简历列表（全量） |
-| `/api/admin/resumes/:id` | GET/PUT/DELETE | 简历详情/更新/删除 |
+| `/api/admin/resumes/:id` | GET/DELETE | 简历详情/删除 |
 | `/api/admin/resumes/batch-delete` | POST | 批量删除简历 |
 
 ### 注册码管理
@@ -509,7 +517,7 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 |------|------|------|
 | `/api/admin/registration-codes` | GET | 注册码列表（支持状态筛选） |
 | `/api/admin/registration-codes` | POST | 生成注册码 |
-| `/api/admin/registration-codes/:id` | PATCH | 更新注册码（标签、过期时间） |
+| `/api/admin/registration-codes/:id` | DELETE | 删除未使用的注册码 |
 | `/api/admin/registration-codes/:id/status` | PATCH | 启用/禁用注册码 |
 
 **POST /api/admin/registration-codes 请求体:**

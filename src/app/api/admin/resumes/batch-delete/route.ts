@@ -7,17 +7,19 @@
 
 import { withAdminAuth, error, success } from '@/lib/api'
 import { batchDeleteAdminResumes } from '@/lib/services/admin'
+import { parseJsonBody } from '@/lib/api-validation'
+import { adminBatchDeleteResumesBodySchema } from '@/lib/validation/admin'
 
 export async function POST(request: Request) {
   return withAdminAuth(request, async () => {
+    const parsedBody = await parseJsonBody(
+      request,
+      adminBatchDeleteResumesBodySchema,
+    )
+    if (!parsedBody.success) return parsedBody.response
+    const { ids } = parsedBody.data
+
     try {
-      const body = await request.json()
-      const { ids } = body
-
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return error('请选择要删除的简历', 400)
-      }
-
       const deleted = await batchDeleteAdminResumes(ids)
 
       return success({ deleted: deleted.length, resumes: deleted })
