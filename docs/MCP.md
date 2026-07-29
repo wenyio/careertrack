@@ -22,7 +22,7 @@ CareerTrack 提供 MCP (Model Context Protocol) 服务，允许 AI Agent 通过�
 
 ### 创建 Key
 
-浏览器推荐直接使用设置页。若使用 API，可复用登录响应设置的 Cookie；现有非浏览器客户端也可继续使用 Bearer JWT：
+浏览器推荐直接使用设置页。若使用 API，可复用登录响应设置的 HttpOnly Cookie：
 
 ```bash
 curl -X POST https://your-domain.com/api/mcp-keys \

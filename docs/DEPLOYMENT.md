@@ -326,6 +326,8 @@ fuser .careertrack/careertrack.db
 
 版本升级会在首次数据库访问时按顺序执行 `schema_migrations`。生产更新前必须先做可恢复备份；迁移失败时应用会拒绝继续初始化，不会跳过失败版本。
 
+`002_revocable_auth_sessions` 会创建服务端会话表。升级前签发的 JWT 没有对应会话记录，部署后会失效，所有已登录用户需要重新登录；这是收紧撤销语义的预期安全行为。
+
 ```bash
 # 拉取最新代码
 git pull

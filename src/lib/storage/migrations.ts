@@ -43,6 +43,41 @@ const migrations: Migration[] = [
       )
     },
   },
+  {
+    version: '002_revocable_auth_sessions',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        await query(
+          `CREATE TABLE IF NOT EXISTS auth_sessions (
+             id TEXT PRIMARY KEY,
+             user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             token_hash VARCHAR(64) UNIQUE NOT NULL,
+             expires_at TEXT NOT NULL,
+             revoked_at TEXT,
+             created_at TEXT DEFAULT (datetime('now'))
+           )`,
+        )
+      } else {
+        await query(
+          `CREATE TABLE IF NOT EXISTS auth_sessions (
+             id UUID PRIMARY KEY,
+             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             token_hash VARCHAR(64) UNIQUE NOT NULL,
+             expires_at TIMESTAMPTZ NOT NULL,
+             revoked_at TIMESTAMPTZ,
+             created_at TIMESTAMPTZ DEFAULT NOW()
+           )`,
+        )
+      }
+
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)',
+      )
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)',
+      )
+    },
+  },
 ]
 
 export async function runMigrations(

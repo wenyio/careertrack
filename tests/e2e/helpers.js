@@ -268,5 +268,6 @@ module.exports = {
   createRegistrationCodeByApi,
   getTestAdmin,
   getSessionCookie,
+  testIp,
   registerHooks,
 }

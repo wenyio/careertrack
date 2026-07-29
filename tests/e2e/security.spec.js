@@ -3,7 +3,7 @@
  */
 
 const { test, expect } = require('playwright/test')
-const { registerHooks, goto, screenshot, writeJsonLine, createUserByApi, createResumeByApi, publishResumeByApi, createRegistrationCodeByApi, getTestAdmin, getSessionCookie, DATABASE_PATH } = require('./helpers')
+const { registerHooks, goto, screenshot, writeJsonLine, createUserByApi, createResumeByApi, publishResumeByApi, createRegistrationCodeByApi, getTestAdmin, getSessionCookie, testIp, DATABASE_PATH } = require('./helpers')
 
 registerHooks(test)
 
@@ -142,7 +142,7 @@ test.describe('用户禁用安全测试', () => {
     expect(loginRes.status()).toBe(403)
   })
 
-  test('被禁用用户携带旧 token 调用受保护 API 失败', async ({ request }) => {
+  test('禁用账号会撤销旧会话', async ({ request }) => {
     const adminToken = await getTestAdmin(request)
     const user = await createUserByApi(request, 'disableapi')
 
@@ -162,7 +162,7 @@ test.describe('用户禁用安全测试', () => {
     const afterRes = await request.get('/api/auth/me', {
       headers: { Cookie: user.token },
     })
-    expect(afterRes.status()).toBe(403)
+    expect(afterRes.status()).toBe(401)
   })
 
   test('管理员不能禁用自己', async ({ request }) => {
@@ -204,23 +204,35 @@ test.describe('OTP 与密码安全测试', () => {
 
   test('password_hash 为空用户不能 setup OTP', async ({ request }) => {
     const Database = require('better-sqlite3')
+    const { createHash, randomUUID } = require('node:crypto')
     const db = new Database(DATABASE_PATH)
 
     const username = `E2E_GHOTP_${Date.now()}`
     const githubOnlyUser = db.prepare(
       'INSERT INTO users (username, auth_provider) VALUES (?, 2) RETURNING id',
     ).get(username)
-    db.close()
 
     const { SignJWT } = await import('jose')
     const jwtSecret = process.env.JWT_SECRET
     expect(jwtSecret, 'E2E 必须显式设置 JWT_SECRET').toBeTruthy()
+    const sessionId = randomUUID()
     const token = await new SignJWT({ username, auth_provider: 2 })
       .setProtectedHeader({ alg: 'HS256' })
+      .setJti(sessionId)
       .setSubject(githubOnlyUser.id)
       .setIssuedAt()
       .setExpirationTime('5m')
       .sign(new TextEncoder().encode(jwtSecret))
+    db.prepare(
+      `INSERT INTO auth_sessions (id, user_id, token_hash, expires_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      sessionId,
+      githubOnlyUser.id,
+      createHash('sha256').update(token).digest('hex'),
+      new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    )
+    db.close()
 
     const otpRes = await request.post('/api/auth/setup-otp', {
       headers: { Authorization: `Bearer ${token}` },
@@ -289,5 +301,51 @@ test.describe('修改用户名安全测试', () => {
       data: { username: user.username, password: user.password },
     })
     expect(oldLoginRes.status()).toBe(400)
+  })
+})
+
+test.describe('服务端会话撤销', () => {
+  test('登出后复制的原会话不能继续访问 API', async ({ request }) => {
+    const user = await createUserByApi(request, 'logout-revoke')
+    const logoutRes = await request.post('/api/auth/logout', {
+      headers: { Cookie: user.token },
+    })
+    expect(logoutRes.status()).toBe(204)
+
+    const replay = await request.get('/api/auth/me', {
+      headers: { Cookie: user.token },
+    })
+    expect(replay.status()).toBe(401)
+  })
+
+  test('修改密码撤销其他设备并轮换当前会话', async ({ request }) => {
+    const user = await createUserByApi(request, 'password-rotate')
+    const secondLogin = await request.post('/api/auth/login', {
+      headers: { 'X-Real-IP': testIp(`second-login:${user.username}`) },
+      data: { username: user.username, password: user.password },
+    })
+    expect(secondLogin.status()).toBe(200)
+    const secondCookie = getSessionCookie(secondLogin)
+
+    const changed = await request.put('/api/auth/password', {
+      headers: { Cookie: user.token },
+      data: {
+        current_password: user.password,
+        new_password: 'RotatedPassword123!',
+      },
+    })
+    expect(changed.status(), await changed.text()).toBe(200)
+    const rotatedCookie = getSessionCookie(changed)
+
+    for (const revokedCookie of [user.token, secondCookie]) {
+      const revoked = await request.get('/api/auth/me', {
+        headers: { Cookie: revokedCookie },
+      })
+      expect(revoked.status()).toBe(401)
+    }
+    const current = await request.get('/api/auth/me', {
+      headers: { Cookie: rotatedCookie },
+    })
+    expect(current.status()).toBe(200)
   })
 })

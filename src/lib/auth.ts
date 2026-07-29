@@ -26,10 +26,11 @@ function getJwtSecret(): Uint8Array {
 /**
  * JWT Claims
  */
-interface JwtClaims {
+export interface JwtClaims {
   sub: string    // 用户 ID
   username: string
   auth_provider?: number
+  jti?: string
 }
 
 /**
@@ -40,13 +41,19 @@ interface JwtClaims {
  * @param authProvider 认证来源 bitmask
  * @returns JWT Token
  */
-export async function generateToken(userId: string, username: string, authProvider?: number): Promise<string> {
+export async function generateToken(
+  userId: string,
+  username: string,
+  authProvider: number | undefined,
+  sessionId: string,
+): Promise<string> {
   const payload: Record<string, unknown> = { sub: userId, username }
   if (authProvider !== undefined) {
     payload.auth_provider = authProvider
   }
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
+    .setJti(sessionId)
     .setIssuedAt()
     .setExpirationTime('24h')
     .sign(getJwtSecret())

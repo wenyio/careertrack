@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- 可撤销登录会话表
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id TEXT PRIMARY KEY,                       -- 同 JWT jti
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) UNIQUE NOT NULL,    -- JWT SHA-256 摘要，不保存明文
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT,                          -- 非 NULL 表示已撤销
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+
 -- 个人信息表
 CREATE TABLE IF NOT EXISTS profiles (
     id TEXT PRIMARY KEY DEFAULT ...,
@@ -138,6 +150,7 @@ CREATE UNIQUE INDEX idx_registration_codes_hash ON registration_codes(code_hash)
 - 迁移定义位于 `src/lib/storage/migrations.ts`
 - 每个版本在事务中执行，成功后才写入 `schema_migrations`
 - `001_resume_revision_and_unique_codes` 为旧安装补充 `resumes.revision`，检查重复注册码哈希后建立唯一索引
+- `002_revocable_auth_sessions` 创建服务端登录会话表及用户、过期时间索引；升级前签发且没有会话记录的 JWT 将失效
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
@@ -174,6 +187,24 @@ CREATE INDEX idx_users_username ON users(username);
 - `role`: 用户角色，`user`（普通用户）或 `admin`（管理员），新注册默认 `user`
 - `auth_provider`: 登录方式位掩码，`1`=密码, `2`=GitHub, `4`=其他
 - `disabled_at`: 禁用时间戳，NULL 表示账号正常
+
+### auth_sessions 登录会话表
+
+只保存 JWT 的 SHA-256 摘要及撤销状态。请求认证必须同时通过 JWT 签名校验和服务端会话校验，因此退出登录、修改密码、修改用户名或禁用账号后，旧凭证会立即失效。
+
+```sql
+CREATE TABLE auth_sessions (
+    id UUID PRIMARY KEY,                        -- 同 JWT jti
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) UNIQUE NOT NULL,     -- JWT SHA-256 摘要
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_auth_sessions_user_id ON auth_sessions(user_id);
+CREATE INDEX idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+```
 
 ### profiles 个人信息表
 
@@ -467,6 +498,8 @@ CREATE INDEX idx_registration_codes_hash ON registration_codes(code_hash);
 ```
 users (1) ──── (1) profiles
   │
+  ├──── (N) auth_sessions
+  │
   ├──── (N) resumes
   │
   ├──── (N) mcp_keys
@@ -477,6 +510,7 @@ users (1) ──── (1) profiles
 ```
 
 - 一个用户对应一份个人信息（1:1）
+- 一个用户可以有多个登录会话，且每个会话都可独立撤销（1:N）
 - 一个用户可以有多份简历（1:N）
 - 一个用户可以有多个 MCP Key（1:N）
 - 一个用户可以绑定多个 OAuth 账号（1:N）

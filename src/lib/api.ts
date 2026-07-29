@@ -5,9 +5,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { verifyToken } from './auth'
-import { query } from './db'
-import { getSessionToken } from '@/lib/security/session'
+import { resolveRequestAuthSession } from '@/lib/security/auth-session'
 
 /**
  * 成功响应
@@ -36,25 +34,9 @@ export function error(message: string, status = 400) {
  * @param request 请求对象
  * @returns 用户信息或 null
  */
-async function getAuthUser(request: Request): Promise<{ id: string; username: string; disabled_at: string | null } | null> {
-  const token = getSessionToken(request)
-  if (!token) return null
-  const claims = await verifyToken(token)
-  if (!claims) {
-    return null
-  }
-
-  // 查询用户是否存在
-  const result = await query(
-    'SELECT id, username, disabled_at FROM users WHERE id = $1',
-    [claims.sub]
-  )
-
-  if (result.rows.length === 0) {
-    return null
-  }
-
-  return result.rows[0]
+async function getAuthUser(request: Request) {
+  const session = await resolveRequestAuthSession(request)
+  return session?.user || null
 }
 
 /**
@@ -81,7 +63,7 @@ export async function withAuth(
 /**
  * 需要管理员权限的请求处理
  *
- * 从数据库读取当前用户角色，确认 role === 'admin' 后才允许访问。
+ * 会话解析会联表读取数据库中的最新角色，不信任 JWT 内旧角色字段。
  * 权限不足返回 403，未登录返回 401。
  *
  * @param request 请求对象
@@ -100,20 +82,13 @@ export async function withAdminAuth(
     return error('账号已被禁用，请联系管理员', 403)
   }
 
-  // 从数据库读取最新角色信息
-  const result = await query(
-    'SELECT id, username, role FROM users WHERE id = $1',
-    [authUser.id]
-  )
-
-  if (result.rows.length === 0) {
-    return error('用户不存在', 401)
-  }
-
-  const user = result.rows[0]
-  if (user.role !== 'admin') {
+  if (authUser.role !== 'admin') {
     return error('权限不足', 403)
   }
 
-  return handler({ id: user.id, username: user.username, role: user.role })
+  return handler({
+    id: authUser.id,
+    username: authUser.username,
+    role: authUser.role,
+  })
 }

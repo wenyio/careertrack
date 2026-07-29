@@ -14,9 +14,8 @@
 
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
-import { verifyToken } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
-import { getSessionToken } from '@/lib/security/session'
+import { resolveRequestAuthSession } from '@/lib/security/auth-session'
 
 /**
  * 获取用户实际访问的 base URL
@@ -64,15 +63,14 @@ export async function GET(request: Request) {
 
   // bind 模式：从 HttpOnly session 获取当前用户 ID，编码到 state 中
   if (mode === 'bind') {
-    const sessionToken = getSessionToken(request)
-    if (!sessionToken) {
+    const session = await resolveRequestAuthSession(request)
+    if (!session) {
       return bindError('unauthorized')
     }
-    const claims = await verifyToken(sessionToken)
-    if (!claims) {
-      return bindError('token_expired')
+    if (session.user.disabled_at) {
+      return bindError('account_disabled')
     }
-    state = `${stateBase}:${claims.sub}`
+    state = `${stateBase}:${session.user.id}`
   }
 
   // 构建 GitHub 授权 URL

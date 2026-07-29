@@ -14,7 +14,7 @@ function getCookie(request: Request, name: string): string | null {
   return null
 }
 
-/** Bearer remains supported for existing non-browser API clients. */
+/** Bearer is a transport alternative for server-issued, registered sessions. */
 export function getSessionToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {

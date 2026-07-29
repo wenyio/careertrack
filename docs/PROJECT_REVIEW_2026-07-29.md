@@ -33,35 +33,35 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | SEC-01 | 已关闭 | JSON-LD 使用统一安全序列化器，转义 HTML 敏感字符并增加 `</script>` 回归测试；公开 API 改用最小 DTO |
 | MCP-01 | 已关闭 | `read_only` 只注册 5 个读取工具；Key 鉴权关联未禁用用户；增加 scope 契约测试 |
 | AUTH-01 | 已关闭 | `start.sh` 删除默认 JWT 密钥，生产强制不少于 32 字符并拒绝已知弱值 |
-| AUTH-02 | 主要风险已关闭 | 浏览器改用 HttpOnly 会话 Cookie，移除 localStorage token；关键认证/MCP 入口限流；密码最小 10 位。服务端可撤销 session/version 仍列入后续 |
+| AUTH-02 | 已关闭 | 浏览器改用 HttpOnly Cookie，移除 localStorage token；服务端仅登记 JWT 摘要并支持登出、改密、改名、禁用即时撤销；关键入口限流；密码最小 10 位 |
 | DATA-01 | 已关闭 | SQLite/PostgreSQL 新增事务；注册、注册码原子领取及 GitHub 首次注册纳入事务；注册码哈希唯一 |
 | DATA-02 | 已关闭 | 简历引入 `revision` 条件写入和 409 冲突；自动保存改为单飞串行队列 |
 | OPS-01 | 已关闭 | Docker 数据固定为 `/data/careertrack.db`，修复 UID 1001 权限，声明 volume 与健康检查 |
 
 同期完成的 P1 基础项：
 
-- 增加 `schema_migrations` 和首个向前迁移，构建阶段不再访问数据库；
+- 增加 `schema_migrations` 及顺序向前迁移，构建阶段不再访问数据库；
 - 修复公开页 SSR 404 和动态 sitemap，收紧 standalone 文件追踪；
 - 增加安全响应头、数据库健康检查和专项安全冒烟脚本；
-- ESLint 已清零；单元测试增加到 139 个；
+- ESLint 已清零；单元测试增加到 142 个；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
-仍未关闭、不得被本轮改动掩盖的重点包括：统一 REST 运行时 schema、可撤销服务端 session、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+仍未关闭、不得被本轮改动掩盖的重点包括：统一 REST 运行时 schema、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 13 个测试文件、139 项测试通过 |
+| `npm run test:unit` | 通过 | 14 个测试文件、142 项测试通过 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 42 个静态页面生成通过；构建阶段未访问数据库 |
-| `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、登出 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 100/100，通过时间 5.8 分钟 |
+| `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 102/102，通过时间 5.7 分钟 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
 
-本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、服务端可撤销会话、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
+本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
 
 ## 2. 本次评估方法
 

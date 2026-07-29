@@ -4,12 +4,12 @@
 
 - Base URL: `/api`（相对于当前站点根路径）
 - 浏览器认证: `careertrack_session` HttpOnly Cookie（登录、注册或 OAuth 回调自动设置）
-- API 客户端兼容: `Authorization: Bearer <JWT>`
+- 传输兼容: `Authorization: Bearer <server-issued session JWT>`；令牌仍必须存在于服务端会话表
 - 数据格式: JSON
 
 > **注意**：CareerTrack 是 Next.js 全栈应用，API 路由与前端部署在同一域名下，无需单独配置后端地址。
 >
-> 登录态 Cookie 在生产环境启用 `Secure`，有效期与 JWT 一致（24 小时），前端 JavaScript 无法读取。受限接口超过配额时返回 `429 RATE_LIMITED`，并携带 `Retry-After` 与 `X-RateLimit-*` 响应头。
+> 登录态 Cookie 在生产环境启用 `Secure`，有效期与 JWT 及服务端会话一致（24 小时），前端 JavaScript 无法读取。JWT 只保存签名身份，服务端同时校验会话摘要、撤销状态、过期时间和当前用户状态。受限接口超过配额时返回 `429 RATE_LIMITED`，并携带 `Retry-After` 与 `X-RateLimit-*` 响应头。
 
 ---
 
@@ -76,7 +76,7 @@
 
 ### POST /api/auth/logout
 
-清除当前浏览器的会话 Cookie，成功返回 `204 No Content`。
+撤销当前服务端会话并清除浏览器 Cookie，成功返回 `204 No Content`。即使调用方保留了登出前的 Cookie/JWT，也不能继续访问受保护接口。
 
 ### GET /api/auth/me
 
@@ -143,11 +143,11 @@
 ```json
 {
   "username": "string (3-50 字符)",
-  "password": "string"
+  "current_password": "string"
 }
 ```
 
-> 如果用户有密码，需要提供当前密码验证。GitHub-only 用户（无密码）可直接修改。
+> 如果用户有密码，需要提供当前密码验证。GitHub-only 用户（无密码）可直接修改。成功后撤销该用户的全部旧会话，并为当前客户端轮换会话 Cookie。
 
 ### PUT /api/auth/password
 
@@ -161,7 +161,7 @@
 }
 ```
 
-> GitHub-only 用户首次设置密码时，`current_password` 可省略。
+> GitHub-only 用户首次设置密码时，`current_password` 可省略。成功后撤销所有设备的旧会话，并为当前客户端签发新会话。
 
 ---
 

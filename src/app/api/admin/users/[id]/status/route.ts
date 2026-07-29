@@ -9,7 +9,8 @@
  */
 
 import { withAdminAuth, error, success } from '@/lib/api'
-import { query } from '@/lib/db'
+import { query, transaction } from '@/lib/db'
+import { revokeAllAuthSessions } from '@/lib/security/auth-session'
 
 export async function PATCH(
   request: Request,
@@ -39,26 +40,29 @@ export async function PATCH(
         return error('用户不存在', 404)
       }
 
-      // 更新状态
-      if (disabled) {
-        await query(
-          'UPDATE users SET disabled_at = NOW(), updated_at = NOW() WHERE id = $1',
-          [id]
-        )
-      } else {
-        await query(
-          'UPDATE users SET disabled_at = NULL, updated_at = NOW() WHERE id = $1',
-          [id]
-        )
-      }
+      const updatedUser = await transaction(async (transactionQuery) => {
+        if (disabled) {
+          await transactionQuery(
+            'UPDATE users SET disabled_at = NOW(), updated_at = NOW() WHERE id = $1',
+            [id],
+          )
+          // 防止账号重新启用后，禁用前复制的会话恢复有效。
+          await revokeAllAuthSessions(id, transactionQuery)
+        } else {
+          await transactionQuery(
+            'UPDATE users SET disabled_at = NULL, updated_at = NOW() WHERE id = $1',
+            [id],
+          )
+        }
 
-      // 返回更新后的用户信息
-      const updatedResult = await query(
-        'SELECT id, username, role, disabled_at FROM users WHERE id = $1',
-        [id]
-      )
+        const updatedResult = await transactionQuery(
+          'SELECT id, username, role, disabled_at FROM users WHERE id = $1',
+          [id],
+        )
+        return updatedResult.rows[0]
+      })
 
-      return success(updatedResult.rows[0])
+      return success(updatedUser)
     } catch (err) {
       console.error('修改用户状态错误:', err)
       return error('服务器内部错误', 500)

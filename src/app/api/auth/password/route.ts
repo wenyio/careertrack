@@ -9,9 +9,14 @@
  */
 
 import { withAuth, error, success } from '@/lib/api'
-import { query } from '@/lib/db'
+import { query, transaction } from '@/lib/db'
 import { verifyPassword, hashPassword } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
+import { setAuthSessionCookie } from '@/lib/security/session'
+import {
+  issueAuthSession,
+  revokeAllAuthSessions,
+} from '@/lib/security/auth-session'
 
 export async function PUT(request: Request) {
   return withAuth(request, async (user) => {
@@ -55,11 +60,26 @@ export async function PUT(request: Request) {
       ? userData.auth_provider
       : userData.auth_provider | AUTH_PROVIDER.PASSWORD
 
-    await query(
-      'UPDATE users SET password_hash = $1, auth_provider = $2, updated_at = NOW() WHERE id = $3',
-      [newHash, newAuthProvider, user.id]
-    )
+    const newToken = await transaction(async (transactionQuery) => {
+      await transactionQuery(
+        'UPDATE users SET password_hash = $1, auth_provider = $2, updated_at = NOW() WHERE id = $3',
+        [newHash, newAuthProvider, user.id],
+      )
 
-    return success({ success: true })
+      // 改密是账号级安全事件：撤销所有设备，再给当前请求签发新会话。
+      await revokeAllAuthSessions(user.id, transactionQuery)
+      return issueAuthSession(
+        {
+          id: user.id,
+          username: user.username,
+          auth_provider: newAuthProvider,
+        },
+        transactionQuery,
+      )
+    })
+
+    const response = success({ success: true })
+    setAuthSessionCookie(response, newToken, request)
+    return response
   })
 }

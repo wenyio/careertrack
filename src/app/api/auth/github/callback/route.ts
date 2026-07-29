@@ -15,10 +15,10 @@
 
 import { NextResponse } from 'next/server'
 import { query, transaction } from '@/lib/db'
-import { generateToken } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
+import { issueAuthSession } from '@/lib/security/auth-session'
 
 interface GitHubUser {
   id: number
@@ -286,7 +286,7 @@ export async function GET(request: Request) {
       [userId]
     )
     const user = userResult.rows[0]
-    const token = await generateToken(user.id, user.username, user.auth_provider)
+    const token = await issueAuthSession(user)
 
     // 写入 HttpOnly session，清除 state cookie，重定向到 OAuth 中转页。
     const redirectUrl = new URL('/auth/oauth/callback', getBaseUrl(request))

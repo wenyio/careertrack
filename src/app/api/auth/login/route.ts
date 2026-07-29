@@ -9,9 +9,10 @@
 
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { verifyPassword, verifyTotp, generateToken } from '@/lib/auth'
+import { verifyPassword, verifyTotp } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
+import { issueAuthSession } from '@/lib/security/auth-session'
 
 export async function POST(request: Request) {
   try {
@@ -105,8 +106,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 生成 Token
-    const token = await generateToken(user.id, user.username, user.auth_provider)
+    const token = await issueAuthSession(user)
 
     const response = NextResponse.json({
       user: {

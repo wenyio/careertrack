@@ -273,6 +273,8 @@ assert(logout.response.status === 204, `logout failed: ${logout.text}`)
 const clearedCookie = sessionCookie(logout, 'logout')
 const meAfterLogout = await request('/api/auth/me', { cookie: clearedCookie })
 assert(meAfterLogout.response.status === 401, 'cleared session remained usable')
+const replayAfterLogout = await request('/api/auth/me', { cookie: adminCookie })
+assert(replayAfterLogout.response.status === 401, 'server-side session remained usable after logout')
 
 console.log(JSON.stringify({
   status: 'ok',
@@ -283,7 +285,7 @@ console.log(JSON.stringify({
     'public-dto',
     'json-ld-xss',
     'mcp-disabled-user',
-    'logout',
+    'server-session-revocation',
   ],
 }))
 }

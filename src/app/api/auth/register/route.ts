@@ -9,11 +9,12 @@
 
 import { NextResponse } from 'next/server'
 import { transaction } from '@/lib/db'
-import { hashPassword, generateToken } from '@/lib/auth'
+import { hashPassword } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { validateRegistrationCode, markRegistrationCodeUsed } from '@/lib/registration-code'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
+import { issueAuthSession } from '@/lib/security/auth-session'
 
 export async function POST(request: Request) {
   try {
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
 
     // 密码哈希是 CPU 密集操作，放在事务外缩短数据库锁持有时间。
     const passwordHash = await hashPassword(password)
-    const user = await transaction(async (transactionQuery) => {
+    const { user, token } = await transaction(async (transactionQuery) => {
       const codeRecord = await validateRegistrationCode(
         registration_code,
         transactionQuery,
@@ -104,11 +105,9 @@ export async function POST(request: Request) {
         throw new Error('REGISTRATION_CODE_UNAVAILABLE')
       }
 
-      return createdUser
+      const token = await issueAuthSession(createdUser, transactionQuery)
+      return { user: createdUser, token }
     })
-
-    // 生成 Token
-    const token = await generateToken(user.id, user.username, user.auth_provider)
 
     const response = NextResponse.json({
       user: {

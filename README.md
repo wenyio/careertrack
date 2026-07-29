@@ -16,7 +16,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **实时预览** - 编辑简历时实时查看效果，支持 4 套简历模板（classic、modern、minimal、black-white）
 - **PDF 导出** - 一键导出高质量 PDF 简历（浏览器原生打印方案）
 - **简历公开** - 生成公开链接，可作为个人主页访问，支持 SEO 优化和分享预览图
-- **安全认证** - HttpOnly 会话 Cookie + 可选 TOTP 二次验证 + GitHub OAuth 登录
+- **安全认证** - HttpOnly Cookie + 服务端可撤销会话 + 可选 TOTP + GitHub OAuth
 - **游客模式** - 无需注册即可本地离线创建和编辑简历，注册后可一键导入
 - **MCP 服务** - 通过 MCP 协议供 AI Agent 访问和编辑简历数据
 - **Gravatar 头像** - 通过邮箱自动获取头像，内置证件照处理工具
@@ -28,7 +28,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **UI 组件库**: Ant Design 6
 - **状态管理**: Zustand (客户端) + TanStack Query (服务端)
 - **数据库**: SQLite (默认) / PostgreSQL 15 (可选)
-- **认证**: HttpOnly JWT 会话 + TOTP + GitHub OAuth
+- **认证**: HttpOnly JWT + 服务端会话登记/撤销 + TOTP + GitHub OAuth
 - **语言**: TypeScript
 
 ## 📁 项目结构
