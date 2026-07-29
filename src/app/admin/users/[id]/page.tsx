@@ -38,7 +38,7 @@ import {
   useAdminUserOAuthAccounts,
   useDeleteAdminUserOAuthAccount,
 } from '@/hooks/useAdmin'
-import { AUTH_PROVIDER, AUTH_PROVIDER_LABELS } from '@/constants/auth'
+import { AUTH_PROVIDER_LABELS } from '@/constants/auth'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'

@@ -23,13 +23,14 @@ export function useResumeEditorData(id: string) {
   const { data: resume, isLoading } = useResume(id)
   const { data: profile } = useProfile()
 
-  const { mutate: updateResumeSilent } = useUpdateResume(id, { silent: true })
+  const { mutateAsync: updateResumeSilent } = useUpdateResume(id, { silent: true })
 
   // Zustand store
   const store = useResumeEditorStore()
 
   // 初始化标记
   const isInitializedRef = useRef(false)
+  const revisionRef = useRef<number | null>(null)
 
   // 初始化数据（useLayoutEffect 确保在浏览器绘制前完成）
   useLayoutEffect(() => {
@@ -45,6 +46,7 @@ export function useResumeEditorData(id: string) {
         },
         template: resume.template || 'classic',
       })
+      revisionRef.current = resume.revision
       isInitializedRef.current = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand store 引用稳定
@@ -55,7 +57,10 @@ export function useResumeEditorData(id: string) {
 
   // 在 effect 中同步 ref，避免 render 期间写入 ref
   useEffect(() => {
-    getCurrentDataRef.current = () => buildResumeSavePayload(store, resume?.name)
+    getCurrentDataRef.current = () => ({
+      ...buildResumeSavePayload(store, resume?.name),
+      revision: revisionRef.current,
+    })
   })
 
   // 手动保存用（同步读取）
@@ -70,6 +75,11 @@ export function useResumeEditorData(id: string) {
     updateResume: updateResumeSilent,
     setSaveStatus: store.setSaveStatus,
     getCurrentData,
+    onSaveSuccess: (result) => {
+      if (result?.revision !== undefined) {
+        revisionRef.current = result.revision
+      }
+    },
   })
 
   // 打印 Hook

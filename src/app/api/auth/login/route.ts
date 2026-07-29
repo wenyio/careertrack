@@ -10,11 +10,27 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { verifyPassword, verifyTotp, generateToken } from '@/lib/auth'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { setAuthSessionCookie } from '@/lib/security/session'
 
 export async function POST(request: Request) {
   try {
+    const ipLimit = enforceRateLimit(request, {
+      namespace: 'auth-login-ip',
+      limit: 30,
+      windowMs: 15 * 60 * 1000,
+    })
+    if (ipLimit) return ipLimit
+
     const body = await request.json()
     const { username, password, otp_code } = body
+
+    const accountLimit = enforceRateLimit(request, {
+      namespace: 'auth-login-account',
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+    }, String(username || '').trim().toLowerCase())
+    if (accountLimit) return accountLimit
 
     // 参数验证
     if (!username || !password) {
@@ -92,8 +108,7 @@ export async function POST(request: Request) {
     // 生成 Token
     const token = await generateToken(user.id, user.username, user.auth_provider)
 
-    return NextResponse.json({
-      token,
+    const response = NextResponse.json({
       user: {
         id: user.id,
         username: user.username,
@@ -102,6 +117,8 @@ export async function POST(request: Request) {
         auth_provider: user.auth_provider,
       },
     })
+    setAuthSessionCookie(response, token, request)
+    return response
   } catch (err) {
     console.error('登录错误:', err)
     return NextResponse.json(

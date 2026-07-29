@@ -5,7 +5,7 @@
  * GET  /api/admin/registration-codes — 查询注册码列表
  */
 
-import { withAdminAuth, error, success } from '@/lib/api'
+import { withAdminAuth, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { generateRegistrationCode, hashRegistrationCode } from '@/lib/registration-code'
 import type { RegistrationCode } from '@/types/admin'

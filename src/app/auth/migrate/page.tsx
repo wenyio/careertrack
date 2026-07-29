@@ -40,15 +40,15 @@ export default function MigratePage() {
   const { message } = App.useApp()
   const [phase, setPhase] = useState<MigrationPhase>('confirm')
   const [result, setResult] = useState<MigrationResult | null>(null)
-  const [guestResumes, setGuestResumes] = useState<ReturnType<typeof getGuestResumes>>([])
+  const [guestResumes] = useState<ReturnType<typeof getGuestResumes>>(
+    () => getGuestResumes(),
+  )
   const [clearOnSkip, setClearOnSkip] = useState(false)
 
   // 如果没有游客数据，直接跳转到 /resumes
   useEffect(() => {
     if (!hasGuestData()) {
       router.replace('/resumes')
-    } else {
-      setGuestResumes(getGuestResumes())
     }
   }, [router])
 

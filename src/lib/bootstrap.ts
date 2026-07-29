@@ -47,8 +47,8 @@ export async function ensureAdmin(
       return
     }
 
-    if (password.length < 6) {
-      console.error('[bootstrap] ADMIN_PASSWORD 长度不能少于 6 位，跳过自动创建。')
+    if (password.length < 10) {
+      console.error('[bootstrap] ADMIN_PASSWORD 长度不能少于 10 位，跳过自动创建。')
       globalForBootstrap.adminEnsured = true
       return
     }
@@ -70,6 +70,7 @@ export async function ensureAdmin(
     if (msg.includes('does not exist') || msg.includes('ECONNREFUSED')) {
       // 数据库尚未就绪，下次请求时重试
       console.warn('[bootstrap] 数据库未就绪，稍后重试:', msg)
+      throw error
     } else {
       console.error('[bootstrap] 创建管理员账号失败:', error)
       globalForBootstrap.adminEnsured = true

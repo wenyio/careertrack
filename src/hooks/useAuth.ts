@@ -5,10 +5,9 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { App } from 'antd'
-import { login as loginApi, setupOtp as setupOtpApi, verifyOtp as verifyOtpApi, disableOtp as disableOtpApi, changeUsername as changeUsernameApi, getOAuthAccounts as getOAuthAccountsApi, unbindOAuthAccount as unbindOAuthAccountApi } from '@/services/auth'
+import { login as loginApi, logout as logoutApi, setupOtp as setupOtpApi, verifyOtp as verifyOtpApi, disableOtp as disableOtpApi, changeUsername as changeUsernameApi, getOAuthAccounts as getOAuthAccountsApi, unbindOAuthAccount as unbindOAuthAccountApi } from '@/services/auth'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
-import { COOKIE_MAX_AGE } from '@/constants'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import type { LoginRequest, ChangeUsernameRequest } from '@/types/auth'
 
@@ -23,7 +22,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (credentials: LoginRequest) => loginApi(credentials),
     onSuccess: (data) => {
-      loginSuccess(data.token, data.user)
+      loginSuccess(data.user)
       message.success('登录成功')
       router.push('/resumes')
     },
@@ -39,7 +38,10 @@ export function useLogout() {
   const router = useRouter()
   const { message } = App.useApp()
 
-  return () => {
+  return async () => {
+    await logoutApi().catch(() => {
+      // 本地退出不应因网络不可用而失败。
+    })
     queryClient.clear()
     logout()
     router.push('/auth/login')
@@ -111,12 +113,7 @@ export function useChangeUsername() {
   return useMutation({
     mutationFn: (data: ChangeUsernameRequest) => changeUsernameApi(data),
     onSuccess: (data) => {
-      // 更新本地 token 和 user
-      loginSuccess(data.token, data.user)
-      // 刷新 cookie
-      if (typeof window !== 'undefined') {
-        document.cookie = `token=${data.token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`
-      }
+      loginSuccess(data.user)
       message.success('用户名修改成功')
     },
     onError: (error: Error) => {

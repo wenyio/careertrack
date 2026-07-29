@@ -10,9 +10,17 @@ import { withAuth, error, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { verifyTotp } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(request: Request) {
   return withAuth(request, async (user) => {
+    const limited = enforceRateLimit(request, {
+      namespace: 'auth-otp-verify',
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    }, user.id)
+    if (limited) return limited
+
     const body = await request.json()
     const { code } = body
 

@@ -89,7 +89,7 @@ test.describe('简历编辑表单', () => {
       await page.getByRole('button', { name: /添加教育经历/ }).click()
 
       // 验证"在校时间"标签
-      const dateLabel = page.getByText('在校时间', { exact: true }).first()
+      const dateLabel = page.getByText('在读时间', { exact: true }).first()
       await expect(dateLabel).toBeVisible()
 
       // 验证"至今"复选框
@@ -195,7 +195,7 @@ test.describe('简历编辑表单', () => {
       await page.keyboard.up('Shift')
 
       // 点击加粗按钮
-      const boldButton = page.getByTitle('加粗').first()
+      const boldButton = page.getByRole('button', { name: '加粗' }).first()
       await boldButton.click()
 
       await screenshot(page, '富文本', '加粗文本')
@@ -229,7 +229,7 @@ test.describe('简历编辑表单', () => {
       await editor.click()
 
       // 点击无序列表按钮
-      const bulletListButton = page.getByTitle('无序列表').first()
+      const bulletListButton = page.getByRole('button', { name: '无序列表' }).first()
       await bulletListButton.click()
 
       // 输入列表项
@@ -271,7 +271,7 @@ test.describe('简历编辑表单', () => {
       await editor.click()
 
       // 点击有序列表按钮
-      const orderedListButton = page.getByTitle('有序列表').first()
+      const orderedListButton = page.getByRole('button', { name: '有序列表' }).first()
       await orderedListButton.click()
 
       // 输入列表项
@@ -316,7 +316,7 @@ test.describe('简历编辑表单', () => {
       await page.keyboard.up('Shift')
 
       // 点击斜体按钮
-      const italicButton = page.getByTitle('斜体').first()
+      const italicButton = page.getByRole('button', { name: '斜体' }).first()
       await italicButton.click()
 
       await screenshot(page, '富文本', '斜体文本')

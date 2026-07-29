@@ -5,8 +5,9 @@
  */
 
 import { query } from '@/lib/db'
-import { createHmac } from 'node:crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/config/modules'
+import { getSigningSecret } from '@/lib/security/secrets'
 import type {
   Resume,
   ResumeListItem,
@@ -15,12 +16,20 @@ import type {
   ResumeTemplateId,
   ModulesConfig,
   ResumePreviewConfig,
+  PublicResume,
 } from '@/types/resume'
+
+export class ResumeConflictError extends Error {
+  constructor() {
+    super('简历已在其他位置更新，请刷新后重试')
+    this.name = 'ResumeConflictError'
+  }
+}
 
 /** 获取用户的简历列表 */
 export async function listResumes(userId: string): Promise<ResumeListItem[]> {
   const result = await query(
-    `SELECT id, name, is_public, public_slug, content, template, modules_config, modules_order, created_at, updated_at
+    `SELECT id, name, is_public, public_slug, content, template, modules_config, modules_order, revision, created_at, updated_at
      FROM resumes
      WHERE user_id = $1
      ORDER BY updated_at DESC`,
@@ -86,6 +95,7 @@ export async function updateResumeMetadata(
     template?: ResumeTemplateId
     modules_config?: ModulesConfig
     modules_order?: ResumeModuleType[]
+    revision?: number
   }
 ): Promise<Resume> {
   const setClauses: string[] = []
@@ -119,18 +129,27 @@ export async function updateResumeMetadata(
     return resume
   }
 
+  setClauses.push('revision = revision + 1')
   setClauses.push('updated_at = NOW()')
   values.push(resumeId, userId)
+
+  const revisionClause = updates.revision === undefined
+    ? ''
+    : ` AND revision = $${paramIndex + 2}`
+  if (updates.revision !== undefined) values.push(updates.revision)
 
   const sql = `
     UPDATE resumes
     SET ${setClauses.join(', ')}
-    WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
+    WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}${revisionClause}
     RETURNING *
   `
 
   const result = await query(sql, values)
   if (result.rows.length === 0) {
+    if (updates.revision !== undefined && await getResume(resumeId, userId)) {
+      throw new ResumeConflictError()
+    }
     throw new Error('简历不存在')
   }
   return result.rows[0] as unknown as Resume
@@ -150,13 +169,14 @@ export async function patchResumeContent(
 
   const result = await query(
     `UPDATE resumes
-     SET content = $1, updated_at = NOW()
-     WHERE id = $2 AND user_id = $3
+     SET content = $1, revision = revision + 1, updated_at = NOW()
+     WHERE id = $2 AND user_id = $3 AND revision = $4
      RETURNING *`,
-    [JSON.stringify(merged), resumeId, userId]
+    [JSON.stringify(merged), resumeId, userId, resume.revision]
   )
 
   if (result.rows.length === 0) {
+    if (await getResume(resumeId, userId)) throw new ResumeConflictError()
     throw new Error('简历不存在')
   }
   return result.rows[0] as unknown as Resume
@@ -176,6 +196,7 @@ export async function updateResume(
     modules_config?: ModulesConfig
     modules_order?: ResumeModuleType[]
     content?: ResumeContent
+    revision?: number
   }
 ): Promise<Resume> {
   const setClauses: string[] = []
@@ -212,31 +233,40 @@ export async function updateResume(
     throw new Error('没有需要更新的字段')
   }
 
+  setClauses.push('revision = revision + 1')
   setClauses.push('updated_at = NOW()')
   values.push(resumeId, userId)
+
+  const revisionClause = updates.revision === undefined
+    ? ''
+    : ` AND revision = $${paramIndex + 2}`
+  if (updates.revision !== undefined) values.push(updates.revision)
 
   const sql = `
     UPDATE resumes
     SET ${setClauses.join(', ')}
-    WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
+    WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}${revisionClause}
     RETURNING *
   `
 
   const result = await query(sql, values)
   if (result.rows.length === 0) {
+    if (updates.revision !== undefined && await getResume(resumeId, userId)) {
+      throw new ResumeConflictError()
+    }
     throw new Error('简历不存在')
   }
   return result.rows[0] as unknown as Resume
 }
 
 /** 通过 public_slug 获取公开简历 */
-export async function getResumeBySlug(slug: string): Promise<Resume | null> {
+export async function getResumeBySlug(slug: string): Promise<PublicResume | null> {
   const result = await query(
-    `SELECT id, name, modules_config, modules_order, content, template, public_slug, is_public
+    `SELECT name, modules_config, modules_order, content, template, public_slug, is_public
      FROM resumes WHERE public_slug = $1 AND is_public = true`,
     [slug]
   )
-  return (result.rows[0] as unknown as Resume) || null
+  return (result.rows[0] as unknown as PublicResume) || null
 }
 
 /** 复制简历（含 content、modules_config 等全量复制） */
@@ -296,7 +326,10 @@ export async function toggleModule(
   if (!resume) throw new Error('简历不存在')
 
   const config = { ...(resume.modules_config || DEFAULT_MODULES_CONFIG), [module]: enabled }
-  return updateResumeMetadata(resumeId, userId, { modules_config: config as ModulesConfig })
+  return updateResumeMetadata(resumeId, userId, {
+    modules_config: config as ModulesConfig,
+    revision: resume.revision,
+  })
 }
 
 /** 重新排序模块 */
@@ -305,7 +338,12 @@ export async function reorderModules(
   userId: string,
   order: ResumeModuleType[]
 ): Promise<Resume> {
-  return updateResumeMetadata(resumeId, userId, { modules_order: order })
+  const resume = await getResume(resumeId, userId)
+  if (!resume) throw new Error('简历不存在')
+  return updateResumeMetadata(resumeId, userId, {
+    modules_order: order,
+    revision: resume.revision,
+  })
 }
 
 /** 重命名模块自定义标题 */
@@ -350,7 +388,7 @@ export async function publishResume(
 
   const result = await query(
     `UPDATE resumes
-     SET is_public = true, public_slug = $1, updated_at = NOW()
+     SET is_public = true, public_slug = $1, revision = revision + 1, updated_at = NOW()
      WHERE id = $2 AND user_id = $3
      RETURNING *`,
     [slug, resumeId, userId]
@@ -369,7 +407,7 @@ export async function unpublishResume(
 ): Promise<Resume> {
   const result = await query(
     `UPDATE resumes
-     SET is_public = false, public_slug = NULL, updated_at = NOW()
+     SET is_public = false, public_slug = NULL, revision = revision + 1, updated_at = NOW()
      WHERE id = $1 AND user_id = $2
      RETURNING *`,
     [resumeId, userId]
@@ -388,7 +426,16 @@ const PREVIEW_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 
 /** 获取 HMAC 密钥 */
 function getPreviewSecret(): string {
-  return process.env.MCP_PREVIEW_SECRET || process.env.JWT_SECRET || 'careertrack-preview-secret'
+  if (process.env.MCP_PREVIEW_SECRET?.trim()) {
+    return getSigningSecret(
+      'MCP_PREVIEW_SECRET',
+      'careertrack-development-preview-secret-do-not-use-in-production',
+    )
+  }
+  return getSigningSecret(
+    'JWT_SECRET',
+    'careertrack-development-jwt-secret-do-not-use-in-production',
+  )
 }
 
 /**
@@ -421,7 +468,14 @@ export function verifyPreviewToken(resumeId: string, token: string): string | nu
   const payload = `${resumeId}|${expiresAt}`
   const expected = createHmac('sha256', getPreviewSecret()).update(payload).digest('hex')
 
-  if (signature !== expected) return null
+  const signatureBuffer = Buffer.from(signature, 'utf8')
+  const expectedBuffer = Buffer.from(expected, 'utf8')
+  if (
+    signatureBuffer.length !== expectedBuffer.length
+    || !timingSafeEqual(signatureBuffer, expectedBuffer)
+  ) {
+    return null
+  }
 
   return resumeId
 }

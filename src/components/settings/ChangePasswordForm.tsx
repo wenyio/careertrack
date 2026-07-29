@@ -114,13 +114,13 @@ export default function ChangePasswordForm() {
           label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>{hasPassword ? '新密码' : '设置密码'}</Text>}
           rules={[
             { required: true, message: '请输入新密码' },
-            { min: 6, message: '密码至少 6 个字符' },
+            { min: 10, message: '密码至少 10 个字符' },
           ]}
           style={{ marginBottom: 16 }}
         >
           <Input.Password
             prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-            placeholder="输入新密码（至少 6 位）"
+            placeholder="输入新密码（至少 10 位）"
             style={{ height: 42, borderRadius: 8 }}
           />
         </Form.Item>

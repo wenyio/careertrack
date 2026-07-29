@@ -6,6 +6,7 @@
 
 import { createHash, randomBytes } from 'crypto'
 import { query } from '@/lib/db'
+import type { DatabaseQuery } from '@/lib/db'
 
 /**
  * 生成高熵随机注册码
@@ -46,10 +47,13 @@ export function hashRegistrationCode(code: string): string {
  *
  * @returns 校验通过返回注册码记录，否则返回 null
  */
-export async function validateRegistrationCode(code: string): Promise<Record<string, unknown> | null> {
+export async function validateRegistrationCode(
+  code: string,
+  queryFn: DatabaseQuery = query,
+): Promise<Record<string, unknown> | null> {
   const codeHash = hashRegistrationCode(code)
 
-  const result = await query(
+  const result = await queryFn(
     `SELECT * FROM registration_codes
      WHERE code_hash = $1
        AND (expires_at IS NULL OR expires_at > NOW())
@@ -64,11 +68,19 @@ export async function validateRegistrationCode(code: string): Promise<Record<str
 /**
  * 标记注册码为已使用
  */
-export async function markRegistrationCodeUsed(codeId: string, userId: string): Promise<void> {
-  await query(
+export async function markRegistrationCodeUsed(
+  codeId: string,
+  userId: string,
+  queryFn: DatabaseQuery = query,
+): Promise<boolean> {
+  const result = await queryFn(
     `UPDATE registration_codes
      SET used_by_user_id = $1, used_at = NOW(), updated_at = NOW()
-     WHERE id = $2`,
+     WHERE id = $2
+       AND used_at IS NULL
+       AND disabled_at IS NULL
+       AND (expires_at IS NULL OR expires_at > NOW())`,
     [userId, codeId]
   )
+  return (result.rowCount ?? 0) === 1
 }

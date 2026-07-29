@@ -11,6 +11,7 @@ import type {
   CreateResumeRequest,
   UpdateResumeRequest,
   PublishResumeRequest,
+  PublicResume,
 } from '@/types/resume'
 
 /**
@@ -102,8 +103,8 @@ export async function unpublishResume(id: string): Promise<void> {
  * @param slug 简历公开链接
  * @returns 公开简历数据
  */
-export async function getPublicResume(slug: string): Promise<Resume> {
-  const response = await api.get<Resume>(`/public/${slug}`)
+export async function getPublicResume(slug: string): Promise<PublicResume> {
+  const response = await api.get<PublicResume>(`/public/${slug}`)
   return response.data
 }
 

@@ -22,8 +22,8 @@ export async function PUT(request: Request) {
       return error('请输入新密码')
     }
 
-    if (new_password.length < 6) {
-      return error('新密码长度至少 6 个字符')
+    if (new_password.length < 10) {
+      return error('新密码长度至少 10 个字符')
     }
 
     // 查询当前用户信息

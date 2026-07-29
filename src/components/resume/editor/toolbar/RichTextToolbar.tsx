@@ -172,6 +172,7 @@ function ColorControl({ editor }: { editor: Editor }) {
         }
       >
         <Button
+          aria-label="字体颜色"
           size="small"
           type="text"
           icon={<FontColorsOutlined />}
@@ -241,6 +242,7 @@ function LinkControl({ editor }: { editor: Editor }) {
       </Popover>
       <Tooltip title="取消链接">
         <Button
+          aria-label="取消链接"
           size="small"
           type="text"
           disabled={!editor.isActive('link')}
@@ -368,6 +370,7 @@ export default function RichTextToolbar({
       {/* 加粗、斜体、下划线 */}
       <Tooltip title="加粗 (Ctrl+B)">
         <Button
+          aria-label="加粗"
           size="small"
           type="text"
           icon={<BoldOutlined />}
@@ -377,6 +380,7 @@ export default function RichTextToolbar({
       </Tooltip>
       <Tooltip title="斜体 (Ctrl+I)">
         <Button
+          aria-label="斜体"
           size="small"
           type="text"
           icon={<ItalicOutlined />}
@@ -386,6 +390,7 @@ export default function RichTextToolbar({
       </Tooltip>
       <Tooltip title="下划线 (Ctrl+U)">
         <Button
+          aria-label="下划线"
           size="small"
           type="text"
           icon={<UnderlineOutlined />}
@@ -399,6 +404,7 @@ export default function RichTextToolbar({
       {/* 列表 */}
       <Tooltip title="无序列表">
         <Button
+          aria-label="无序列表"
           size="small"
           type="text"
           icon={<UnorderedListOutlined />}
@@ -408,6 +414,7 @@ export default function RichTextToolbar({
       </Tooltip>
       <Tooltip title="有序列表">
         <Button
+          aria-label="有序列表"
           size="small"
           type="text"
           icon={<OrderedListOutlined />}

@@ -64,7 +64,7 @@ function severityFor(test) {
 
 function defectAdvice(test) {
   if (/注册后刷新/.test(test.errors.join(' '))) {
-    return '注册成功后同时写入与登录流程一致的 token cookie，或让代理校验 localStorage 以外的服务端会话。'
+    return '检查登录响应是否正确设置 HttpOnly session Cookie，并确认客户端 hydration 后调用 /api/auth/me 恢复展示状态。'
   }
   if (/公开 API/.test(test.errors.join(' ')) || /公开接口/.test(test.title)) {
     return '公开接口不要 SELECT *，仅返回公开页面渲染所需字段，并剔除 user_id、内部 id、创建更新时间等内部元数据；补充脱敏配置。'
@@ -158,9 +158,9 @@ const report = `# 测试报告
 * 功能模块清单：认证注册登录、个人信息管理、我的简历、简历编辑、模块开关、模板选择、实时预览、PDF 导出、简历公开、公开链接访问、账号安全/OTP。
 * 页面清单：首页、登录页、注册页、我的简历页、简历编辑页、个人信息管理页、账号安全页、公开简历页；需求中还提到简历模板页、收藏模板、公开简历管理弹窗、个人主页、模拟面试、名企热招、范文例句、求职攻略、简历广场。
 * 核心业务流程：注册/登录 -> 创建个人档案 -> 新建简历 -> 编辑简历内容/模板/模块 -> 预览 -> 导出 PDF -> 发布公开链接 -> 公开访问；创建简历 -> 复制 -> 修改副本 -> 删除副本。
-* 数据流转关系：用户认证生成 JWT；前端持久化 token 并通过 Authorization 调用 API；profiles 保存用户基础档案；resumes 保存简历名称、模块配置、排序、内容、模板和公开状态；公开页通过 public_slug 读取公开简历。
-* 权限控制点：/resumes 与 /settings 页面代理重定向；/api/resumes、/api/profile、/api/auth/me 等接口 Bearer Token 校验；简历详情/更新/删除通过 user_id 限定；/api/public/:slug 无需登录但只返回 is_public=true 数据。
-* 关键风险点：注册流程 cookie 与登录流程不一致、公开接口字段过宽、公开简历脱敏需求未落地、PDF 导出依赖浏览器截图稳定性、富文本/XSS、无权限资源访问、需求中搜索/分页/筛选/上传/下载 PNG/AI 等大量能力未实现。
+* 数据流转关系：用户认证生成 24 小时 JWT 并由服务端写入 HttpOnly Cookie；浏览器同源请求自动携带会话；profiles 保存用户基础档案；resumes 保存简历名称、模块配置、排序、内容、模板、revision 和公开状态；公开页通过 public_slug 读取最小公开 DTO。
+* 权限控制点：/resumes 与 /settings 在会话恢复后重定向；/api/resumes、/api/profile、/api/auth/me 等接口校验 HttpOnly Cookie（兼容非浏览器 Bearer JWT）；简历详情/更新/删除通过 user_id 限定；/api/public/:slug 无需登录且不返回内部 id/user_id。
+* 关键风险点：服务端会话尚不可单独撤销、多实例限流需要共享存储、公开简历字段级隐私需求未落地、PDF 导出依赖浏览器打印稳定性、无权限资源访问，以及搜索/分页/筛选/上传/下载 PNG/AI 等能力尚未实现。
 * 需求不明确项：个人主页与公开简历的边界、公开脱敏字段规则、简历模板页分类数据来源、AI 智能生成/模拟面试接入方式、上传解析格式、搜索/分页/筛选范围、账号注销或退出入口。
 
 ## 3. 测试范围

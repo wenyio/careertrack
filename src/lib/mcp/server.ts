@@ -27,6 +27,13 @@ import {
 // DEFAULT_MODULES_ORDER is used indirectly via resume services
 import { textToDoc, validateRichTextDoc } from '@/utils/rich-text'
 import type { ResumeModuleType, ResumeTemplateId, RichTextNode } from '@/types/resume'
+import type { McpScope } from '@/lib/services/mcp-key'
+
+export interface McpAuthContext {
+  userId: string
+  keyId: string
+  scope: McpScope
+}
 
 /** 合法的简历模块类型 */
 const VALID_MODULES: ResumeModuleType[] = [
@@ -42,10 +49,11 @@ const VALID_TEMPLATES: ResumeTemplateId[] = ['classic', 'modern', 'minimal', 'bl
 const VALID_FONT_SIZES = [12, 14, 16, 18, 20]
 
 /** 创建 MCP Server 实例（每个请求独立） */
-export function createMcpServerForUser(userId: string): McpServer {
+export function createMcpServerForUser(auth: McpAuthContext): McpServer {
+  const { userId, scope } = auth
   const server = new McpServer({
     name: 'CareerTrack',
-    version: '1.0.0',
+    version: '1.0.3',
   })
 
   // ========== schema_get ==========
@@ -92,8 +100,10 @@ export function createMcpServerForUser(userId: string): McpServer {
     }
   )
 
-  // ========== profile_update ==========
-  server.tool(
+  // 只读 Key 不注册任何写工具，工具发现结果与实际能力保持一致。
+  if (scope === 'read_write') {
+    // ========== profile_update ==========
+    server.tool(
     'profile_update',
     '局部更新个人信息。只传需要修改的字段即可，未传的字段保持不变。',
     {
@@ -286,6 +296,8 @@ export function createMcpServerForUser(userId: string): McpServer {
     }
   )
 
+  }
+
   // ========== resume_list ==========
   server.tool(
     'resume_list',
@@ -335,8 +347,9 @@ export function createMcpServerForUser(userId: string): McpServer {
     }
   )
 
-  // ========== resume_create ==========
-  server.tool(
+  if (scope === 'read_write') {
+    // ========== resume_create ==========
+    server.tool(
     'resume_create',
     '创建一份新简历',
     {
@@ -736,6 +749,8 @@ export function createMcpServerForUser(userId: string): McpServer {
       }
     }
   )
+
+  }
 
   // ========== resume_preview_get ==========
   server.tool(

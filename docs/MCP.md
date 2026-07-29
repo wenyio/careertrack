@@ -13,20 +13,22 @@ CareerTrack 提供 MCP (Model Context Protocol) 服务，允许 AI Agent 通过�
 
 ## 快速开始
 
-1. 登录 CareerTrack 获取 JWT Token
-2. 调用 API 创建 MCP Key
+1. 登录 CareerTrack
+2. 在“设置 → MCP”创建 MCP Key，并选择 `read_only` 或 `read_write`
 3. 使用 MCP Key 连接 MCP 服务
-4. 调用工具查询/修改数据
+4. 调用当前 scope 允许的工具
 
 ## 创建 MCP Key
 
 ### 创建 Key
 
+浏览器推荐直接使用设置页。若使用 API，可复用登录响应设置的 Cookie；现有非浏览器客户端也可继续使用 Bearer JWT：
+
 ```bash
 curl -X POST https://your-domain.com/api/mcp-keys \
-  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Cookie: careertrack_session=<your-session-jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"scope": "read_write"}'
+  -d '{"scope": "read_only"}'
 ```
 
 响应示例：
@@ -36,7 +38,7 @@ curl -X POST https://your-domain.com/api/mcp-keys \
   "id": "uuid",
   "secret": "ct_mcp_1a2b3c4d5e6f...",
   "prefix": "ct_mcp_1a2b",
-  "scope": "read_write",
+  "scope": "read_only",
   "created_at": "2025-01-01T00:00:00Z",
   "message": "请妥善保存 Secret Key，此密钥只会显示一次"
 }
@@ -48,7 +50,7 @@ curl -X POST https://your-domain.com/api/mcp-keys \
 
 ```bash
 curl https://your-domain.com/api/mcp-keys \
-  -H "Authorization: Bearer <your-jwt-token>"
+  -H "Cookie: careertrack_session=<your-session-jwt>"
 ```
 
 返回的列表只包含 `prefix`，不包含完整 Key。
@@ -57,7 +59,7 @@ curl https://your-domain.com/api/mcp-keys \
 
 ```bash
 curl -X DELETE https://your-domain.com/api/mcp-keys/<key-id> \
-  -H "Authorization: Bearer <your-jwt-token>"
+  -H "Cookie: careertrack_session=<your-session-jwt>"
 ```
 
 撤销后的 Key 将立即失效，无法恢复。
@@ -127,6 +129,16 @@ curl -X POST https://your-domain.com/api/mcp \
 ```
 
 ## 工具列表
+
+`read_only` Key 只会看到以下 5 个读取工具：
+
+- `schema_get`
+- `profile_get`
+- `resume_list`
+- `resume_get`
+- `resume_preview_get`
+
+下列所有创建、更新、删除、发布工具仅向 `read_write` Key 注册。scope 在服务端执行，不依赖客户端自觉。
 
 ### 元数据工具
 
@@ -218,6 +230,7 @@ curl -X POST https://your-domain.com/api/mcp \
 - 所有 MCP 请求必须携带有效的 MCP Key
 - 支持 `Authorization: Bearer <key>` 和 `X-API-Key: <key>` 两种方式
 - 已撤销的 Key 立即失效
+- 账号被管理员禁用后，该账号的所有已有 Key 立即失效
 - Key 只在创建时返回一次明文，数据库只存储 hash
 
 ### 权限隔离
@@ -225,6 +238,7 @@ curl -X POST https://your-domain.com/api/mcp \
 - 每个 Key 绑定创建时的用户
 - 只能访问该用户自己的数据
 - resumeId 必须属于当前 Key 对应的用户
+- `read_only` Key 只能调用 5 个读取工具；写工具不会出现在该连接的工具列表中
 
 ### 导出限制
 
@@ -233,8 +247,10 @@ curl -X POST https://your-domain.com/api/mcp \
 
 ### 速率限制
 
-- 当前版本无额外速率限制（依赖基础架构层的限制）
-- 建议 Agent 合理控制调用频率
+- MCP 端点默认限制为每 IP 每分钟 120 次、每 Key 每分钟 600 次
+- 单个账号每小时最多创建 10 个 MCP Key
+- 超限返回 HTTP `429`，包含 `Retry-After` 和 `X-RateLimit-*` 响应头
+- 当前计数器为单进程内存实现；多实例部署必须在反向代理或 Redis 等共享层配置全局限流
 
 ### 数据安全
 

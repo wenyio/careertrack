@@ -8,7 +8,7 @@
 
 'use client'
 
-import { Form, Input, Button, Typography, App } from 'antd'
+import { Form, Input, Button, Typography } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useChangeUsername } from '@/hooks/useAuth'
@@ -18,7 +18,6 @@ const { Text } = Typography
 
 export default function ChangeUsernameForm() {
   const { user } = useAuthStore()
-  const { message } = App.useApp()
   const [form] = Form.useForm()
   const { mutate: changeUsername, isPending } = useChangeUsername()
 

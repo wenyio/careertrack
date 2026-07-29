@@ -4,8 +4,9 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Modal, Input, Typography } from 'antd'
+import { MAX_RESUME_NAME_LENGTH } from '@/constants'
 
 const { Text } = Typography
 
@@ -25,13 +26,6 @@ export default function ResumeRenameModal({
   onCancel,
 }: ResumeRenameModalProps) {
   const [name, setName] = useState(initialName)
-
-  // 打开时同步初始名称
-  useEffect(() => {
-    if (open) {
-      setName(initialName)
-    }
-  }, [open, initialName])
 
   const handleOk = () => {
     if (resumeId) {
@@ -60,7 +54,7 @@ export default function ResumeRenameModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           onPressEnter={handleOk}
-          maxLength={50}
+          maxLength={MAX_RESUME_NAME_LENGTH}
         />
       </div>
     </Modal>

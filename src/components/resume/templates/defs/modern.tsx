@@ -115,7 +115,7 @@ function ModernRenderer({
     if (targetHeight !== contentHeight) {
       setPageHeight(targetHeight)
     }
-  })
+  }, [])
 
   return (
     <div ref={pageRef} style={{ ...styles.page, ...(pageHeight ? { height: pageHeight } : {}) }}>

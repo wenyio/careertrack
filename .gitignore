@@ -60,6 +60,9 @@ uploads/
 
 # 分析脚本与临时数据
 scripts/
+!scripts/
+scripts/*
+!scripts/smoke-v103.mjs
 tmp/
 
 # Next.js 自动生成

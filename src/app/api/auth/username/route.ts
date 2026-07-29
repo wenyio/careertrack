@@ -5,13 +5,14 @@
  *
  * 校验 username 唯一性和规则。
  * 有 password_hash 的用户需要验证 current_password。
- * 成功后重新签发 JWT 并返回新 token + user。
+ * 成功后重新签发 JWT，更新 HttpOnly session 并返回 user。
  */
 
 import { withAuth, error, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { verifyPassword, generateToken } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
+import { setAuthSessionCookie } from '@/lib/security/session'
 
 export async function PUT(request: Request) {
   return withAuth(request, async (user) => {
@@ -79,8 +80,7 @@ export async function PUT(request: Request) {
     )
     const updatedUser = updatedResult.rows[0]
 
-    return success({
-      token: newToken,
+    const response = success({
       user: {
         id: updatedUser.id,
         username: updatedUser.username,
@@ -89,5 +89,7 @@ export async function PUT(request: Request) {
         auth_provider: updatedUser.auth_provider,
       },
     })
+    setAuthSessionCookie(response, newToken, request)
+    return response
   })
 }

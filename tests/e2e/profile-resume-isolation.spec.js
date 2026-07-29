@@ -130,10 +130,8 @@ test.describe('Profile / Resume 数据隔离', () => {
     expect((await publishResp).ok()).toBeTruthy()
 
     // 4. 访问公开页，验证 profile 快照数据已显示
-    const publicPageResp = page.waitForResponse((r) => r.url().includes(`/api/public/${publicSlug}`))
     await goto(page, `/resume/${publicSlug}`)
-    expect((await publicPageResp).ok()).toBeTruthy()
-    await expect(page.getByText('快照测试用户')).toBeVisible()
+    await expect(page.getByText('快照测试用户').filter({ visible: true })).toBeVisible()
     await screenshot(page, '隔离测试', '新建简历公开页有内容')
   })
 
@@ -206,10 +204,8 @@ test.describe('Profile / Resume 数据隔离', () => {
     expect((await publishResp).ok()).toBeTruthy()
 
     // 访问公开页，验证显示的是保存的内容
-    const publicPageResp = page.waitForResponse((r) => r.url().includes(`/api/public/${publicSlug}`))
     await goto(page, `/resume/${publicSlug}`)
-    expect((await publicPageResp).ok()).toBeTruthy()
-    await expect(page.getByText('公开页_简历姓名')).toBeVisible()
+    await expect(page.getByText('公开页_简历姓名').filter({ visible: true })).toBeVisible()
     await screenshot(page, '隔离测试', '公开页显示保存快照')
   })
 })

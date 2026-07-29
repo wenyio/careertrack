@@ -9,6 +9,8 @@
 
 import { withAuth, error, success } from '@/lib/api'
 import { createMcpKey, listMcpKeys } from '@/lib/services/mcp-key'
+import type { McpScope } from '@/lib/services/mcp-key'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
 
 /**
  * 列出 MCP Key（不含 secret，只有 prefix）
@@ -25,6 +27,13 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   return withAuth(request, async (user) => {
+    const limited = enforceRateLimit(request, {
+      namespace: 'mcp-key-create',
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+    }, user.id)
+    if (limited) return limited
+
     const body = await request.json().catch(() => ({}))
     const scope = body.scope || 'read_write'
 
@@ -32,7 +41,7 @@ export async function POST(request: Request) {
       return error('scope 必须是 read_write 或 read_only')
     }
 
-    const key = await createMcpKey(user.id, scope)
+    const key = await createMcpKey(user.id, scope as McpScope)
 
     return success({
       id: key.id,

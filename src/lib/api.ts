@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from './auth'
 import { query } from './db'
+import { getSessionToken } from '@/lib/security/session'
 
 /**
  * 成功响应
@@ -36,12 +37,8 @@ export function error(message: string, status = 400) {
  * @returns 用户信息或 null
  */
 async function getAuthUser(request: Request): Promise<{ id: string; username: string; disabled_at: string | null } | null> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null
-  }
-
-  const token = authHeader.slice(7)
+  const token = getSessionToken(request)
+  if (!token) return null
   const claims = await verifyToken(token)
   if (!claims) {
     return null

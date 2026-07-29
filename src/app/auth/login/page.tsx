@@ -18,7 +18,6 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
 import { hasGuestData } from '@/services/guest-migration'
 import AuthShell from '@/components/layout/AuthShell'
-import { COOKIE_MAX_AGE } from '@/constants'
 import { getErrorCode, getErrorMessage } from '@/utils/error'
 import type { LoginRequest } from '@/types/auth'
 
@@ -56,8 +55,7 @@ export default function LoginPage() {
     mutationFn: (credentials: LoginRequest) => loginApi(credentials),
     onSuccess: (data) => {
       queryClient.clear()
-      loginSuccess(data.token, data.user)
-      document.cookie = `token=${data.token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`
+      loginSuccess(data.user)
       message.success('登录成功')
       router.push(hasGuestData() ? '/auth/migrate' : '/resumes')
     },

@@ -7,6 +7,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
 import { generateSecret, verifySync, generateURI } from 'otplib'
+import { getSigningSecret } from '@/lib/security/secrets'
 
 /**
  * JWT 密钥
@@ -15,14 +16,10 @@ import { generateSecret, verifySync, generateURI } from 'otplib'
  * 开发环境使用 fallback 值并输出警告。
  */
 function getJwtSecret(): Uint8Array {
-  const envSecret = process.env.JWT_SECRET
-  if (!envSecret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('[auth] JWT_SECRET 环境变量未设置，生产环境不允许使用默认密钥')
-    }
-    console.warn('[auth] JWT_SECRET 未设置，使用开发默认值。生产环境请务必配置此变量。')
-  }
-  const secret = envSecret || 'dev-only-default-secret'
+  const secret = getSigningSecret(
+    'JWT_SECRET',
+    'careertrack-development-jwt-secret-do-not-use-in-production',
+  )
   return new TextEncoder().encode(secret)
 }
 

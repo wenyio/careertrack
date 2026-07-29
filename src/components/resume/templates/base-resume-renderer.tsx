@@ -18,12 +18,7 @@ import type {
   ResumeTemplateId,
 } from '@/types/resume'
 import type { Profile } from '@/types/profile'
-import type {
-  TemplateDefinition,
-  SubItemRenderer,
-  SectionRenderer,
-  ModuleRendererProps,
-} from './types'
+import type { SubItemRenderer, SectionRenderer } from './types'
 import { getTemplateDefinition } from './registry'
 import { getBaseStyles, applyStyleOverrides } from './base-styles'
 import { getPreviewConfig } from '@/utils/resume-preview'

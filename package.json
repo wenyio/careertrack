@@ -1,6 +1,6 @@
 {
   "name": "careertrack",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "repository": "https://github.com/wenyio/careertrack.git",
   "license": "GPL-3.0",
@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:unit": "vitest run",
+    "test:security-smoke": "node scripts/smoke-v103.mjs",
     "test:e2e": "playwright test",
     "test:e2e:report": "node tests/e2e/generate-report.mjs"
   },

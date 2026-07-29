@@ -9,4 +9,5 @@
  * - 仅设置 DATABASE_URL 时自动使用 PostgreSQL（向后兼容）
  */
 
-export { query } from './storage'
+export { query, transaction } from './storage'
+export type { DatabaseQuery, DatabaseQueryResult } from './storage'

@@ -3,9 +3,7 @@
  */
 
 const { test, expect } = require('playwright/test')
-const fs = require('fs')
-const path = require('path')
-const { registerHooks, goto, screenshot, loginByUi, createUserByApi, createResumeByApi, writeJsonLine, DOWNLOAD_DIR, RUN_ID } = require('./helpers')
+const { registerHooks, goto, screenshot, loginByUi, createUserByApi, createResumeByApi } = require('./helpers')
 
 registerHooks(test)
 
@@ -66,13 +64,11 @@ test.describe('核心业务流程', () => {
     await page.getByText('现代').click()
     await screenshot(page, '简历模板', '模板选择')
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 30_000 })
-    await page.getByRole('button', { name: /导出 PDF/ }).click()
-    const download = await downloadPromise
-    const pdfPath = path.join(DOWNLOAD_DIR, `简历导出_${RUN_ID}.pdf`)
-    await download.saveAs(pdfPath)
-    expect(fs.existsSync(pdfPath)).toBeTruthy()
-    writeJsonLine({ type: 'download', module: '简历导出', path: `test-results/downloads/${path.basename(pdfPath)}` })
+    // 当前导出采用浏览器原生打印，用户可在打印对话框中保存为 PDF。
+    const printButton = page.getByRole('button', { name: /打印/ })
+    await expect(printButton).toBeVisible()
+    await printButton.click()
+    await expect(page).toHaveURL(new RegExp(`/resumes/${createdResume.id}/edit`))
 
     // 点击工具栏"公开"按钮 → 弹出 Popover
     await page.getByRole('button', { name: /公开/ }).click()
@@ -85,11 +81,9 @@ test.describe('核心业务流程', () => {
     await page.locator('.ant-popover .ant-switch').click()
     expect((await publishResponsePromise).ok()).toBeTruthy()
 
-    const publicResponsePromise = page.waitForResponse((r) => r.url().includes(`/api/public/${publicSlug}`), { timeout: 35_000 })
     await goto(page, `/resume/${publicSlug}`)
-    expect((await publicResponsePromise).ok()).toBeTruthy()
-    await expect(page.getByText(`${personName}_简历`)).toBeVisible()
-    await expect(page.getByText('由职迹 CareerTrack 生成')).toBeVisible()
+    await expect(page.getByText(`${personName}_简历`).filter({ visible: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: '职迹 CareerTrack' })).toBeVisible()
     await screenshot(page, '公开简历', '公开链接访问')
   })
 

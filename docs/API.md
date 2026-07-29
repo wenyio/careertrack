@@ -3,10 +3,13 @@
 ## 基础信息
 
 - Base URL: `/api`（相对于当前站点根路径）
-- 认证方式: Bearer Token (JWT)
+- 浏览器认证: `careertrack_session` HttpOnly Cookie（登录、注册或 OAuth 回调自动设置）
+- API 客户端兼容: `Authorization: Bearer <JWT>`
 - 数据格式: JSON
 
 > **注意**：CareerTrack 是 Next.js 全栈应用，API 路由与前端部署在同一域名下，无需单独配置后端地址。
+>
+> 登录态 Cookie 在生产环境启用 `Secure`，有效期与 JWT 一致（24 小时），前端 JavaScript 无法读取。受限接口超过配额时返回 `429 RATE_LIMITED`，并携带 `Retry-After` 与 `X-RateLimit-*` 响应头。
 
 ---
 
@@ -20,7 +23,7 @@
 ```json
 {
   "username": "string (3-50 字符)",
-  "password": "string (至少 6 字符)",
+  "password": "string (至少 10 字符)",
   "registration_code": "string"
 }
 ```
@@ -28,7 +31,6 @@
 **响应:**
 ```json
 {
-  "token": "jwt_token",
   "user": {
     "id": "uuid",
     "username": "string",
@@ -39,10 +41,7 @@
 }
 ```
 
-**错误码:**
-- `INVALID_CODE` — 注册码无效或已过期
-- `CODE_DISABLED` — 注册码已被禁用
-- `CODE_USED` — 注册码已被使用
+成功响应同时设置 HttpOnly 会话 Cookie。注册码的校验、用户/Profile 创建和一次性领取在同一事务中完成；无效、过期、禁用或已使用的注册码返回 `400 VALIDATION_ERROR`。
 
 ### POST /api/auth/login
 
@@ -60,7 +59,6 @@
 **响应:**
 ```json
 {
-  "token": "jwt_token",
   "user": {
     "id": "uuid",
     "username": "string",
@@ -73,6 +71,12 @@
 **错误码:**
 - `OTP_REQUIRED` — 用户启用了 OTP，需要提供 `otp_code`
 - `ACCOUNT_DISABLED` — 账号已被禁用
+
+成功响应同时设置 HttpOnly 会话 Cookie，不在 JSON 中返回 JWT。
+
+### POST /api/auth/logout
+
+清除当前浏览器的会话 Cookie，成功返回 `204 No Content`。
 
 ### GET /api/auth/me
 
@@ -96,7 +100,7 @@
 **请求体:**
 ```json
 {
-  "password": "string"
+  "current_password": "string"
 }
 ```
 
@@ -153,7 +157,7 @@
 ```json
 {
   "current_password": "string | null",
-  "new_password": "string (至少 6 字符)"
+  "new_password": "string (至少 10 字符)"
 }
 ```
 
@@ -274,6 +278,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
       "is_public": false,
       "public_slug": null,
       "template": "classic",
+      "revision": 1,
       "created_at": "2026-05-30T00:00:00Z",
       "updated_at": "2026-06-03T00:00:00Z"
     }
@@ -294,6 +299,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 ```
 
 - `initialize_from_profile`（可选，默认 `true`）：是否从当前个人信息初始化简历内容。传 `false` 创建空白简历。
+- `name`：去除首尾空白后不能为空，最长 50 个字符。创建和更新接口都会在服务端校验，超限返回 `400`。
 
 ### GET /api/resumes/:id
 
@@ -307,6 +313,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 ```json
 {
   "name": "string",
+  "revision": 3,
   "template": "classic | modern | minimal | black-white",
   "modules_config": {
     "basic_info": true,
@@ -346,6 +353,8 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
   }
 }
 ```
+
+`revision` 是推荐携带的乐观并发令牌。每次写入成功后服务端递增并返回新值；提交旧 revision 时返回 `409`，客户端应重新读取最新数据后再决定合并或覆盖。为兼容旧客户端，该字段暂时可省略。
 
 ### DELETE /api/resumes/:id
 
@@ -390,6 +399,8 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 ### GET /api/public/:slug
 
 获取公开简历
+
+响应为公开 DTO，只包含 `name`、展示配置、模板、内容、公开状态和 slug；不会返回内部 `id` 或 `user_id`。
 
 ---
 

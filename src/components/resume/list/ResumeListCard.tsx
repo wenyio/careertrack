@@ -81,6 +81,7 @@ export default function ResumeListCard({
         <div
           style={{ flexShrink: 0, cursor: 'pointer' }}
           onClick={() => onEdit(resume.id)}
+          aria-hidden="true"
         >
           <ResumeMiniPreview
             content={resume.content}
@@ -100,7 +101,16 @@ export default function ResumeListCard({
               strong
               ellipsis
               style={{ fontSize: 15, cursor: 'pointer', flex: 1, minWidth: 0 }}
+              role="link"
+              tabIndex={0}
+              aria-label={`编辑 ${resume.name}`}
               onClick={() => onEdit(resume.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onEdit(resume.id)
+                }
+              }}
             >
               {resume.name}
             </Text>
@@ -116,12 +126,14 @@ export default function ResumeListCard({
             <Button
               type="text"
               size="small"
+              aria-label={`重命名 ${resume.name}`}
               icon={<EditOutlined />}
               onClick={() => onRename(resume.id, resume.name)}
             />
             <Button
               type="text"
               size="small"
+              aria-label={`复制 ${resume.name}`}
               icon={<CopyOutlined />}
               onClick={() => onDuplicate(resume.id)}
             />
@@ -147,6 +159,7 @@ export default function ResumeListCard({
                   <Button
                     type="text"
                     size="small"
+                    aria-label={`公开设置 ${resume.name}`}
                     icon={resume.is_public ? <LockOutlined /> : <GlobalOutlined />}
                   />
                 </span>
@@ -155,6 +168,7 @@ export default function ResumeListCard({
             <Button
               type="text"
               size="small"
+              aria-label={`打印 ${resume.name}`}
               icon={<PrinterOutlined />}
               loading={exportingId === resume.id}
               onClick={() => onPrint(resume.id)}
@@ -163,6 +177,7 @@ export default function ResumeListCard({
               type="text"
               size="small"
               danger
+              aria-label={`删除 ${resume.name}`}
               icon={<DeleteOutlined />}
               onClick={() => onDelete(resume.id, resume.name)}
             />

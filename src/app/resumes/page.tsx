@@ -7,8 +7,7 @@
 
 'use client'
 
-import { useCallback } from 'react'
-import { useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { App } from 'antd'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -126,19 +125,15 @@ function GuestResumeList() {
   const router = useRouter()
   const { message } = App.useApp()
 
-  const [resumes, setResumes] = useState<GuestResume[]>([])
-  const [profile, setProfile] = useState<GuestProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [resumes, setResumes] = useState<GuestResume[]>(
+    () => getGuestResumes(),
+  )
+  const [profile] = useState<GuestProfile | null>(() => getGuestProfile())
+  const isLoading = false
 
   const loadData = useCallback(() => {
     setResumes(getGuestResumes())
-    setProfile(getGuestProfile())
-    setIsLoading(false)
   }, [])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
 
   const handleCreate = useCallback((name: string) => {
     const resume = createGuestResume(name)

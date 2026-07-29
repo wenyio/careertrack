@@ -6,6 +6,7 @@ const { test, expect } = require('playwright/test')
 const {
   registerHooks, goto, screenshot, registerByUi, loginByUi,
   createUserByApi, createResumeByApi, publishResumeByApi,
+  createRegistrationCodeByApi,
 } = require('./helpers')
 
 registerHooks(test)
@@ -13,13 +14,16 @@ registerHooks(test)
 /* ─────────────── 边界值 & 表单深度测试 ─────────────── */
 
 test.describe('边界值与表单深度校验', () => {
-  test('注册用户名最小/最大长度边界', async ({ page }) => {
+  test('注册用户名最小长度边界', async ({ page, request }) => {
+    const codeRecord = await createRegistrationCodeByApi(request, 'username-boundary')
     await goto(page, '/auth/register')
+    await page.getByPlaceholder('注册码').fill(codeRecord.code)
+    await page.getByRole('button', { name: '下一步' }).click()
 
     // 最小长度 - 2个字符应失败
     await page.getByPlaceholder('用户名').fill('ab')
-    await page.getByPlaceholder('密码', { exact: true }).fill('123456')
-    await page.getByPlaceholder('确认密码').fill('123456')
+    await page.getByPlaceholder('密码', { exact: true }).fill('1234567890')
+    await page.getByPlaceholder('确认密码').fill('1234567890')
     await page.getByRole('button', { name: /注\s*册/ }).click()
     await expect(page.getByText('用户名至少 3 个字符')).toBeVisible()
 
@@ -35,29 +39,35 @@ test.describe('边界值与表单深度校验', () => {
     await screenshot(page, '边界值', '用户名最小长度3')
   })
 
-  test('注册密码最小长度边界', async ({ page }) => {
+  test('注册密码最小长度边界', async ({ page, request }) => {
+    const codeRecord = await createRegistrationCodeByApi(request, 'password-boundary')
     await goto(page, '/auth/register')
+    await page.getByPlaceholder('注册码').fill(codeRecord.code)
+    await page.getByRole('button', { name: '下一步' }).click()
     const username = `E2E_BOUND_${Date.now()}`
     await page.getByPlaceholder('用户名').fill(username)
 
-    // 5个字符应失败
-    await page.getByPlaceholder('密码', { exact: true }).fill('12345')
-    await page.getByPlaceholder('确认密码').fill('12345')
+    // 9 个字符应失败
+    await page.getByPlaceholder('密码', { exact: true }).fill('123456789')
+    await page.getByPlaceholder('确认密码').fill('123456789')
     await page.getByRole('button', { name: /注\s*册/ }).click()
-    await expect(page.getByText('密码至少 6 个字符')).toBeVisible()
+    await expect(page.getByText('密码至少 10 个字符')).toBeVisible()
 
-    // 6个字符不应报最小长度错误
-    await page.getByPlaceholder('密码', { exact: true }).fill('123456')
-    await page.getByPlaceholder('确认密码').fill('123456')
+    // 10 个字符不应报最小长度错误
+    await page.getByPlaceholder('密码', { exact: true }).fill('1234567890')
+    await page.getByPlaceholder('确认密码').fill('1234567890')
     await page.getByRole('button', { name: /注\s*册/ }).click()
     await page.waitForTimeout(1000)
-    const hasPwdMinError = await page.getByText('密码至少 6 个字符').isVisible().catch(() => false)
+    const hasPwdMinError = await page.getByText('密码至少 10 个字符').isVisible().catch(() => false)
     expect(hasPwdMinError).toBe(false)
-    await screenshot(page, '边界值', '密码最小长度6')
+    await screenshot(page, '边界值', '密码最小长度10')
   })
 
-  test('注册用户名包含特殊字符', async ({ page }) => {
+  test('注册用户名包含特殊字符', async ({ page, request }) => {
+    const codeRecord = await createRegistrationCodeByApi(request, 'special-username')
     await goto(page, '/auth/register')
+    await page.getByPlaceholder('注册码').fill(codeRecord.code)
+    await page.getByRole('button', { name: '下一步' }).click()
     const username = `E2E_SPECIAL_!@#$%_${Date.now()}`
     await page.getByPlaceholder('用户名').fill(username)
     await page.getByPlaceholder('密码', { exact: true }).fill('Test123456!')
@@ -85,24 +95,24 @@ test.describe('边界值与表单深度校验', () => {
 /* ─────────────── 简历 CRUD 深度测试 ─────────────── */
 
 test.describe('简历 CRUD 深度测试', () => {
-  test('创建简历名称边界值 - 长名称导致500错误（BUG）', async ({ page, request }) => {
+  test('创建简历名称边界值 - 长名称返回验证错误', async ({ page, request }) => {
     const account = await createUserByApi(request, 'crud')
     await loginByUi(page, account.username, account.password)
 
     // 通过 API 创建长名称简历 - 应该返回验证错误而非500
     const longName = 'A'.repeat(200)
     const longRes = await request.post('/api/resumes', {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: { name: longName },
     })
-    // BUG: API returns 500 for long names instead of 400 validation error
-    expect(longRes.status()).toBe(500)
-    await screenshot(page, '简历CRUD', '长名称500错误')
+    expect(longRes.status()).toBe(400)
+    expect((await longRes.json()).message).toContain('50')
+    await screenshot(page, '简历CRUD', '长名称验证错误')
 
     // 通过 API 创建 XSS 名称简历
     const xssName = '<script>alert("xss")</script>'
     const xssRes = await request.post('/api/resumes', {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: { name: xssName },
     })
     expect(xssRes.status()).toBe(201)
@@ -419,7 +429,7 @@ test.describe('公开简历深度测试', () => {
 
     // 通过 API 编辑简历内容
     await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: {
         name: '公开简历测试',
         content: {
@@ -476,13 +486,13 @@ test.describe('公开简历深度测试', () => {
     await goto(page, `/resume/${slug}`)
 
     // 验证内容渲染
-    await expect(page.getByText('张三')).toBeVisible()
-    await expect(page.getByText('前端工程师', { exact: false }).first()).toBeVisible()
-    await expect(page.getByText('北京大学')).toBeVisible()
-    await expect(page.getByText('科技公司')).toBeVisible()
-    await expect(page.getByText('JavaScript')).toBeVisible()
-    await expect(page.getByText('项目A')).toBeVisible()
-    await expect(page.getByText('热爱技术，追求卓越')).toBeVisible()
+    await expect(page.getByText('张三').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('前端工程师', { exact: false }).filter({ visible: true }).first()).toBeVisible()
+    await expect(page.getByText('北京大学').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('科技公司').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('JavaScript').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('项目A').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('热爱技术，追求卓越').filter({ visible: true })).toBeVisible()
     await screenshot(page, '公开简历深度', '完整内容渲染')
   })
 
@@ -518,13 +528,19 @@ test.describe('网络请求与接口测试', () => {
   test('注册接口 - 重复用户名', async ({ request }) => {
     const username = `E2E_DUP_${Date.now()}`
     const password = 'Test123456!'
+    const firstCode = await createRegistrationCodeByApi(request, 'duplicate-username-1')
+    const secondCode = await createRegistrationCodeByApi(request, 'duplicate-username-2')
 
     // 第一次注册
-    const res1 = await request.post('/api/auth/register', { data: { username, password } })
+    const res1 = await request.post('/api/auth/register', {
+      data: { username, password, registration_code: firstCode.code },
+    })
     expect(res1.status()).toBe(201)
 
     // 第二次注册同名用户
-    const res2 = await request.post('/api/auth/register', { data: { username, password } })
+    const res2 = await request.post('/api/auth/register', {
+      data: { username, password, registration_code: secondCode.code },
+    })
     // 应返回冲突错误
     expect([400, 409]).toContain(res2.status())
   })
@@ -549,21 +565,21 @@ test.describe('网络请求与接口测试', () => {
 
     // 用户2尝试访问
     const getRes = await request.get(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${user2.token}` },
+      headers: { Cookie: user2.token },
     })
     // 应返回403或404
     expect([403, 404]).toContain(getRes.status())
 
     // 用户2尝试修改
     const putRes = await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${user2.token}` },
+      headers: { Cookie: user2.token },
       data: { name: '被篡改的简历' },
     })
     expect([403, 404]).toContain(putRes.status())
 
     // 用户2尝试删除
     const delRes = await request.delete(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${user2.token}` },
+      headers: { Cookie: user2.token },
     })
     expect([403, 404]).toContain(delRes.status())
   })
@@ -595,6 +611,10 @@ test.describe('页面完整性测试', () => {
 
   test('注册页元素完整性', async ({ page }) => {
     await goto(page, '/auth/register')
+    await expect(page.getByPlaceholder('注册码')).toBeVisible()
+    await expect(page.getByRole('button', { name: '下一步' })).toBeVisible()
+    await page.getByPlaceholder('注册码').fill('UI-STRUCTURE-ONLY')
+    await page.getByRole('button', { name: '下一步' }).click()
     await expect(page.getByPlaceholder('用户名')).toBeVisible()
     await expect(page.getByPlaceholder('密码', { exact: true })).toBeVisible()
     await expect(page.getByPlaceholder('确认密码')).toBeVisible()
@@ -607,7 +627,7 @@ test.describe('页面完整性测试', () => {
     await createResumeByApi(request, account.token, '列表测试简历')
     await loginByUi(page, account.username, account.password)
 
-    await expect(page.getByText('我的简历')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '我的简历' })).toBeVisible()
     await expect(page.getByRole('button', { name: /新建简历/ })).toBeVisible()
     await screenshot(page, '页面完整性', '简历列表页元素')
   })
@@ -631,14 +651,13 @@ test.describe('页面完整性测试', () => {
 /* ─────────────── 导航与路由测试 ─────────────── */
 
 test.describe('导航与路由测试', () => {
-  test('未登录访问受保护页面应重定向到登录', async ({ page }) => {
+  test('未登录访问简历页应进入游客模式', async ({ page }) => {
     await page.context().clearCookies()
+    await page.addInitScript(() => localStorage.clear())
     await goto(page, '/resumes')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(2000)
-    await expect(page).toHaveURL(/\/auth\/login/)
-    await screenshot(page, '导航路由', '未登录重定向')
+    await expect(page).toHaveURL(/\/resumes/)
+    await expect(page.getByText('游客模式 · 数据保存在浏览器本地')).toBeVisible()
+    await screenshot(page, '导航路由', '未登录进入游客模式')
   })
 
   test('已登录用户访问登录页应可正常显示', async ({ page, request }) => {

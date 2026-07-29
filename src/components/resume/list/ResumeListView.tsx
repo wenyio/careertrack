@@ -196,6 +196,7 @@ export default function ResumeListView({
 
       {/* 创建简历弹窗 */}
       <ResumeCreateModal
+        key={createModalVisible ? 'create-open' : 'create-closed'}
         open={createModalVisible}
         confirmLoading={isCreating}
         showInitFromProfile={showInitFromProfile}
@@ -205,6 +206,7 @@ export default function ResumeListView({
 
       {/* 重命名简历弹窗 */}
       <ResumeRenameModal
+        key={renamingResumeId || 'rename-closed'}
         open={renameModalVisible}
         resumeId={renamingResumeId}
         initialName={renamingResumeName}

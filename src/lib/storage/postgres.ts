@@ -7,6 +7,7 @@
 
 import { Pool } from 'pg'
 import { PG_SCHEMA_SQL } from './schema'
+import type { DatabaseQuery } from './types'
 
 /**
  * 全局状态
@@ -92,21 +93,8 @@ function ensureInitialized(): Promise<Pool> {
  * 获取数据库连接池（同步）
  * 如果尚未初始化，会触发异步初始化并返回临时池
  */
-export function getPool(): Pool {
-  if (!globalForDb.pool) {
-    // 触发初始化（异步）
-    ensureInitialized().catch(err => {
-      console.error('[postgres] 初始化失败:', err instanceof Error ? err.message : err)
-    })
-    // 创建临时池（初始化完成后会被替换）
-    globalForDb.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 10,
-      idleTimeoutMillis: 300000,
-      connectionTimeoutMillis: 30000,
-    })
-  }
-  return globalForDb.pool
+export async function getPool(): Promise<Pool> {
+  return ensureInitialized()
 }
 
 /**
@@ -125,4 +113,29 @@ export async function query(text: string, params?: unknown[]) {
   }
 
   return result
+}
+
+export async function transaction<T>(
+  callback: (query: DatabaseQuery) => Promise<T>,
+): Promise<T> {
+  const pool = await ensureInitialized()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const transactionQuery: DatabaseQuery = async (text, params) => {
+      const result = await client.query(text, params)
+      return {
+        rows: result.rows,
+        rowCount: result.rowCount,
+      }
+    }
+    const result = await callback(transactionQuery)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }

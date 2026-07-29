@@ -8,9 +8,11 @@
  * - 未设置 STORAGE_DRIVER 且无 DATABASE_URL → SQLite（默认）
  */
 
-import { query as sqliteQuery, getDb } from './sqlite'
-import { query as pgQuery, getPool as getPgPool } from './postgres'
+import { query as sqliteQuery, transaction as sqliteTransaction, getDb } from './sqlite'
+import { query as pgQuery, transaction as pgTransaction, getPool as getPgPool } from './postgres'
 import { ensureAdmin } from '../bootstrap'
+import type { DatabaseQuery, DatabaseTransaction } from './types'
+import { runMigrations } from './migrations'
 
 /** 判断使用的存储驱动 */
 const driver =
@@ -19,11 +21,38 @@ const driver =
   : process.env.DATABASE_URL ? 'postgres'
   : 'sqlite'
 
-/** 导出 query 函数：API Routes 统一通过此接口访问数据库 */
-export const query = driver === 'postgres' ? pgQuery : sqliteQuery
+const rawQuery: DatabaseQuery = driver === 'postgres'
+  ? pgQuery as DatabaseQuery
+  : sqliteQuery
+const rawTransaction: DatabaseTransaction = driver === 'postgres'
+  ? pgTransaction
+  : sqliteTransaction
 
-// 首次数据库访问时自动检查并创建管理员
-ensureAdmin(query)
+let initializePromise: Promise<void> | null = null
+
+/** 首次运行时显式初始化管理员；模块导入本身不再访问数据库。 */
+export function ensureStorageInitialized(): Promise<void> {
+  if (!initializePromise) {
+    initializePromise = runMigrations(driver, rawTransaction)
+      .then(() => ensureAdmin(rawQuery))
+      .catch((error) => {
+      initializePromise = null
+      throw error
+      })
+  }
+  return initializePromise
+}
+
+/** API Routes 统一通过此接口访问数据库。 */
+export const query: DatabaseQuery = async (text, params) => {
+  await ensureStorageInitialized()
+  return rawQuery(text, params)
+}
+
+export const transaction: DatabaseTransaction = async (callback) => {
+  await ensureStorageInitialized()
+  return rawTransaction(callback)
+}
 
 /**
  * 导出 getPool：返回底层数据库连接实例
@@ -33,6 +62,8 @@ ensureAdmin(query)
  * 注意：此函数主要用于诊断和特殊场景，
  * 正常情况下 API Routes 只需要使用 query()
  */
-export function getPool() {
+export async function getPool() {
   return driver === 'postgres' ? getPgPool() : getDb()
 }
+
+export type { DatabaseQuery, DatabaseQueryResult } from './types'

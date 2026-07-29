@@ -8,9 +8,9 @@
 
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense } from 'react'
 import { Spin } from 'antd'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout'
 import ChangePasswordForm from '@/components/settings/ChangePasswordForm'
 import OtpSettings from '@/components/settings/OtpSettings'
@@ -26,13 +26,15 @@ const SECURITY_NAV = [
 
 function SecurityPageInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tabParam = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState(tabParam || 'username')
+  const activeTab = tabParam || 'username'
 
-  // URL 中 tab 参数变化时同步切换（如 OAuth 回调跳回）
-  useEffect(() => {
-    if (tabParam) setActiveTab(tabParam)
-  }, [tabParam])
+  const handleTabChange = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`/settings/security?${params.toString()}`)
+  }
 
   return (
     <SettingsPageLayout
@@ -40,7 +42,7 @@ function SecurityPageInner() {
       subtitle="管理您的账号安全设置"
       navItems={SECURITY_NAV}
       activeKey={activeTab}
-      onNavChange={setActiveTab}
+      onNavChange={handleTabChange}
       size="lg"
     >
       {activeTab === 'username' && <ChangeUsernameForm />}

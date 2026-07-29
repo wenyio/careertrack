@@ -18,21 +18,44 @@ const ARTIFACTS_FILE = path.join(LOG_DIR, 'e2e-artifacts.jsonl')
 const CONSOLE_LOG = path.join(ROOT, 'logs', 'console-errors.log')
 const NETWORK_LOG = path.join(ROOT, 'logs', 'network-errors.log')
 const SUMMARY_LOG = path.join(ROOT, 'logs', 'test-summary.log')
+const DATABASE_PATH = process.env.SQLITE_DB_PATH
+  ? path.resolve(process.env.SQLITE_DB_PATH)
+  : path.join(ROOT, '.careertrack', 'careertrack.db')
 
 // ========== 测试管理员 bootstrap ==========
 // 注册码机制要求先有管理员才能生成注册码。
 // 测试 helper 通过 better-sqlite3 直接在数据库中创建管理员，
 // 绕过 API 注册流程。
 
-let _adminToken = null
+let _adminSession = null
+
+function testIp(seed) {
+  const digest = crypto.createHash('sha256').update(`${RUN_ID}:${seed}`).digest()
+  return `10.${digest[0]}.${digest[1]}.${Math.max(1, digest[2])}`
+}
+
+function getSessionCookie(response) {
+  const setCookie = response.headersArray()
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => header.value)
+    .join(', ')
+  const match = setCookie.match(/careertrack_session=[^;,]+/)
+  if (!match) {
+    throw new Error('响应未设置 careertrack_session cookie')
+  }
+  return match[0]
+}
 
 async function getTestAdmin(request) {
-  if (_adminToken) return _adminToken
+  if (_adminSession) return _adminSession
+
+  // 先通过应用健康检查完成 schema 与版本化迁移，避免 helper 在空库上直接写表。
+  const healthRes = await request.get('/api/health')
+  expect(healthRes.status(), `测试数据库初始化失败: ${await healthRes.text()}`).toBe(200)
 
   // 通过 better-sqlite3 直接创建管理员用户
   const Database = require('better-sqlite3')
-  const dbPath = path.join(ROOT, '.careertrack', 'careertrack.db')
-  const db = new Database(dbPath)
+  const db = new Database(DATABASE_PATH)
 
   const username = `E2E_ADMIN_${Date.now()}`
   const password = 'AdminTest123456!'
@@ -48,20 +71,20 @@ async function getTestAdmin(request) {
   `)
   db.close()
 
-  // 用管理员账号登录获取 token
+  // 用管理员账号登录获取 HttpOnly session cookie
   const loginRes = await request.post('/api/auth/login', {
+    headers: { 'X-Real-IP': testIp(`admin:${username}`) },
     data: { username, password },
   })
   expect(loginRes.status(), `管理员登录失败: ${await loginRes.text()}`).toBe(200)
-  const loginBody = await loginRes.json()
-  _adminToken = loginBody.token
-  return _adminToken
+  _adminSession = getSessionCookie(loginRes)
+  return _adminSession
 }
 
 async function createRegistrationCodeByApi(request, label) {
-  const adminToken = await getTestAdmin(request)
+  const adminSession = await getTestAdmin(request)
   const response = await request.post('/api/admin/registration-codes', {
-    headers: { Authorization: `Bearer ${adminToken}` },
+    headers: { Cookie: adminSession },
     data: { label: label || `test-${Date.now()}` },
   })
   expect(response.status(), `创建注册码失败: ${await response.text()}`).toBe(201)
@@ -101,11 +124,15 @@ async function goto(page, url) {
 }
 
 async function registerByUi(page, username, password, registrationCode) {
+  await page.context().setExtraHTTPHeaders({
+    'X-Real-IP': testIp(`browser-register:${username}`),
+  })
   await goto(page, '/auth/register')
+  await page.getByPlaceholder('注册码').fill(registrationCode)
+  await page.getByRole('button', { name: '下一步' }).click()
   await page.getByPlaceholder('用户名').fill(username)
   await page.getByPlaceholder('密码', { exact: true }).fill(password)
   await page.getByPlaceholder('确认密码').fill(password)
-  await page.getByPlaceholder('注册码').fill(registrationCode)
   await Promise.all([
     page.waitForURL(/\/resumes/, { timeout: 20_000 }),
     page.getByRole('button', { name: /注\s*册/ }).click(),
@@ -114,6 +141,9 @@ async function registerByUi(page, username, password, registrationCode) {
 
 async function loginByUi(page, username, password) {
   await page.context().clearCookies()
+  await page.context().setExtraHTTPHeaders({
+    'X-Real-IP': testIp(`browser-login:${username}`),
+  })
   await goto(page, '/auth/login')
   await page.evaluate(() => localStorage.clear())
   await page.getByPlaceholder('用户名').fill(username)
@@ -131,25 +161,31 @@ async function createUserByApi(request, baseName = 'api') {
   const username = `E2E_TEST_${baseName}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   const password = 'E2eTest123456!'
   const response = await request.post('/api/auth/register', {
+    headers: { 'X-Real-IP': testIp(`register:${username}`) },
     data: { username, password, registration_code: codeRecord.code },
   })
   expect(response.status(), `创建用户失败: ${await response.text()}`).toBe(201)
   const body = await response.json()
-  return { username, password, token: body.token, user: body.user }
+  return {
+    username,
+    password,
+    token: getSessionCookie(response),
+    user: body.user,
+  }
 }
 
-async function createResumeByApi(request, token, name, options = {}) {
+async function createResumeByApi(request, sessionCookie, name, options = {}) {
   const response = await request.post('/api/resumes', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     data: { name, ...options },
   })
   expect(response.status(), await response.text()).toBe(201)
   return response.json()
 }
 
-async function publishResumeByApi(request, token, resumeId, slug) {
+async function publishResumeByApi(request, sessionCookie, resumeId, slug) {
   const response = await request.post(`/api/resumes/${resumeId}/publish`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: sessionCookie },
     data: { slug },
   })
   expect(response.status(), await response.text()).toBe(200)
@@ -217,6 +253,7 @@ module.exports = {
   CONSOLE_LOG,
   NETWORK_LOG,
   SUMMARY_LOG,
+  DATABASE_PATH,
   ensureDirs,
   append,
   writeJsonLine,
@@ -230,5 +267,6 @@ module.exports = {
   publishResumeByApi,
   createRegistrationCodeByApi,
   getTestAdmin,
+  getSessionCookie,
   registerHooks,
 }

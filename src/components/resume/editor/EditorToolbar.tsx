@@ -44,6 +44,7 @@ const SAVE_STATUS_MAP: Record<SaveStatus, { text: string; color: string }> = {
   saving: { text: '保存中...', color: '#1677ff' },
   saved: { text: '已自动保存', color: '#52c41a' },
   manual_saved: { text: '已保存', color: '#52c41a' },
+  error: { text: '保存冲突或失败，请刷新后重试', color: '#ff4d4f' },
 }
 
 export default function EditorToolbar({

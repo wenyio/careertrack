@@ -8,6 +8,7 @@
 import { withAuth, error, success } from '@/lib/api'
 import { listResumes, createResume, buildInitialContentFromProfile } from '@/lib/services/resume'
 import { getProfile } from '@/lib/services/profile'
+import { MAX_RESUME_NAME_LENGTH } from '@/constants'
 
 /**
  * 获取简历列表
@@ -30,8 +31,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, initialize_from_profile } = body
 
-    if (!name?.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return error('简历名称不能为空')
+    }
+    if (name.trim().length > MAX_RESUME_NAME_LENGTH) {
+      return error(`简历名称不能超过 ${MAX_RESUME_NAME_LENGTH} 个字符`)
     }
 
     // 默认从 profile 初始化（向后兼容）

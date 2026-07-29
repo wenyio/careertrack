@@ -9,12 +9,10 @@ import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { SCHEMA_SQL } from './schema'
+import type { DatabaseQuery, DatabaseQueryResult } from './types'
 
 /** 查询结果接口（与 pg 模块一致） */
-export interface QueryResult<T = Record<string, unknown>> {
-  rows: T[]
-  rowCount: number
-}
+export type QueryResult<T = Record<string, unknown>> = DatabaseQueryResult<T>
 
 /** 已知的 JSON 字段名 */
 const JSON_COLUMNS = new Set([
@@ -33,6 +31,20 @@ const globalForDb = globalThis as unknown as {
   sqliteDb: Database.Database | undefined
 }
 
+function getDatabasePath(): string {
+  if (process.env.SQLITE_DB_PATH) {
+    return resolve(/* turbopackIgnore: true */ process.env.SQLITE_DB_PATH)
+  }
+  return resolve(process.cwd(), '.careertrack/careertrack.db')
+}
+
+function configureDatabase(db: Database.Database, initializeSchema = false): void {
+  db.pragma('foreign_keys = ON')
+  db.pragma('journal_mode = WAL')
+  db.pragma('busy_timeout = 5000')
+  if (initializeSchema) db.exec(SCHEMA_SQL)
+}
+
 /**
  * 获取 SQLite 数据库实例
  * 首次调用时自动创建数据库文件和表结构
@@ -42,18 +54,14 @@ export function getDb(): Database.Database {
     // 注意：此处动态路径会导致 Next.js NFT (Node File Tracing) 追踪整个项目目录。
     // 这是 SQLite 方案的已知限制，生产部署时建议通过 SQLITE_DB_PATH 指向明确子目录。
     // 当前 warning 不影响功能，仅增加 .next 输出体积。
-    const dbPath = resolve(process.env.SQLITE_DB_PATH || '.careertrack/careertrack.db')
+    const dbPath = getDatabasePath()
 
     // 确保目录存在
     mkdirSync(dirname(dbPath), { recursive: true })
 
     const db = new Database(dbPath)
 
-    // 启用外键约束
-    db.pragma('foreign_keys = ON')
-
-    // 自动建表
-    db.exec(SCHEMA_SQL)
+    configureDatabase(db, true)
 
     globalForDb.sqliteDb = db
   }
@@ -174,8 +182,12 @@ function postProcess(rows: Record<string, unknown>[]): Record<string, unknown>[]
  * @param params 参数
  * @returns 查询结果
  */
-export async function query(text: string, params?: unknown[]): Promise<QueryResult> {
-  const db = getDb()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function executeQuery<T = any>(
+  db: Database.Database,
+  text: string,
+  params?: unknown[],
+): QueryResult<T> {
   const { sql, params: translatedParams } = translate(text, params)
   const start = Date.now()
 
@@ -199,5 +211,45 @@ export async function query(text: string, params?: unknown[]): Promise<QueryResu
     console.log('慢查询:', { text: sql, duration, rows: result.rowCount })
   }
 
-  return result
+  return result as QueryResult<T>
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function query<T = any>(
+  text: string,
+  params?: unknown[],
+): Promise<QueryResult<T>> {
+  return executeQuery<T>(getDb(), text, params)
+}
+
+/**
+ * Run a callback in an isolated SQLite transaction.
+ *
+ * A dedicated connection prevents unrelated queries on the global connection
+ * from accidentally joining an async transaction. BEGIN IMMEDIATE serializes
+ * writers, while WAL keeps readers available.
+ */
+export async function transaction<T>(
+  callback: (query: DatabaseQuery) => Promise<T>,
+): Promise<T> {
+  const dbPath = getDatabasePath()
+  mkdirSync(dirname(dbPath), { recursive: true })
+  const db = new Database(dbPath)
+  configureDatabase(db, true)
+  db.exec('BEGIN IMMEDIATE')
+
+  try {
+    const transactionQuery: DatabaseQuery = async <Row = Record<string, unknown>>(
+      text: string,
+      params?: unknown[],
+    ) => executeQuery<Row>(db, text, params)
+    const result = await callback(transactionQuery)
+    db.exec('COMMIT')
+    return result
+  } catch (error) {
+    if (db.inTransaction) db.exec('ROLLBACK')
+    throw error
+  } finally {
+    db.close()
+  }
 }

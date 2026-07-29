@@ -39,6 +39,9 @@ RUN adduser --system --uid 1001 nextjs
 # 创建项目目录
 WORKDIR /app
 
+# SQLite 数据卷使用独立目录，并授予非 root 运行用户写权限。
+RUN mkdir -p /data && chown nextjs:nodejs /data
+
 # 复制构建产物
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -53,6 +56,12 @@ EXPOSE 3000
 # 设置环境变量
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
+ENV SQLITE_DB_PATH "/data/careertrack.db"
+
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 # 启动命令
 CMD ["node", "server.js"]

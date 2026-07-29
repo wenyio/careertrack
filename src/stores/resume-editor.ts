@@ -13,7 +13,7 @@ import type {
 } from '@/types/resume'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
 
-export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'manual_saved'
+export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'manual_saved' | 'error'
 
 export interface ResumeEditorState {
   // 简历基础信息

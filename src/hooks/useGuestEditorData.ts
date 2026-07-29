@@ -35,10 +35,12 @@ export function useGuestEditorData(id: string) {
 
   // 加载数据（同步读取 localStorage）
   useEffect(() => {
-    const loaded = getGuestResume(id)
-    setResume(loaded)
-    setProfile(getGuestProfile())
-    setIsLoading(false)
+    const frame = window.requestAnimationFrame(() => {
+      setResume(getGuestResume(id))
+      setProfile(getGuestProfile())
+      setIsLoading(false)
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [id])
 
   // 初始化数据（useLayoutEffect 确保在浏览器绘制前完成）
@@ -76,15 +78,14 @@ export function useGuestEditorData(id: string) {
 
   // 封装 update 函数，匹配 useAutoSave 期望的签名
   const updateGuestResumeSilent = useCallback(
-    (data: Record<string, unknown>, options: { onSuccess?: () => void; onError?: () => void }) => {
+    async (data: Record<string, unknown>) => {
       try {
         updateGuestResume(id, data as UpdateResumeRequest)
         // 同步更新本地 resume 状态
         const updated = getGuestResume(id)
         if (updated) setResume(updated)
-        options?.onSuccess?.()
       } catch (e) {
-        options?.onError?.()
+        throw e
       }
     },
     [id],

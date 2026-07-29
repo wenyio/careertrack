@@ -9,7 +9,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Button, Typography, App, Avatar, Empty, Spin } from 'antd'
-import { GithubOutlined, LinkOutlined, DisconnectOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { GithubOutlined, DisconnectOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useOAuthAccounts, useUnbindOAuthAccount } from '@/hooks/useAuth'

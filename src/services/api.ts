@@ -3,7 +3,7 @@
  *
  * 使用 Axios 作为 HTTP 客户端，统一处理：
  * - 请求/响应拦截
- * - Token 自动注入
+ * - 同源 HttpOnly 会话 Cookie
  * - 错误处理
  * - 请求取消
  */
@@ -19,6 +19,7 @@ import { queryClient } from '@/lib/query-client'
  */
 const api = axios.create({
   baseURL: '/api',
+  withCredentials: true,
   timeout: 30000, // 30 秒超时
   headers: {
     'Content-Type': 'application/json',
@@ -26,29 +27,10 @@ const api = axios.create({
 })
 
 /**
- * 请求拦截器
- *
- * 在每个请求发送前自动添加 Authorization header
- */
-api.interceptors.request.use(
-  (config) => {
-    // 直接从 Zustand 内存状态获取 token（避免 persist 异步写入 localStorage 的竞态问题）
-    const { token } = useAuthStore.getState()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-/**
  * 响应拦截器
  *
  * 统一处理响应错误：
- * - 401: Token 过期或无效，清除 token 并跳转登录页
+ * - 401: 会话过期或无效，清除客户端认证状态并跳转登录页
  * - 403: 权限不足
  * - 500: 服务器错误
  */
@@ -67,7 +49,7 @@ api.interceptors.response.use(
 
     switch (status) {
       case 401: {
-        // Token 过期或无效，清除认证状态并跳转登录页
+        // 会话过期或无效，清除认证状态并跳转登录页
         // 避免在以下场景触发重定向，防止死循环：
         // 1. 已在登录/注册页
         // 2. 请求的是公开 API（/public/）
@@ -81,8 +63,7 @@ api.interceptors.response.use(
 
           if (!isAuthPage && !isPublicApi && !isStatusCheck) {
             queryClient.clear()
-            localStorage.removeItem('auth-storage')
-            document.cookie = 'token=; path=/; max-age=0'
+            useAuthStore.getState().logout()
             window.location.href = '/auth/login'
           }
         }

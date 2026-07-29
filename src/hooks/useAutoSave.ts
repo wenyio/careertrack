@@ -15,11 +15,13 @@ interface UseAutoSaveOptions {
   /** 是否已初始化的 ref（防止未加载数据时触发保存） */
   isInitializedRef: React.RefObject<boolean>
   /** 执行保存的 mutation 函数 */
-  updateResume: (data: Record<string, unknown>, options: { onSuccess?: () => void; onError?: () => void }) => void
+  updateResume: (data: Record<string, unknown>) => Promise<{ revision?: number } | void>
   /** 设置保存状态 */
   setSaveStatus: (status: SaveStatus) => void
   /** 获取当前数据的函数 */
   getCurrentData: () => Record<string, unknown>
+  /** 保存成功后同步 revision 等服务端状态 */
+  onSaveSuccess?: (result: { revision?: number } | void) => void
   /** 自动保存延迟（毫秒），默认 AUTO_SAVE_DELAY */
   delay?: number
 }
@@ -29,32 +31,77 @@ export function useAutoSave({
   updateResume,
   setSaveStatus,
   getCurrentData,
+  onSaveSuccess,
   delay = AUTO_SAVE_DELAY,
 }: UseAutoSaveOptions) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const statusTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastManualSaveRef = useRef<number>(0)
+  const processingRef = useRef(false)
+  const saveRequestedRef = useRef(false)
+  const manualRequestedRef = useRef(false)
+  const mountedRef = useRef(true)
 
-  // 自动保存执行
-  const performAutoSave = useCallback(() => {
+  const scheduleIdle = useCallback(() => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
+    statusTimerRef.current = setTimeout(() => {
+      if (mountedRef.current && !processingRef.current && !saveRequestedRef.current) {
+        setSaveStatus('idle')
+      }
+    }, 3000)
+  }, [setSaveStatus])
+
+  // 单飞保存队列：在途请求完成后只提交最新快照，避免旧响应覆盖新编辑。
+  const processSaveQueue = useCallback(async () => {
+    if (processingRef.current || !isInitializedRef.current) return
+    processingRef.current = true
+
+    try {
+      while (saveRequestedRef.current && mountedRef.current) {
+        const isManual = manualRequestedRef.current
+        saveRequestedRef.current = false
+        manualRequestedRef.current = false
+        setSaveStatus('saving')
+
+        try {
+          const result = await updateResume(getCurrentData())
+          if (!mountedRef.current) return
+          onSaveSuccess?.(result)
+          setSaveStatus(isManual ? 'manual_saved' : 'saved')
+          scheduleIdle()
+        } catch {
+          if (mountedRef.current) setSaveStatus('error')
+          saveRequestedRef.current = false
+          manualRequestedRef.current = false
+        }
+      }
+    } finally {
+      processingRef.current = false
+    }
+  }, [
+    getCurrentData,
+    isInitializedRef,
+    onSaveSuccess,
+    scheduleIdle,
+    setSaveStatus,
+    updateResume,
+  ])
+
+  const requestSave = useCallback((manual: boolean) => {
     if (!isInitializedRef.current) return
+    saveRequestedRef.current = true
+    manualRequestedRef.current = manualRequestedRef.current || manual
+    void processSaveQueue()
+  }, [isInitializedRef, processSaveQueue])
 
+  const performAutoSave = useCallback(() => {
     const timeSinceManualSave = Date.now() - lastManualSaveRef.current
     if (timeSinceManualSave < 5000) {
       setSaveStatus('idle')
       return
     }
-
-    setSaveStatus('saving')
-    updateResume(getCurrentData(), {
-      onSuccess: () => {
-        setSaveStatus('saved')
-        setTimeout(() => setSaveStatus('idle'), 3000)
-      },
-      onError: () => {
-        setSaveStatus('idle')
-      },
-    })
-  }, [isInitializedRef, updateResume, setSaveStatus, getCurrentData])
+    requestSave(false)
+  }, [requestSave, setSaveStatus])
 
   // 触发自动保存（防抖）
   const triggerAutoSave = useCallback(() => {
@@ -67,23 +114,16 @@ export function useAutoSave({
   const handleManualSave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
     lastManualSaveRef.current = Date.now()
-    setSaveStatus('saving')
-
-    updateResume(getCurrentData(), {
-      onSuccess: () => {
-        setSaveStatus('manual_saved')
-        setTimeout(() => setSaveStatus('idle'), 3000)
-      },
-      onError: () => {
-        setSaveStatus('idle')
-      },
-    })
-  }, [updateResume, setSaveStatus, getCurrentData])
+    requestSave(true)
+  }, [requestSave])
 
   // 清理
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (timerRef.current) clearTimeout(timerRef.current)
+      if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
     }
   }, [])
 

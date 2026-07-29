@@ -50,8 +50,16 @@ fi
 
 show_version
 
-export DATABASE_URL="${DATABASE_URL:-postgres://careertrack:careertrack@localhost:5432/careertrack}"
-export JWT_SECRET="${JWT_SECRET:-change-me-in-production}"
+if [ -z "${JWT_SECRET:-}" ]; then
+    echo "❌ JWT_SECRET 未设置。请使用 openssl rand -base64 48 生成强随机密钥。"
+    exit 1
+fi
+
+if [ "${#JWT_SECRET}" -lt 32 ] || [ "$JWT_SECRET" = "change-me-in-production" ]; then
+    echo "❌ JWT_SECRET 必须至少 32 个字符，且不能使用示例默认值。"
+    exit 1
+fi
+
 export PORT="${PORT:-3000}"
 export HOSTNAME="0.0.0.0"
 

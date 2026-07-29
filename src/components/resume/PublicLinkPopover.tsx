@@ -156,6 +156,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
             {qrDataUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element -- generated QR data URL */
               <img src={qrDataUrl} alt="QR Code" style={{ width: 90, height: 90, borderRadius: 4 }} />
             )}
             <div style={{ flex: 1, paddingTop: 2 }}>

@@ -6,6 +6,11 @@
  */
 
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version VARCHAR(100) PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
@@ -53,6 +58,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     public_slug VARCHAR(50) UNIQUE,
     modules_order TEXT DEFAULT '["basic_info","summary","education","work_experience","projects","skills","awards","portfolio","research","other_experience"]',
     template VARCHAR(20) DEFAULT 'classic',
+    revision INTEGER NOT NULL DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -106,7 +112,6 @@ CREATE TABLE IF NOT EXISTS registration_codes (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
 CREATE INDEX IF NOT EXISTS idx_registration_codes_created_by ON registration_codes(created_by);
 `;
 
@@ -117,6 +122,11 @@ CREATE INDEX IF NOT EXISTS idx_registration_codes_created_by ON registration_cod
  * 与 SQLite 版本结构一致，使用 PostgreSQL 原生类型
  */
 export const PG_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version VARCHAR(100) PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -164,6 +174,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     basic_info_display JSONB DEFAULT '{}',
     preview_config JSONB DEFAULT '{}',
     template VARCHAR(20) DEFAULT 'classic',
+    revision INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -215,6 +226,5 @@ CREATE TABLE IF NOT EXISTS registration_codes (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
 CREATE INDEX IF NOT EXISTS idx_registration_codes_created_by ON registration_codes(created_by);
 `;

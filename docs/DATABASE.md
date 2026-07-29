@@ -28,9 +28,15 @@ CareerTrack 支持两种数据库后端，默认使用 SQLite（零配置），�
 
 SQLite 使用以下类型映射：`UUID → TEXT`，`JSONB → TEXT`，`BOOLEAN → INTEGER`，`TIMESTAMP → TEXT`。
 
-首次启动时自动建表，无需手动执行迁移。
+首次访问数据库时先创建基础表，再按 `schema_migrations` 顺序执行未应用的迁移。升级生产环境前仍应先备份数据库。
 
 ```sql
+-- 迁移版本表
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version VARCHAR(100) PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || ...),  -- UUID v4
@@ -73,10 +79,9 @@ CREATE TABLE IF NOT EXISTS resumes (
     is_public INTEGER DEFAULT 0,
     public_slug VARCHAR(50) UNIQUE,
     modules_order TEXT DEFAULT '[...]',    -- JSON 数组
-    module_titles TEXT DEFAULT '{}',       -- JSON 对象，自定义模块标题
-    basic_info_display TEXT DEFAULT '{}',  -- JSON 对象，字段图标/头像位置
-    preview_config TEXT DEFAULT '{}',      -- JSON 对象，字号/行距
+    -- module_titles、basic_info_display、preview_config 统一存放在 content 中
     template VARCHAR(20) DEFAULT 'classic',
+    revision INTEGER NOT NULL DEFAULT 1,   -- 乐观并发版本，每次写入递增
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -113,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_user_oauth_user_id ON user_oauth_accounts(user_id
 -- 注册码表
 CREATE TABLE IF NOT EXISTS registration_codes (
     id TEXT PRIMARY KEY DEFAULT ...,
-    code_hash VARCHAR(64) NOT NULL UNIQUE, -- 注册码 SHA-256 哈希
+    code_hash VARCHAR(64) NOT NULL,        -- 注册码 SHA-256 哈希
     label VARCHAR(100),                    -- 备注标签
     created_by TEXT REFERENCES users(id),  -- 创建者
     used_by_user_id TEXT REFERENCES users(id),  -- 使用者
@@ -123,10 +128,18 @@ CREATE TABLE IF NOT EXISTS registration_codes (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_registration_codes_hash ON registration_codes(code_hash);
+CREATE UNIQUE INDEX idx_registration_codes_hash ON registration_codes(code_hash);
 ```
 
 > 完整的建表 SQL 见 `src/lib/storage/schema.ts`。
+
+## 版本化迁移
+
+- 迁移定义位于 `src/lib/storage/migrations.ts`
+- 每个版本在事务中执行，成功后才写入 `schema_migrations`
+- `001_resume_revision_and_unique_codes` 为旧安装补充 `resumes.revision`，检查重复注册码哈希后建立唯一索引
+- 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
+- SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
 ## 表结构设计（PostgreSQL）
 
@@ -341,6 +354,7 @@ CREATE TABLE resumes (
     -- 预览配置（字号、行距等）
     preview_config JSONB DEFAULT '{}',
 
+    revision INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -350,6 +364,8 @@ CREATE INDEX idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX idx_resumes_public_slug ON resumes(public_slug) WHERE public_slug IS NOT NULL;
 CREATE INDEX idx_resumes_template ON resumes(template);
 ```
+
+`revision` 用于简历乐观并发控制。客户端更新时提交最近一次读取到的值，服务端使用 `WHERE ... AND revision = ?` 条件更新；版本过期时 API 返回 `409`。
 
 ### mcp_keys MCP Key 表
 

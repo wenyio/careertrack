@@ -9,14 +9,16 @@
  * - bind：将 GitHub 账号绑定到当前登录用户
  *
  * 成功后重定向：
- * - login/register → /auth/oauth/callback#token=xxx
+ * - login/register → 写入 HttpOnly session 后跳转 /auth/oauth/callback
  * - bind → /settings/security?bind=success
  */
 
 import { NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, transaction } from '@/lib/db'
 import { generateToken } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { setAuthSessionCookie } from '@/lib/security/session'
 
 interface GitHubUser {
   id: number
@@ -76,6 +78,13 @@ function getBaseUrl(request: Request): string {
 }
 
 export async function GET(request: Request) {
+  const limited = enforceRateLimit(request, {
+    namespace: 'auth-github-callback',
+    limit: 60,
+    windowMs: 10 * 60 * 1000,
+  })
+  if (limited) return limited
+
   const clientSecret = process.env.GITHUB_CLIENT_SECRET
   const clientId = process.env.GITHUB_CLIENT_ID
 
@@ -155,40 +164,52 @@ export async function GET(request: Request) {
       }
       const userId = parts.slice(1).join(':') // userId 中不太可能有冒号，但以防万一
 
-      // 验证用户存在
-      const userCheck = await query('SELECT id, auth_provider FROM users WHERE id = $1', [userId])
-      if (userCheck.rows.length === 0) {
-        return NextResponse.redirect(new URL('/settings/security?bind=error&reason=user_not_found&tab=github', getBaseUrl(request)).toString())
+      try {
+        await transaction(async (transactionQuery) => {
+          const userCheck = await transactionQuery(
+            'SELECT id, auth_provider, disabled_at FROM users WHERE id = $1',
+            [userId],
+          )
+          if (userCheck.rows.length === 0) throw new Error('OAUTH_USER_NOT_FOUND')
+          if (userCheck.rows[0].disabled_at) throw new Error('OAUTH_USER_DISABLED')
+
+          const existingBinding = await transactionQuery(
+            'SELECT user_id FROM user_oauth_accounts WHERE provider = $1 AND provider_account_id = $2',
+            ['github', String(githubUser.id)],
+          )
+          if (
+            existingBinding.rows.length > 0
+            && existingBinding.rows[0].user_id !== userId
+          ) {
+            throw new Error('OAUTH_ALREADY_BOUND')
+          }
+          if (existingBinding.rows.length > 0) return
+
+          await transactionQuery(
+            `INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, provider_username, email, avatar_url)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [userId, 'github', String(githubUser.id), githubUser.login, primaryEmail, githubUser.avatar_url],
+          )
+
+          const currentProvider = userCheck.rows[0].auth_provider as number
+          await transactionQuery(
+            'UPDATE users SET auth_provider = $1, updated_at = NOW() WHERE id = $2',
+            [currentProvider | AUTH_PROVIDER.GITHUB, userId],
+          )
+        })
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : ''
+        if (reason === 'OAUTH_USER_NOT_FOUND') {
+          return NextResponse.redirect(new URL('/settings/security?bind=error&reason=user_not_found&tab=github', getBaseUrl(request)).toString())
+        }
+        if (reason === 'OAUTH_USER_DISABLED') {
+          return NextResponse.redirect(new URL('/settings/security?bind=error&reason=account_disabled&tab=github', getBaseUrl(request)).toString())
+        }
+        if (reason === 'OAUTH_ALREADY_BOUND') {
+          return NextResponse.redirect(new URL('/settings/security?bind=error&reason=already_bound&tab=github', getBaseUrl(request)).toString())
+        }
+        throw error
       }
-
-      // 检查该 GitHub 账号是否已被其他用户绑定
-      const existingBinding = await query(
-        'SELECT user_id FROM user_oauth_accounts WHERE provider = $1 AND provider_account_id = $2',
-        ['github', String(githubUser.id)]
-      )
-      if (existingBinding.rows.length > 0 && existingBinding.rows[0].user_id !== userId) {
-        return NextResponse.redirect(new URL('/settings/security?bind=error&reason=already_bound&tab=github', getBaseUrl(request)).toString())
-      }
-
-      // 检查当前用户是否已绑定此 GitHub
-      if (existingBinding.rows.length > 0 && existingBinding.rows[0].user_id === userId) {
-        // 已绑定，直接跳转成功
-        return NextResponse.redirect(new URL('/settings/security?bind=success&tab=github', getBaseUrl(request)).toString())
-      }
-
-      // 创建绑定
-      await query(
-        `INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, provider_username, email, avatar_url)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, 'github', String(githubUser.id), githubUser.login, primaryEmail, githubUser.avatar_url]
-      )
-
-      // 更新 auth_provider 加上 GITHUB 位
-      const currentProvider = userCheck.rows[0].auth_provider as number
-      await query(
-        'UPDATE users SET auth_provider = $1, updated_at = NOW() WHERE id = $2',
-        [currentProvider | AUTH_PROVIDER.GITHUB, userId]
-      )
 
       // 清除 cookies，重定向到设置页的 GitHub 绑定 tab
       const response = NextResponse.redirect(new URL('/settings/security?bind=success&tab=github', getBaseUrl(request)).toString())
@@ -237,25 +258,26 @@ export async function GET(request: Request) {
         username = `github_${githubUser.login}_${suffix}`
       }
 
-      // 创建用户（无密码，auth_provider = GITHUB）
-      const userResult = await query(
-        'INSERT INTO users (username, auth_provider) VALUES ($1, $2) RETURNING id',
-        [username, AUTH_PROVIDER.GITHUB]
-      )
-      userId = userResult.rows[0].id
+      userId = await transaction(async (transactionQuery) => {
+        const userResult = await transactionQuery(
+          'INSERT INTO users (username, auth_provider) VALUES ($1, $2) RETURNING id',
+          [username, AUTH_PROVIDER.GITHUB],
+        )
+        const createdUserId = userResult.rows[0].id as string
 
-      // 创建空的个人信息
-      await query(
-        'INSERT INTO profiles (user_id) VALUES ($1)',
-        [userId]
-      )
+        await transactionQuery(
+          'INSERT INTO profiles (user_id) VALUES ($1)',
+          [createdUserId],
+        )
 
-      // 创建 OAuth 绑定
-      await query(
-        `INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, provider_username, email, avatar_url)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, 'github', String(githubUser.id), githubUser.login, primaryEmail, githubUser.avatar_url]
-      )
+        await transactionQuery(
+          `INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, provider_username, email, avatar_url)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [createdUserId, 'github', String(githubUser.id), githubUser.login, primaryEmail, githubUser.avatar_url],
+        )
+
+        return createdUserId
+      })
     }
 
     // 读取完整用户信息生成 token
@@ -266,11 +288,11 @@ export async function GET(request: Request) {
     const user = userResult.rows[0]
     const token = await generateToken(user.id, user.username, user.auth_provider)
 
-    // 清除 state cookie，重定向到 OAuth 回调中转页
+    // 写入 HttpOnly session，清除 state cookie，重定向到 OAuth 中转页。
     const redirectUrl = new URL('/auth/oauth/callback', getBaseUrl(request))
-    redirectUrl.hash = `token=${token}`
 
     const response = NextResponse.redirect(redirectUrl.toString())
+    setAuthSessionCookie(response, token, request)
     response.cookies.set('github_oauth_state', '', { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 0, path: '/' })
     response.cookies.set('github_oauth_mode', '', { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 0, path: '/' })
 

@@ -19,7 +19,6 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
 import { hasGuestData } from '@/services/guest-migration'
 import AuthShell from '@/components/layout/AuthShell'
-import { COOKIE_MAX_AGE } from '@/constants'
 import { getErrorMessage } from '@/utils/error'
 
 function RegisterPageContent() {
@@ -67,8 +66,7 @@ function RegisterPageContent() {
       })
 
       queryClient.clear()
-      loginSuccess(data.token, data.user)
-      document.cookie = `token=${data.token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`
+      loginSuccess(data.user)
       message.success('注册成功')
       router.push(hasGuestData() ? '/auth/migrate' : '/resumes')
     } catch (error: unknown) {
@@ -137,7 +135,7 @@ function RegisterPageContent() {
               name="password"
               rules={[
                 { required: true, message: '请输入密码' },
-                { min: 6, message: '密码至少 6 个字符' },
+                { min: 10, message: '密码至少 10 个字符' },
               ]}
               style={{ marginBottom: 12 }}
             >

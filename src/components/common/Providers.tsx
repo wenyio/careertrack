@@ -13,6 +13,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { queryClient } from '@/lib/query-client'
+import AuthSessionBootstrap from './AuthSessionBootstrap'
 
 /**
  * Ant Design 主题配置
@@ -33,7 +34,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ConfigProvider locale={zhCN} theme={antdTheme}>
         <AntdApp>
-          {children}
+          <AuthSessionBootstrap>
+            {children}
+          </AuthSessionBootstrap>
         </AntdApp>
       </ConfigProvider>
     </QueryClientProvider>

@@ -14,7 +14,7 @@ test.describe('简历公开', () => {
 
     // 通过 API 填充多模块内容
     const updateRes = await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: {
         content: {
           basic_info: { name: 'E2E_公开用户', email: 'pub@test.com', phone: '13800000001' },
@@ -32,16 +32,14 @@ test.describe('简历公开', () => {
     await publishResumeByApi(request, account.token, resume.id, slug)
 
     // 访问公开页
-    const publicResponse = page.waitForResponse((r) => r.url().includes(`/api/public/${slug}`), { timeout: 35_000 })
     await goto(page, `/resume/${slug}`)
-    expect((await publicResponse).ok()).toBeTruthy()
 
     // 验证多板块渲染
-    await expect(page.getByText('E2E_公开用户')).toBeVisible()
-    await expect(page.getByText('测试大学')).toBeVisible()
-    await expect(page.getByText('测试公司')).toBeVisible()
-    await expect(page.getByText('React')).toBeVisible()
-    await expect(page.getByText('由职迹 CareerTrack 生成')).toBeVisible()
+    await expect(page.getByText('E2E_公开用户').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('测试大学').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('测试公司').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('React').filter({ visible: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: '职迹 CareerTrack' })).toBeVisible()
     await screenshot(page, '公开简历', '多板块渲染')
 
     // 验证不暴露内部字段
@@ -57,7 +55,7 @@ test.describe('简历公开', () => {
 
     // 初始内容并发布
     await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: {
         content: { basic_info: { name: '更新前姓名' } },
         modules_config: { basic_info: true },
@@ -67,11 +65,11 @@ test.describe('简历公开', () => {
 
     // 验证初始公开内容
     await goto(page, `/resume/${slug}`)
-    await expect(page.getByText('更新前姓名')).toBeVisible()
+    await expect(page.getByText('更新前姓名').filter({ visible: true })).toBeVisible()
 
     // 通过 API 更新内容
     const updateRes = await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: {
         content: { basic_info: { name: '更新后姓名', email: 'updated@test.com' } },
         modules_config: { basic_info: true },
@@ -81,8 +79,8 @@ test.describe('简历公开', () => {
 
     // 重新访问公开页验证更新
     await goto(page, `/resume/${slug}`)
-    await expect(page.getByText('更新后姓名')).toBeVisible()
-    await expect(page.getByText('updated@test.com')).toBeVisible()
+    await expect(page.getByText('更新后姓名').filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('updated@test.com').filter({ visible: true })).toBeVisible()
     await screenshot(page, '公开简历', '内容同步更新')
   })
 })

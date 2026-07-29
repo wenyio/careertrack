@@ -84,8 +84,8 @@ docker build -t careertrack .
 docker run -d \
   --name careertrack \
   -p 3000:3000 \
-  -v careertrack-data:/app/.careertrack \
-  -e JWT_SECRET=your-secret-key \
+  -v careertrack-data:/data \
+  -e JWT_SECRET=replace-with-at-least-32-random-characters \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   careertrack
@@ -94,7 +94,7 @@ docker run -d \
 docker run -d \
   --name careertrack \
   -p 3000:3000 \
-  -e JWT_SECRET=your-secret-key \
+  -e JWT_SECRET=replace-with-at-least-32-random-characters \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   -e STORAGE_DRIVER=postgres \
@@ -108,10 +108,10 @@ docker run -d \
 
 项目使用多阶段构建：
 
-1. **构建阶段**（node:18-alpine）：安装依赖、编译 Next.js
-2. **运行阶段**（node:18-alpine）：仅复制构建产物，以非 root 用户运行
+1. **构建阶段**（node:20-alpine）：安装依赖、编译 Next.js
+2. **运行阶段**（node:20-alpine）：仅复制构建产物，以非 root 用户运行
 
-最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。
+最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。SQLite 固定写入 `/data/careertrack.db`，`/data` 已声明为 volume 并授权给 UID 1001。容器通过 `/api/health` 检查应用与数据库状态。
 
 ---
 
@@ -127,19 +127,20 @@ bash deploy.sh
 
 # 产物为 deploy-v{VERSION}.tar.gz
 # 传输到服务器后解压并启动
-tar -xzf deploy-v0.10.3.tar.gz
+tar -xzf deploy-v1.0.3.tar.gz
 cd deploy
-bash start.sh
+JWT_SECRET="$(openssl rand -base64 48)" bash start.sh
 ```
 
-`start.sh` 会自动设置以下默认环境变量：
+`start.sh` 不提供任何生产密钥或数据库默认值。它只设置监听参数，并在 `JWT_SECRET` 缺失、少于 32 字符或使用已知示例值时拒绝启动：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `PORT` | `3000` | 监听端口 |
 | `HOSTNAME` | `0.0.0.0` | 监听地址 |
-| `JWT_SECRET` | `change-me-in-production` | **必须修改** |
-| `DATABASE_URL` | `postgres://careertrack:careertrack@localhost:5432/careertrack` | PostgreSQL 连接串 |
+| `JWT_SECRET` | 无 | **必须显式设置，至少 32 字符** |
+
+数据库仍遵循自动选择规则：有 `DATABASE_URL` 时使用 PostgreSQL，否则使用 SQLite。
 
 ### 方式二：手动构建
 
@@ -163,7 +164,7 @@ node .next/standalone/server.js
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | - | JWT 签名密钥，生产环境必须设置强随机值 |
 | `ADMIN_USERNAME` | ❌ | - | 首次启动自动创建的管理员用户名 |
-| `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥6 位） |
+| `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥10 位） |
 | `STORAGE_DRIVER` | ❌ | 自动检测 | `sqlite` 或 `postgres` |
 | `DATABASE_URL` | ❌* | - | PostgreSQL 连接串，`postgres` 模式必填 |
 | `SQLITE_DB_PATH` | ❌ | `.careertrack/careertrack.db` | SQLite 数据库文件路径 |
@@ -202,8 +203,8 @@ ADMIN_PASSWORD=your-strong-password
 docker run -d \
   --name careertrack \
   -p 3000:3000 \
-  -v careertrack-data:/app/.careertrack \
-  -e JWT_SECRET=your-secret-key \
+  -v careertrack-data:/data \
+  -e JWT_SECRET=replace-with-at-least-32-random-characters \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   careertrack
@@ -254,6 +255,10 @@ ufw allow 443/tcp
 ufw enable
 ```
 
+### 全局限流
+
+应用内置的认证和 MCP 限流是单进程内存实现，适合单实例与纵深防护。多副本、无服务器或可绕过反向代理的部署，必须在 Nginx、网关或 Redis 等共享层配置全局限流，并确保代理覆盖而不是透传客户端伪造的 `X-Forwarded-For`。
+
 ---
 
 ## 数据备份
@@ -267,6 +272,8 @@ cp .careertrack/careertrack.db backup_$(date +%Y%m%d).db
 # 或使用 SQLite 命令（在线安全备份）
 sqlite3 .careertrack/careertrack.db ".backup backup_$(date +%Y%m%d).db"
 ```
+
+Docker 部署时数据库位于 volume 的 `/data/careertrack.db`。可在容器内执行在线备份，或停止写入后备份该 volume。
 
 ### PostgreSQL
 
@@ -317,6 +324,8 @@ fuser .careertrack/careertrack.db
 
 ## 更新部署
 
+版本升级会在首次数据库访问时按顺序执行 `schema_migrations`。生产更新前必须先做可恢复备份；迁移失败时应用会拒绝继续初始化，不会跳过失败版本。
+
 ```bash
 # 拉取最新代码
 git pull
@@ -335,8 +344,10 @@ bash deploy.sh
 ## 生产环境检查清单
 
 - [ ] `JWT_SECRET` 已设置为强随机值
-- [ ] `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 已配置（首次启动）
+- [ ] `ADMIN_USERNAME` 和不少于 10 字符的 `ADMIN_PASSWORD` 已配置（首次启动）
 - [ ] `NEXT_PUBLIC_SITE_URL` 设置为实际域名
 - [ ] 已配置 HTTPS
+- [ ] 多实例部署已配置共享全局限流
+- [ ] `/api/health` 已接入容器编排或监控
 - [ ] 数据库备份策略已就位
 - [ ] `NODE_ENV=production`（standalone 构建自动设置）

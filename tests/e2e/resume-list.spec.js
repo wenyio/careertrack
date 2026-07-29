@@ -19,14 +19,13 @@ test.describe('简历列表页', () => {
     await goto(page, '/resumes')
 
     // 验证列表
-    await expect(page.getByText('我的简历')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '我的简历' })).toBeVisible()
     await expect(page.getByText(name1)).toBeVisible()
     await expect(page.getByText(name2)).toBeVisible()
     await screenshot(page, '简历列表', '两份简历可见')
 
     // 点击编辑按钮进入编辑页
-    const card1 = page.locator('.ant-card').filter({ hasText: name1 })
-    await card1.locator('button').filter({ has: page.locator('[aria-label="edit"]') }).click()
+    await page.getByRole('link', { name: `编辑 ${name1}` }).click()
     await expect(page).toHaveURL(new RegExp(`/resumes/${resume1.id}/edit`))
     await expect(page.locator('.resume-a4-preview')).toBeVisible()
     await screenshot(page, '简历列表', '点击编辑进入编辑页')

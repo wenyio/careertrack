@@ -11,6 +11,8 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { verifyMcpKey } from '@/lib/services/mcp-key'
 import { createMcpServerForUser } from '@/lib/mcp/server'
+import type { McpAuthContext } from '@/lib/mcp/server'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
 
 /** 从请求中提取 MCP Key */
 function extractMcpKey(request: Request): string | null {
@@ -29,27 +31,45 @@ function extractMcpKey(request: Request): string | null {
   return null
 }
 
-/** 验证 MCP Key 并返回用户 ID */
-async function authenticateMcpKey(request: Request): Promise<string | null> {
+/** 验证 MCP Key 并返回完整授权上下文 */
+async function authenticateMcpKey(request: Request): Promise<McpAuthContext | null> {
   const key = extractMcpKey(request)
   if (!key) return null
 
   const record = await verifyMcpKey(key)
   if (!record) return null
 
-  return record.user_id
+  return {
+    userId: record.user_id,
+    keyId: record.id,
+    scope: record.scope,
+  }
 }
 
 export async function POST(request: Request) {
-  const userId = await authenticateMcpKey(request)
-  if (!userId) {
+  const ipLimit = enforceRateLimit(request, {
+    namespace: 'mcp-ip',
+    limit: 120,
+    windowMs: 60 * 1000,
+  })
+  if (ipLimit) return ipLimit
+
+  const auth = await authenticateMcpKey(request)
+  if (!auth) {
     return new Response(
       JSON.stringify({ error: '未授权：无效或已撤销的 MCP Key' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
-  const server = createMcpServerForUser(userId)
+  const keyLimit = enforceRateLimit(request, {
+    namespace: 'mcp-key',
+    limit: 600,
+    windowMs: 60 * 1000,
+  }, auth.keyId)
+  if (keyLimit) return keyLimit
+
+  const server = createMcpServerForUser(auth)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless mode
     enableJsonResponse: true,
@@ -66,15 +86,29 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const userId = await authenticateMcpKey(request)
-  if (!userId) {
+  const ipLimit = enforceRateLimit(request, {
+    namespace: 'mcp-ip',
+    limit: 120,
+    windowMs: 60 * 1000,
+  })
+  if (ipLimit) return ipLimit
+
+  const auth = await authenticateMcpKey(request)
+  if (!auth) {
     return new Response(
       JSON.stringify({ error: '未授权' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
-  const server = createMcpServerForUser(userId)
+  const keyLimit = enforceRateLimit(request, {
+    namespace: 'mcp-key',
+    limit: 600,
+    windowMs: 60 * 1000,
+  }, auth.keyId)
+  if (keyLimit) return keyLimit
+
+  const server = createMcpServerForUser(auth)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
@@ -91,15 +125,29 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const userId = await authenticateMcpKey(request)
-  if (!userId) {
+  const ipLimit = enforceRateLimit(request, {
+    namespace: 'mcp-ip',
+    limit: 120,
+    windowMs: 60 * 1000,
+  })
+  if (ipLimit) return ipLimit
+
+  const auth = await authenticateMcpKey(request)
+  if (!auth) {
     return new Response(
       JSON.stringify({ error: '未授权' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
-  const server = createMcpServerForUser(userId)
+  const keyLimit = enforceRateLimit(request, {
+    namespace: 'mcp-key',
+    limit: 600,
+    windowMs: 60 * 1000,
+  }, auth.keyId)
+  if (keyLimit) return keyLimit
+
+  const server = createMcpServerForUser(auth)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

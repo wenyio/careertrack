@@ -6,8 +6,9 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Modal, Input, Checkbox, Typography } from 'antd'
+import { MAX_RESUME_NAME_LENGTH } from '@/constants'
 
 const { Text } = Typography
 
@@ -28,14 +29,6 @@ export default function ResumeCreateModal({
 }: ResumeCreateModalProps) {
   const [name, setName] = useState('')
   const [initFromProfile, setInitFromProfile] = useState(true)
-
-  // 弹窗关闭时重置
-  useEffect(() => {
-    if (!open) {
-      setName('')
-      setInitFromProfile(true)
-    }
-  }, [open])
 
   const handleOk = () => {
     onOk(name, initFromProfile)
@@ -63,7 +56,7 @@ export default function ResumeCreateModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           onPressEnter={handleOk}
-          maxLength={50}
+          maxLength={MAX_RESUME_NAME_LENGTH}
         />
         {showInitFromProfile && (
           <Checkbox

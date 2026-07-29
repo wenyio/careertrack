@@ -9,13 +9,15 @@
 import { query } from '@/lib/db'
 import { createHash, randomBytes } from 'node:crypto'
 
+export type McpScope = 'read_only' | 'read_write'
+
 /** MCP Key 数据库记录 */
-interface McpKeyRecord {
+export interface McpKeyRecord {
   id: string
   user_id: string
   prefix: string
   hash: string
-  scope: string
+  scope: McpScope
   created_at: string
   last_used_at: string | null
   revoked_at: string | null
@@ -52,7 +54,7 @@ function hashKey(key: string): string {
 /** 创建 MCP Key，返回明文 secret（仅此一次） */
 export async function createMcpKey(
   userId: string,
-  scope = 'read_write'
+  scope: McpScope = 'read_write'
 ): Promise<McpKeyCreated> {
   const secret = generateKey()
   const hash = hashKey(secret)
@@ -85,8 +87,12 @@ export async function verifyMcpKey(secret: string): Promise<McpKeyRecord | null>
   const hash = hashKey(secret)
 
   const result = await query(
-    `SELECT * FROM mcp_keys
-     WHERE hash = $1 AND revoked_at IS NULL`,
+    `SELECT k.*
+     FROM mcp_keys k
+     INNER JOIN users u ON u.id = k.user_id
+     WHERE k.hash = $1
+       AND k.revoked_at IS NULL
+       AND u.disabled_at IS NULL`,
     [hash]
   )
 

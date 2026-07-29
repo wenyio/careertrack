@@ -3,7 +3,7 @@
  */
 
 const { test, expect } = require('playwright/test')
-const { registerHooks, goto, screenshot, writeJsonLine, createUserByApi, createResumeByApi, publishResumeByApi, createRegistrationCodeByApi, getTestAdmin } = require('./helpers')
+const { registerHooks, goto, screenshot, writeJsonLine, createUserByApi, createResumeByApi, publishResumeByApi, createRegistrationCodeByApi, getTestAdmin, getSessionCookie, DATABASE_PATH } = require('./helpers')
 
 registerHooks(test)
 
@@ -17,12 +17,12 @@ test.describe('异常场景与安全测试', () => {
     const resume = await createResumeByApi(request, owner.token, `E2E_TEST_越权_${Date.now()}`)
 
     const forbiddenRead = await request.get(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${attacker.token}` },
+      headers: { Cookie: attacker.token },
     })
     expect(forbiddenRead.status()).toBe(404)
 
     const deleteMissing = await request.delete('/api/resumes/00000000-0000-0000-0000-000000000000', {
-      headers: { Authorization: `Bearer ${owner.token}` },
+      headers: { Cookie: owner.token },
     })
     expect(deleteMissing.status()).toBe(404)
 
@@ -41,11 +41,11 @@ test.describe('异常场景与安全测试', () => {
     const resume = await createResumeByApi(request, account.token, `E2E_TEST_XSS_${Date.now()}`)
     const slug = `xss-${Date.now()}`
     const updateResponse = await request.put(`/api/resumes/${resume.id}`, {
-      headers: { Authorization: `Bearer ${account.token}` },
+      headers: { Cookie: account.token },
       data: {
         content: {
           basic_info: {
-            name: '<img src=x onerror=window.__E2E_XSS__=true>',
+            name: '</script><script>window.__E2E_XSS__=true</script>',
             email: 'xss@example.com',
           },
         },
@@ -54,12 +54,10 @@ test.describe('异常场景与安全测试', () => {
     })
     expect(updateResponse.status(), await updateResponse.text()).toBe(200)
     await publishResumeByApi(request, account.token, resume.id, slug)
-    const publicPageResponse = page.waitForResponse((r) => r.url().includes(`/api/public/${slug}`), { timeout: 35_000 })
     await goto(page, `/resume/${slug}`)
-    expect((await publicPageResponse).ok()).toBeTruthy()
     const executed = await page.evaluate(() => Boolean(window.__E2E_XSS__))
     expect(executed).toBe(false)
-    await expect(page.locator('body')).toContainText('<img src=x onerror=window.__E2E_XSS__=true>')
+    await expect(page.locator('body')).toContainText('</script><script>window.__E2E_XSS__=true</script>')
     await screenshot(page, '安全测试', 'XSS文本呈现')
   })
 })
@@ -96,7 +94,7 @@ test.describe('注册码安全测试', () => {
   test('非管理员不能生成注册码', async ({ request }) => {
     const user = await createUserByApi(request, 'nonadmin')
     const response = await request.post('/api/admin/registration-codes', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
       data: {},
     })
     expect(response.status()).toBe(403)
@@ -105,7 +103,7 @@ test.describe('注册码安全测试', () => {
   test('管理员可以生成一次性注册码，明文只在创建响应中返回', async ({ request }) => {
     const adminToken = await getTestAdmin(request)
     const response = await request.post('/api/admin/registration-codes', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { label: 'test-plaintext' },
     })
     expect(response.status()).toBe(201)
@@ -115,7 +113,7 @@ test.describe('注册码安全测试', () => {
 
     // 查询列表中不应包含明文
     const listRes = await request.get('/api/admin/registration-codes', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(listRes.status()).toBe(200)
     const list = await listRes.json()
@@ -132,7 +130,7 @@ test.describe('用户禁用安全测试', () => {
 
     // 管理员禁用用户
     const disableRes = await request.patch(`/api/admin/users/${user.user.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
     expect(disableRes.status(), await disableRes.text()).toBe(200)
@@ -150,19 +148,19 @@ test.describe('用户禁用安全测试', () => {
 
     // 禁用前 API 正常
     const beforeRes = await request.get('/api/auth/me', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
     })
     expect(beforeRes.status()).toBe(200)
 
     // 禁用用户
     await request.patch(`/api/admin/users/${user.user.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
 
     // 旧 token 调用受保护 API 应失败
     const afterRes = await request.get('/api/auth/me', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
     })
     expect(afterRes.status()).toBe(403)
   })
@@ -172,13 +170,13 @@ test.describe('用户禁用安全测试', () => {
 
     // 获取管理员自己的 ID
     const meRes = await request.get('/api/auth/me', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     const me = await meRes.json()
 
     // 尝试禁用自己
     const res = await request.patch(`/api/admin/users/${me.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
     expect(res.status()).toBe(400)
@@ -189,9 +187,7 @@ test.describe('OTP 与密码安全测试', () => {
   test('password_hash 为空用户不能账号密码登录', async ({ request }) => {
     // 创建 GitHub-only 用户（直接写数据库）
     const Database = require('better-sqlite3')
-    const path = require('path')
-    const dbPath = path.join(process.cwd(), '.careertrack', 'careertrack.db')
-    const db = new Database(dbPath)
+    const db = new Database(DATABASE_PATH)
 
     const username = `E2E_GHONLY_${Date.now()}`
     db.exec(`INSERT INTO users (username, auth_provider) VALUES ('${username}', 2)`)
@@ -207,34 +203,31 @@ test.describe('OTP 与密码安全测试', () => {
   })
 
   test('password_hash 为空用户不能 setup OTP', async ({ request }) => {
-    // 创建 GitHub-only 用户并登录
     const Database = require('better-sqlite3')
-    const path = require('path')
-    const bcrypt = require('bcryptjs')
-    const dbPath = path.join(process.cwd(), '.careertrack', 'careertrack.db')
-    const db = new Database(dbPath)
+    const db = new Database(DATABASE_PATH)
 
     const username = `E2E_GHOTP_${Date.now()}`
-    db.exec(`INSERT INTO users (username, auth_provider) VALUES ('${username}', 2)`)
+    const githubOnlyUser = db.prepare(
+      'INSERT INTO users (username, auth_provider) VALUES (?, 2) RETURNING id',
+    ).get(username)
     db.close()
 
-    // 通过 GitHub mock 登录获取 token（或直接用 JWT）
-    // 这里我们通过 /api/auth/me 检查 auth_provider
-    // 由于没有密码，我们直接构造一个简单的测试
-    // 实际上需要先获取 token，但 GitHub-only 用户没有密码
-    // 所以我们通过直接数据库操作验证 API 行为
+    const { SignJWT } = await import('jose')
+    const jwtSecret = process.env.JWT_SECRET
+    expect(jwtSecret, 'E2E 必须显式设置 JWT_SECRET').toBeTruthy()
+    const token = await new SignJWT({ username, auth_provider: 2 })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(githubOnlyUser.id)
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .sign(new TextEncoder().encode(jwtSecret))
 
-    // 用更好的方式：创建一个混合用户，验证 OTP 设置检查
-    const codeRecord = await createRegistrationCodeByApi(request, 'otp-test')
-    const mixedUser = await createUserByApi(request, 'mixedotp')
-
-    // 验证该用户可以正常请求 OTP 设置
     const otpRes = await request.post('/api/auth/setup-otp', {
-      headers: { Authorization: `Bearer ${mixedUser.token}` },
-      data: { password: mixedUser.password },
+      headers: { Authorization: `Bearer ${token}` },
+      data: { password: 'not-applicable' },
     })
-    // 应该返回 200（成功生成 secret）
-    expect(otpRes.status()).toBe(200)
+    expect(otpRes.status()).toBe(400)
+    expect((await otpRes.json()).message).toContain('GitHub')
   })
 })
 
@@ -245,7 +238,7 @@ test.describe('修改用户名安全测试', () => {
 
     // user2 尝试使用 user1 的用户名
     const res = await request.put('/api/auth/username', {
-      headers: { Authorization: `Bearer ${user2.token}` },
+      headers: { Cookie: user2.token },
       data: { username: user1.username, current_password: user2.password },
     })
     expect(res.status()).toBe(400)
@@ -258,32 +251,32 @@ test.describe('修改用户名安全测试', () => {
 
     // 不提供密码
     const noPwdRes = await request.put('/api/auth/username', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
       data: { username: `newname_${Date.now()}` },
     })
     expect(noPwdRes.status()).toBe(400)
 
     // 提供错误密码
     const wrongPwdRes = await request.put('/api/auth/username', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
       data: { username: `newname_${Date.now()}`, current_password: 'wrongpassword' },
     })
     expect(wrongPwdRes.status()).toBe(400)
   })
 
-  test('修改 username 成功后返回新 token 和新 user', async ({ request }) => {
+  test('修改 username 成功后轮换 HttpOnly session 并返回新 user', async ({ request }) => {
     const user = await createUserByApi(request, 'changetest')
     const newUsername = `renamed_${Date.now()}`
 
     const res = await request.put('/api/auth/username', {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
       data: { username: newUsername, current_password: user.password },
     })
     expect(res.status(), await res.text()).toBe(200)
     const body = await res.json()
-    expect(body.token).toBeTruthy()
+    expect(body.token).toBeUndefined()
     expect(body.user.username).toBe(newUsername)
-    expect(body.token).not.toBe(user.token)
+    expect(getSessionCookie(res)).not.toBe(user.token)
 
     // 用新 username 登录应成功
     const loginRes = await request.post('/api/auth/login', {

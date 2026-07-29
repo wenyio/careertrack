@@ -7,8 +7,9 @@
  */
 
 import { withAuth, error, success } from '@/lib/api'
-import { getResume, updateResume, deleteResume } from '@/lib/services/resume'
+import { getResume, updateResume, deleteResume, ResumeConflictError } from '@/lib/services/resume'
 import { NextResponse } from 'next/server'
+import { MAX_RESUME_NAME_LENGTH } from '@/constants'
 
 /**
  * 获取简历详情
@@ -40,6 +41,16 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string' || !body.name.trim()) {
+        return error('简历名称不能为空')
+      }
+      if (body.name.trim().length > MAX_RESUME_NAME_LENGTH) {
+        return error(`简历名称不能超过 ${MAX_RESUME_NAME_LENGTH} 个字符`)
+      }
+      body.name = body.name.trim()
+    }
+
     try {
       const resume = await updateResume(id, user.id, body)
       return success(resume)
@@ -47,6 +58,9 @@ export async function PUT(
       const message = err instanceof Error ? err.message : '更新失败'
       if (message === '简历不存在') {
         return error(message, 404)
+      }
+      if (err instanceof ResumeConflictError) {
+        return error(message, 409)
       }
       return error(message)
     }

@@ -10,6 +10,8 @@ import { query } from '@/lib/db'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://careertrack.example.com'
 
+export const dynamic = 'force-dynamic'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 静态页面
   const staticPages: MetadataRoute.Sitemap = [

@@ -19,12 +19,12 @@ test.describe('管理员 OAuth 绑定管理', () => {
 
     // 获取管理员自己的 ID
     const meRes = await request.get('/api/auth/me', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     const adminId = (await meRes.json()).id
 
     const response = await request.get(`/api/admin/users/${adminId}/oauth-accounts`, {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
     })
     expect(response.status()).toBe(403)
   })
@@ -34,7 +34,7 @@ test.describe('管理员 OAuth 绑定管理', () => {
     const user = await createUserByApi(request, 'oauth-list')
 
     const response = await request.get(`/api/admin/users/${user.user.id}/oauth-accounts`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(response.status()).toBe(200)
     const body = await response.json()
@@ -47,7 +47,7 @@ test.describe('管理员 OAuth 绑定管理', () => {
     const adminToken = await getTestAdmin(request)
 
     const response = await request.get('/api/admin/users/00000000-0000-0000-0000-000000000000/oauth-accounts', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(response.status()).toBe(404)
   })
@@ -58,7 +58,7 @@ test.describe('管理员 OAuth 绑定管理', () => {
 
     const response = await request.delete(
       `/api/admin/users/${user.user.id}/oauth-accounts/00000000-0000-0000-0000-000000000000`,
-      { headers: { Authorization: `Bearer ${adminToken}` } }
+      { headers: { Cookie: adminToken } }
     )
     expect(response.status()).toBe(404)
   })
@@ -70,7 +70,7 @@ test.describe('管理员注册码管理', () => {
     const codeRecord = await createRegistrationCodeByApi(request, 'disable-test')
 
     const response = await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
     expect(response.status(), await response.text()).toBe(200)
@@ -84,13 +84,13 @@ test.describe('管理员注册码管理', () => {
 
     // 先禁用
     await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
 
     // 再启用
     const response = await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: false },
     })
     expect(response.status(), await response.text()).toBe(200)
@@ -104,7 +104,7 @@ test.describe('管理员注册码管理', () => {
 
     // 禁用注册码
     await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
 
@@ -123,13 +123,13 @@ test.describe('管理员注册码管理', () => {
     const codeRecord = await createRegistrationCodeByApi(request, 'delete-test')
 
     const response = await request.delete(`/api/admin/registration-codes/${codeRecord.id}`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(response.status(), await response.text()).toBe(200)
 
     // 删除后查询列表应不包含该注册码
     const listRes = await request.get('/api/admin/registration-codes', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     const list = await listRes.json()
     const found = list.find(c => c.id === codeRecord.id)
@@ -149,7 +149,7 @@ test.describe('管理员注册码管理', () => {
 
     // 尝试删除已使用的注册码
     const response = await request.delete(`/api/admin/registration-codes/${codeRecord.id}`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(response.status()).toBe(400)
     const body = await response.json()
@@ -162,14 +162,14 @@ test.describe('管理员注册码管理', () => {
 
     // 先禁用
     await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
 
     // 使用注册码注册（需要先启用才能使用，这里直接操作数据库模拟已使用状态）
     // 改为：先启用，再使用，再禁用，再尝试启用
     await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: false },
     })
 
@@ -180,13 +180,13 @@ test.describe('管理员注册码管理', () => {
 
     // 禁用
     await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: true },
     })
 
     // 尝试启用已使用的注册码
     const response = await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
       data: { disabled: false },
     })
     expect(response.status()).toBe(400)
@@ -201,7 +201,7 @@ test.describe('管理员注册码管理', () => {
 
     // 查询列表
     const response = await request.get('/api/admin/registration-codes', {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Cookie: adminToken },
     })
     expect(response.status()).toBe(200)
     const list = await response.json()
@@ -217,7 +217,7 @@ test.describe('管理员注册码管理', () => {
     const codeRecord = await createRegistrationCodeByApi(request, 'nonadmin-target')
 
     const response = await request.patch(`/api/admin/registration-codes/${codeRecord.id}/status`, {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
       data: { disabled: true },
     })
     expect(response.status()).toBe(403)
@@ -228,7 +228,7 @@ test.describe('管理员注册码管理', () => {
     const codeRecord = await createRegistrationCodeByApi(request, 'nonadmin-del-target')
 
     const response = await request.delete(`/api/admin/registration-codes/${codeRecord.id}`, {
-      headers: { Authorization: `Bearer ${user.token}` },
+      headers: { Cookie: user.token },
     })
     expect(response.status()).toBe(403)
   })

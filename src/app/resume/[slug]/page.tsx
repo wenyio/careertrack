@@ -23,6 +23,7 @@ import {
   detectResumeLanguage,
   SEO_FALLBACK,
 } from '@/utils/seo'
+import { serializeJsonForHtml } from '@/utils/safe-json'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -98,31 +99,25 @@ export default async function PublicResumePage({ params }: PageProps) {
   const { slug } = await params
 
   // 服务端查询简历数据，用于 JSON-LD 和客户端初始数据
-  let resumeContent: ResumeContent = {}
-  let initialData = null
-  try {
-    const result = await query(
-      `SELECT name, content, modules_config, modules_order, template, public_slug, is_public
-       FROM resumes WHERE public_slug = $1 AND is_public = true`,
-      [slug]
-    )
-    if (result.rows.length === 0) {
-      notFound()
-    }
-    const row = result.rows[0]
-    resumeContent = safeParseContent(row.content)
-    // 传递给客户端组件，避免重复请求
-    initialData = {
-      name: row.name,
-      content: row.content,
-      modules_config: row.modules_config,
-      modules_order: row.modules_order,
-      template: row.template,
-      public_slug: row.public_slug,
-      is_public: row.is_public,
-    }
-  } catch {
-    // 数据库错误时不阻塞页面渲染，交给客户端处理
+  const result = await query(
+    `SELECT name, content, modules_config, modules_order, template, public_slug, is_public
+     FROM resumes WHERE public_slug = $1 AND is_public = true`,
+    [slug]
+  )
+  if (result.rows.length === 0) {
+    notFound()
+  }
+  const row = result.rows[0]
+  const resumeContent = safeParseContent(row.content)
+  // 传递给客户端组件，避免重复请求
+  const initialData = {
+    name: row.name,
+    content: row.content,
+    modules_config: row.modules_config,
+    modules_order: row.modules_order,
+    template: row.template,
+    public_slug: row.public_slug,
+    is_public: row.is_public,
   }
 
   // 生成 JSON-LD 结构化数据
@@ -132,7 +127,7 @@ export default async function PublicResumePage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonForHtml(jsonLd) }}
       />
       <PublicResumeClient slug={slug} initialData={initialData} />
     </>

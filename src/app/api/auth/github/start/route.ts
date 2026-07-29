@@ -15,6 +15,8 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { verifyToken } from '@/lib/auth'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { getSessionToken } from '@/lib/security/session'
 
 /**
  * 获取用户实际访问的 base URL
@@ -29,6 +31,13 @@ function getBaseUrl(request: Request): string {
 }
 
 export async function GET(request: Request) {
+  const limited = enforceRateLimit(request, {
+    namespace: 'auth-github-start',
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  })
+  if (limited) return limited
+
   const clientId = process.env.GITHUB_CLIENT_ID
   const redirectUri = process.env.GITHUB_OAUTH_REDIRECT_URI
 
@@ -53,20 +62,13 @@ export async function GET(request: Request) {
 
   let state = stateBase
 
-  // bind 模式：从 cookie 获取当前用户 ID，编码到 state 中
-  // 浏览器跳转无法携带 Authorization header，因此从 token cookie 读取
+  // bind 模式：从 HttpOnly session 获取当前用户 ID，编码到 state 中
   if (mode === 'bind') {
-    const cookieHeader = request.headers.get('cookie') || ''
-    const tokenCookie = cookieHeader
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('token='))
-      ?.split('=').slice(1).join('=')
-
-    if (!tokenCookie) {
+    const sessionToken = getSessionToken(request)
+    if (!sessionToken) {
       return bindError('unauthorized')
     }
-    const claims = await verifyToken(tokenCookie)
+    const claims = await verifyToken(sessionToken)
     if (!claims) {
       return bindError('token_expired')
     }

@@ -48,10 +48,12 @@ export const GENDER_OPTIONS = [
 ] as const
 
 /** Cookie 配置 */
-export const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 // 7 天
 
 /** 自动保存延迟（毫秒） */
 export const AUTO_SAVE_DELAY = 3000
 
 /** 请求超时时间（毫秒） */
 export const REQUEST_TIMEOUT = 30000
+
+/** 简历名称最大长度（前后端共享） */
+export const MAX_RESUME_NAME_LENGTH = 50

@@ -54,6 +54,7 @@ export interface ResumeListItem {
   template: ResumeTemplateId
   modules_config: ModulesConfig
   modules_order: ResumeModuleType[]
+  revision: number
   created_at: string
   updated_at: string
 }
@@ -148,8 +149,20 @@ export interface Resume {
   template?: ResumeTemplateId
   is_public: boolean
   public_slug: string | null
+  revision: number
   created_at: string
   updated_at: string
+}
+
+/** 公开简历 DTO：不包含内部用户或简历标识。 */
+export interface PublicResume {
+  name: string
+  modules_config: ModulesConfig
+  modules_order?: ResumeModuleType[]
+  content: ResumeContent
+  template?: ResumeTemplateId
+  is_public: true
+  public_slug: string
 }
 
 /** 简历内容（可以覆盖个人信息） */
@@ -185,6 +198,8 @@ export interface UpdateResumeRequest {
   modules_order?: ResumeModuleType[]
   content?: ResumeContent
   template?: ResumeTemplateId
+  /** Optimistic concurrency token returned by the latest GET/PUT. */
+  revision?: number
 }
 
 /** 公开简历请求 */

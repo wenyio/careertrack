@@ -20,7 +20,7 @@ import type {
  * 用户登录
  *
  * @param credentials 登录凭证（用户名、密码、可选 OTP 验证码）
- * @returns 登录响应，包含 token 和用户信息
+ * @returns 登录响应中的用户信息；会话由服务端 HttpOnly Cookie 承载
  */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/login', credentials)
@@ -31,11 +31,16 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
  * 用户注册
  *
  * @param data 注册数据（用户名、密码）
- * @returns 登录响应，包含 token 和用户信息
+ * @returns 注册后的用户信息；会话由服务端 HttpOnly Cookie 承载
  */
 export async function register(data: RegisterRequest): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/register', data)
   return response.data
+}
+
+/** 清除服务端 HttpOnly 登录会话。 */
+export async function logout(): Promise<void> {
+  await api.post('/auth/logout')
 }
 
 /**
@@ -54,7 +59,7 @@ export async function changePassword(data: { current_password?: string; new_pass
  * 修改用户名
  *
  * @param data 包含新用户名和可选的当前密码
- * @returns 新的 token 和用户信息
+ * @returns 更新后的用户信息；服务端同时轮换 HttpOnly 会话
  */
 export async function changeUsername(data: ChangeUsernameRequest): Promise<LoginResponse> {
   const response = await api.put<LoginResponse>('/auth/username', data)

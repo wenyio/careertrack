@@ -1,7 +1,7 @@
 /**
  * OAuth 回调中转页
  *
- * 从 URL hash 读取 token → 调用 /api/auth/me 获取 user → 写入 Zustand + cookie → 跳转 /resumes
+ * 服务端已写入 HttpOnly session，本页拉取 user 并同步客户端展示状态。
  * 异常时跳转 /auth/login 并提示错误。
  */
 
@@ -12,7 +12,6 @@ import { useRouter } from 'next/navigation'
 import { Spin, Typography } from 'antd'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
-import { COOKIE_MAX_AGE } from '@/constants'
 import { getCurrentUser } from '@/services/auth'
 
 const { Text } = Typography
@@ -24,35 +23,19 @@ export default function OAuthCallbackPage() {
 
   useEffect(() => {
     async function handleCallback() {
-      // 从 URL hash 读取 token
-      const hash = window.location.hash.slice(1) // 去掉 #
-      const params = new URLSearchParams(hash)
-      const token = params.get('token')
-
-      if (!token) {
-        setError('未收到登录凭证')
-        setTimeout(() => router.replace('/auth/login'), 2000)
-        return
-      }
-
       try {
-        // 先设置 token 到 store，以便 API 请求能带上 Authorization header
-        const { setToken } = useAuthStore.getState()
-        setToken(token)
-
         // 获取用户信息
         const user = await getCurrentUser()
 
-        // 清除旧账号缓存，写入 Zustand 和 cookie
+        // 清除旧账号缓存并同步客户端展示状态
         queryClient.clear()
-        loginSuccess(token, user)
-        document.cookie = `token=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`
+        loginSuccess(user)
 
         // 跳转到简历页
         router.replace('/resumes')
       } catch {
         setError('获取用户信息失败')
-        // 清除无效 token
+        // 清除无效的客户端认证状态
         const { logout } = useAuthStore.getState()
         logout()
         setTimeout(() => router.replace('/auth/login'), 2000)
