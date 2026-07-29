@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { parseJsonBody } from '@/lib/api-validation'
+import {
+  MAX_JSON_BODY_BYTES,
+  MAX_JSON_DEPTH,
+  MAX_JSON_NODES,
+  MAX_JSON_STRING_CHARS,
+  parseJsonBody,
+} from '@/lib/api-validation'
 import {
   createMcpKeyBodySchema,
   createResumeBodySchema,
@@ -128,5 +134,85 @@ describe('business request validation', () => {
     })
     const result = await parseJsonBody(rejected, createResumeBodySchema)
     expect(result.success).toBe(false)
+  })
+
+  it('stops oversized JSON while streaming the request body', async () => {
+    const request = new Request('http://localhost/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: 'x'.repeat(MAX_JSON_BODY_BYTES),
+      }),
+    })
+
+    const result = await parseJsonBody(request, profileUpdateBodySchema)
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.response.status).toBe(413)
+    await expect(result.response.json()).resolves.toEqual({
+      code: 'PAYLOAD_TOO_LARGE',
+      message: '请求体不能超过 1 MiB',
+    })
+  })
+
+  it('rejects JSON that exceeds depth, node, or string budgets', async () => {
+    let nested: Record<string, unknown> = { text: 'ok' }
+    for (let depth = 0; depth <= MAX_JSON_DEPTH; depth += 1) {
+      nested = { content: nested }
+    }
+
+    const deepRequest = new Request('http://localhost/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ summary: nested }),
+    })
+    const deepResult = await parseJsonBody(
+      deepRequest,
+      profileUpdateBodySchema,
+    )
+    expect(deepResult.success).toBe(false)
+    if (!deepResult.success) {
+      await expect(deepResult.response.json()).resolves.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: `JSON 嵌套层级不能超过 ${MAX_JSON_DEPTH} 层`,
+      })
+    }
+
+    const broadRequest = new Request('http://localhost/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        basic_info: {
+          values: Array.from({ length: MAX_JSON_NODES }, (_, index) => index),
+        },
+      }),
+    })
+    const broadResult = await parseJsonBody(
+      broadRequest,
+      profileUpdateBodySchema,
+    )
+    expect(broadResult.success).toBe(false)
+    if (!broadResult.success) {
+      await expect(broadResult.response.json()).resolves.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: `JSON 节点数量不能超过 ${MAX_JSON_NODES} 个`,
+      })
+    }
+
+    const longStringRequest = new Request('http://localhost/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        summary: 'x'.repeat(MAX_JSON_STRING_CHARS + 1),
+      }),
+    })
+    const longStringResult = await parseJsonBody(
+      longStringRequest,
+      profileUpdateBodySchema,
+    )
+    expect(longStringResult.success).toBe(false)
+    if (!longStringResult.success) {
+      await expect(longStringResult.response.json()).resolves.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: `单个文本字段不能超过 ${MAX_JSON_STRING_CHARS} 个字符`,
+      })
+    }
   })
 })

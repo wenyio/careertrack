@@ -58,6 +58,15 @@ test.describe('业务请求 Schema', () => {
     })
     expect(invalidProfile.status()).toBe(400)
 
+    const oversizedProfile = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: { summary: 'x'.repeat(1024 * 1024) },
+    })
+    expect(oversizedProfile.status()).toBe(413)
+    await expect(oversizedProfile.json()).resolves.toMatchObject({
+      code: 'PAYLOAD_TOO_LARGE',
+    })
+
     const invalidResume = await request.post('/api/resumes', {
       headers: { Cookie: account.token },
       data: {
@@ -101,6 +110,18 @@ test.describe('业务请求 Schema', () => {
 
 test.describe('路由参数与错误契约', () => {
   test('路径和查询参数拒绝非法 UUID、枚举及重复值', async ({ request }) => {
+    const tracedHealth = await request.get('/api/health', {
+      headers: { 'X-Request-ID': 'e2e-trace-request-01' },
+    })
+    expect(tracedHealth.headers()['x-request-id']).toBe('e2e-trace-request-01')
+
+    const generatedTrace = await request.get('/api/health', {
+      headers: { 'X-Request-ID': 'unsafe/request/id' },
+    })
+    expect(generatedTrace.headers()['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+
     const account = await createUserByApi(request, 'route-schema')
 
     const invalidResumeId = await request.get('/api/resumes/not-a-uuid', {

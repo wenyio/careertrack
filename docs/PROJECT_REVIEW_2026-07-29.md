@@ -45,19 +45,20 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 增加安全响应头、数据库健康检查和专项安全冒烟脚本；
 - 全部 19 个 JSON 写接口接入共享 JSON/Zod 运行时校验，非法输入统一返回 400；
 - 全部 18 个动态 API 路由和 6 组查询参数接入共享校验，通用错误码按 HTTP 语义收敛；
-- ESLint 已清零；单元测试增加到 159 个；
+- JSON 请求体增加 1 MiB 流式字节上限和结构复杂度预算，全部 API 响应增加 request ID；
+- ESLint 已清零；单元测试增加到 161 个；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
-仍未关闭、不得被本轮改动掩盖的重点包括：请求体大小/富文本深层预算与 request ID、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+仍未关闭、不得被本轮改动掩盖的重点包括：富文本节点/URL 的细粒度语义 schema、TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 18 个测试文件、159 项测试通过 |
+| `npm run test:unit` | 通过 | 18 个测试文件、161 项测试通过 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 42 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
 | `npx playwright test --workers=1` | 通过 | Chromium 全量 105/105，通过时间 5.9 分钟 |
@@ -236,7 +237,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 
 项目已经依赖 Zod，但主要用于 MCP。REST route 多数直接消费 `request.json()`：缺少字段长度、枚举、数组形状、slug 规则、批量上限和 body 大小限制。部分错误响应还会直接带出底层错误文本。
 
-**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 6 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举及重复查询参数均有单元和真实接口 E2E。通用错误 envelope 已按 HTTP 语义使用稳定错误码，尚待补齐的是请求体大小上限、富文本深层预算、request ID 和更细粒度的业务专用码。
+**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 6 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举、重复查询参数、超大或结构异常 JSON 均有单元和真实接口 E2E。通用错误 envelope 已按 HTTP 语义使用稳定错误码，全部 API 响应携带 request ID；尚待补齐的是富文本节点/URL 的细粒度语义 schema 和更细粒度的业务专用码。
 
 建议建立共享 schema 层，覆盖：
 

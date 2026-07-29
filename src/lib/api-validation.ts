@@ -8,7 +8,18 @@ type ParsedRequestInput<T> =
 interface ParseJsonBodyOptions {
   /** Treat an empty HTTP body as an empty object for endpoints with defaults. */
   allowEmpty?: boolean
+  /** Override the shared byte ceiling for a specific endpoint. */
+  maxBytes?: number
 }
+
+export const MAX_JSON_BODY_BYTES = 1024 * 1024
+export const MAX_JSON_DEPTH = 32
+export const MAX_JSON_NODES = 10_000
+export const MAX_JSON_STRING_CHARS = 256 * 1024
+
+type BodyReadResult =
+  | { success: true; text: string }
+  | { success: false; response: NextResponse }
 
 function parseWithSchema<Schema extends z.ZodType>(
   input: unknown,
@@ -34,6 +45,119 @@ function validationResponse(message: string): NextResponse {
   )
 }
 
+function payloadTooLargeResponse(maxBytes: number): NextResponse {
+  const maxMiB = maxBytes / (1024 * 1024)
+  return NextResponse.json(
+    {
+      code: 'PAYLOAD_TOO_LARGE',
+      message: `请求体不能超过 ${maxMiB} MiB`,
+    },
+    { status: 413 },
+  )
+}
+
+async function readBoundedBody(
+  request: Request,
+  maxBytes: number,
+): Promise<BodyReadResult> {
+  const declaredLength = Number(request.headers.get('content-length'))
+  if (
+    Number.isFinite(declaredLength)
+    && declaredLength > maxBytes
+  ) {
+    return {
+      success: false,
+      response: payloadTooLargeResponse(maxBytes),
+    }
+  }
+
+  if (!request.body) return { success: true, text: '' }
+
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        await reader.cancel()
+        return {
+          success: false,
+          response: payloadTooLargeResponse(maxBytes),
+        }
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return {
+      success: false,
+      response: validationResponse('请求体读取失败'),
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const bytes = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  try {
+    return {
+      success: true,
+      text: new TextDecoder('utf-8', { fatal: true }).decode(bytes),
+    }
+  } catch {
+    return {
+      success: false,
+      response: validationResponse('请求体必须使用有效的 UTF-8 编码'),
+    }
+  }
+}
+
+function jsonComplexityError(input: unknown): string | undefined {
+  const stack: Array<{ value: unknown; depth: number }> = [
+    { value: input, depth: 0 },
+  ]
+  let nodes = 0
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) break
+
+    nodes += 1
+    if (nodes > MAX_JSON_NODES) {
+      return `JSON 节点数量不能超过 ${MAX_JSON_NODES} 个`
+    }
+    if (current.depth > MAX_JSON_DEPTH) {
+      return `JSON 嵌套层级不能超过 ${MAX_JSON_DEPTH} 层`
+    }
+    if (
+      typeof current.value === 'string'
+      && current.value.length > MAX_JSON_STRING_CHARS
+    ) {
+      return `单个文本字段不能超过 ${MAX_JSON_STRING_CHARS} 个字符`
+    }
+
+    if (Array.isArray(current.value)) {
+      for (const value of current.value) {
+        stack.push({ value, depth: current.depth + 1 })
+      }
+    } else if (current.value && typeof current.value === 'object') {
+      for (const value of Object.values(current.value)) {
+        stack.push({ value, depth: current.depth + 1 })
+      }
+    }
+  }
+
+  return undefined
+}
+
 /**
  * Parse and validate a JSON request body without leaking parser/schema details.
  *
@@ -47,7 +171,12 @@ export async function parseJsonBody<Schema extends z.ZodType>(
 ): Promise<ParsedRequestInput<z.output<Schema>>> {
   let body: unknown
   try {
-    const rawBody = await request.text()
+    const bodyResult = await readBoundedBody(
+      request,
+      options.maxBytes ?? MAX_JSON_BODY_BYTES,
+    )
+    if (!bodyResult.success) return bodyResult
+    const rawBody = bodyResult.text
     if (!rawBody.trim()) {
       if (!options.allowEmpty) {
         return {
@@ -63,6 +192,14 @@ export async function parseJsonBody<Schema extends z.ZodType>(
     return {
       success: false,
       response: validationResponse('请求体必须是有效的 JSON'),
+    }
+  }
+
+  const complexityError = jsonComplexityError(body)
+  if (complexityError) {
+    return {
+      success: false,
+      response: validationResponse(complexityError),
     }
   }
 
