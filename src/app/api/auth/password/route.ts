@@ -17,19 +17,14 @@ import {
   issueAuthSession,
   revokeAllAuthSessions,
 } from '@/lib/security/auth-session'
+import { parseJsonBody } from '@/lib/api-validation'
+import { passwordBodySchema } from '@/lib/validation/auth'
 
 export async function PUT(request: Request) {
   return withAuth(request, async (user) => {
-    const body = await request.json()
-    const { current_password, new_password } = body
-
-    if (!new_password || typeof new_password !== 'string') {
-      return error('请输入新密码')
-    }
-
-    if (new_password.length < 10) {
-      return error('新密码长度至少 10 个字符')
-    }
+    const parsedBody = await parseJsonBody(request, passwordBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { current_password, new_password } = parsedBody.data
 
     // 查询当前用户信息
     const userResult = await query(

@@ -19,6 +19,7 @@
 - 公开简历 API 改为最小 DTO，不再暴露内部简历 ID
 - 增加 CSP、HSTS、`nosniff`、Referrer Policy、Permissions Policy 和点击劫持防护响应头
 - 登录、注册、OTP、OAuth、MCP Key 和 MCP 端点增加进程内限流与标准 `429` 响应
+- 登录、注册、改用户名、改密码及 OTP 三个接口接入共享 Zod 运行时 schema；损坏 JSON、非对象请求和错误字段类型稳定返回 `400 VALIDATION_ERROR`
 - 密码最小长度提升到 10 个字符
 
 ### MCP
@@ -49,12 +50,12 @@
 - Playwright 默认使用隔离 SQLite 测试库和专用测试密钥，避免本机环境变量与安全限流污染回归
 - 安全冒烟脚本可自动启动并清理独立测试服务；会话撤销加入单元、E2E 与真实接口冒烟覆盖
 - 新增 `test:security-smoke`，覆盖 HttpOnly 会话、并发注册码、revision 冲突、公开 DTO、JSON-LD XSS、MCP 禁用用户和服务端会话撤销
-- 最终验收通过 ESLint、生产构建、14 个文件共 142 项单元测试、7 项安全冒烟及 Chromium 102/102 全量 E2E
+- 最终验收通过 ESLint、生产构建、15 个文件共 147 项单元测试、7 项安全冒烟及 Chromium 103/103 全量 E2E
 
 ### 已知限制
 
 - 当前限流器为单进程内存实现；多实例生产部署必须在反向代理或 Redis 等共享存储层增加全局限流
-- REST API 的统一 Zod schema、分页、TOTP 密钥加密/恢复码和 PostgreSQL 集成测试仍在后续路线中
+- 其余非认证 REST API 的统一 Zod schema、分页、TOTP 密钥加密/恢复码和 PostgreSQL 集成测试仍在后续路线中
 
 ## [1.0.0] - 2026-06-05
 

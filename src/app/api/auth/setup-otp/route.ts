@@ -12,6 +12,8 @@ import { query } from '@/lib/db'
 import { verifyPassword, generateTotpSecret, generateOtpUri } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { parseJsonBody } from '@/lib/api-validation'
+import { setupOtpBodySchema } from '@/lib/validation/auth'
 
 export async function POST(request: Request) {
   return withAuth(request, async (user) => {
@@ -22,8 +24,9 @@ export async function POST(request: Request) {
     }, user.id)
     if (limited) return limited
 
-    const body = await request.json()
-    const { password } = body
+    const parsedBody = await parseJsonBody(request, setupOtpBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { password } = parsedBody.data
 
     // 查询用户的 auth_provider 和 password_hash
     const userResult = await query(
@@ -36,10 +39,6 @@ export async function POST(request: Request) {
     // 检查是否为账号密码用户
     if ((userData.auth_provider & AUTH_PROVIDER.PASSWORD) === 0) {
       return error('当前账号通过 GitHub 登录，需先设置账号密码后才能启用 OTP', 400)
-    }
-
-    if (!password) {
-      return error('请输入密码')
     }
 
     // 验证密码

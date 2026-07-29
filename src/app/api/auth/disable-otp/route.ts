@@ -11,6 +11,8 @@ import { query } from '@/lib/db'
 import { verifyPassword, verifyTotp } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { parseJsonBody } from '@/lib/api-validation'
+import { disableOtpBodySchema } from '@/lib/validation/auth'
 
 export async function DELETE(request: Request) {
   return withAuth(request, async (user) => {
@@ -21,8 +23,9 @@ export async function DELETE(request: Request) {
     }, user.id)
     if (limited) return limited
 
-    const body = await request.json()
-    const { password, code } = body
+    const parsedBody = await parseJsonBody(request, disableOtpBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { password, code } = parsedBody.data
 
     // 查询用户的 auth_provider
     const userResult = await query(
@@ -35,10 +38,6 @@ export async function DELETE(request: Request) {
     // 检查是否为账号密码用户
     if ((userData.auth_provider & AUTH_PROVIDER.PASSWORD) === 0) {
       return error('当前账号未设置密码，无法操作 OTP', 400)
-    }
-
-    if (!password || !code) {
-      return error('请输入密码和 OTP 验证码')
     }
 
     // 验证密码

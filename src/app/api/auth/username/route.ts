@@ -17,26 +17,14 @@ import {
   issueAuthSession,
   revokeAllAuthSessions,
 } from '@/lib/security/auth-session'
+import { parseJsonBody } from '@/lib/api-validation'
+import { usernameBodySchema } from '@/lib/validation/auth'
 
 export async function PUT(request: Request) {
   return withAuth(request, async (user) => {
-    const body = await request.json()
-    const { username, current_password } = body
-
-    // 参数验证
-    if (!username || typeof username !== 'string') {
-      return error('用户名不能为空')
-    }
-
-    const trimmed = username.trim()
-    if (trimmed.length < 3 || trimmed.length > 50) {
-      return error('用户名长度需要 3-50 个字符')
-    }
-
-    // 检查用户名格式（字母、数字、下划线、中文）
-    if (!/^[a-zA-Z0-9_一-鿿]+$/.test(trimmed)) {
-      return error('用户名只能包含字母、数字、下划线和中文')
-    }
+    const parsedBody = await parseJsonBody(request, usernameBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { username: trimmed, current_password } = parsedBody.data
 
     // 查询当前用户信息
     const userResult = await query(

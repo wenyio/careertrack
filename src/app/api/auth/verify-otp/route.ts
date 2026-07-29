@@ -11,6 +11,8 @@ import { query } from '@/lib/db'
 import { verifyTotp } from '@/lib/auth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { parseJsonBody } from '@/lib/api-validation'
+import { verifyOtpBodySchema } from '@/lib/validation/auth'
 
 export async function POST(request: Request) {
   return withAuth(request, async (user) => {
@@ -21,12 +23,9 @@ export async function POST(request: Request) {
     }, user.id)
     if (limited) return limited
 
-    const body = await request.json()
-    const { code } = body
-
-    if (!code) {
-      return error('请输入 OTP 验证码')
-    }
+    const parsedBody = await parseJsonBody(request, verifyOtpBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { code } = parsedBody.data
 
     // 获取用户的 OTP 密钥和 auth_provider
     const result = await query(

@@ -7,6 +7,37 @@ const { registerHooks, goto, screenshot, writeJsonLine, createUserByApi, createR
 
 registerHooks(test)
 
+test.describe('认证请求 Schema', () => {
+  test('非法 JSON 和错误字段类型稳定返回 400', async ({ request }) => {
+    const malformed = await request.post('/api/auth/login', {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Real-IP': testIp('malformed-login-json'),
+      },
+      data: Buffer.from('{"username":'),
+    })
+    expect(malformed.status()).toBe(400)
+    await expect(malformed.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: '请求体必须是有效的 JSON',
+    })
+
+    const wrongType = await request.post('/api/auth/register', {
+      headers: { 'X-Real-IP': testIp('wrong-register-field-type') },
+      data: {
+        username: { unexpected: true },
+        password: 'ValidPassword123!',
+        registration_code: 'unused-code',
+      },
+    })
+    expect(wrongType.status()).toBe(400)
+    await expect(wrongType.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: '用户名和密码不能为空',
+    })
+  })
+})
+
 test.describe('异常场景与安全测试', () => {
   test('API 未授权、越权访问、删除不存在数据和公开接口字段暴露检查', async ({ request }) => {
     const unauth = await request.get('/api/resumes')

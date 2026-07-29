@@ -15,6 +15,8 @@ import { validateRegistrationCode, markRegistrationCodeUsed } from '@/lib/regist
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
 import { issueAuthSession } from '@/lib/security/auth-session'
+import { parseJsonBody } from '@/lib/api-validation'
+import { registerBodySchema } from '@/lib/validation/auth'
 
 export async function POST(request: Request) {
   try {
@@ -27,8 +29,9 @@ export async function POST(request: Request) {
     })
     if (ipLimit) return ipLimit
 
-    const body = await request.json()
-    const { username, password, registration_code } = body
+    const parsedBody = await parseJsonBody(request, registerBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { username, password, registration_code } = parsedBody.data
 
     const accountLimit = enforceRateLimit(request, {
       namespace: 'auth-register-account',
@@ -36,35 +39,6 @@ export async function POST(request: Request) {
       windowMs: 60 * 60 * 1000,
     }, String(username || '').trim().toLowerCase())
     if (accountLimit) return accountLimit
-
-    // 参数验证
-    if (!username || !password) {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: '用户名和密码不能为空' },
-        { status: 400 }
-      )
-    }
-
-    if (!registration_code) {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: '注册码不能为空' },
-        { status: 400 }
-      )
-    }
-
-    if (username.length < 3 || username.length > 50) {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: '用户名长度需要 3-50 个字符' },
-        { status: 400 }
-      )
-    }
-
-    if (password.length < 10) {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: '密码长度至少 10 个字符' },
-        { status: 400 }
-      )
-    }
 
     // 密码哈希是 CPU 密集操作，放在事务外缩短数据库锁持有时间。
     const passwordHash = await hashPassword(password)

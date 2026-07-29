@@ -13,6 +13,8 @@ import { verifyPassword, verifyTotp } from '@/lib/auth'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { setAuthSessionCookie } from '@/lib/security/session'
 import { issueAuthSession } from '@/lib/security/auth-session'
+import { parseJsonBody } from '@/lib/api-validation'
+import { loginBodySchema } from '@/lib/validation/auth'
 
 export async function POST(request: Request) {
   try {
@@ -23,8 +25,9 @@ export async function POST(request: Request) {
     })
     if (ipLimit) return ipLimit
 
-    const body = await request.json()
-    const { username, password, otp_code } = body
+    const parsedBody = await parseJsonBody(request, loginBodySchema)
+    if (!parsedBody.success) return parsedBody.response
+    const { username, password, otp_code } = parsedBody.data
 
     const accountLimit = enforceRateLimit(request, {
       namespace: 'auth-login-account',
@@ -32,14 +35,6 @@ export async function POST(request: Request) {
       windowMs: 15 * 60 * 1000,
     }, String(username || '').trim().toLowerCase())
     if (accountLimit) return accountLimit
-
-    // 参数验证
-    if (!username || !password) {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: '用户名和密码不能为空' },
-        { status: 400 }
-      )
-    }
 
     // 查询用户
     const result = await query(

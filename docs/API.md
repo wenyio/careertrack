@@ -11,6 +11,17 @@
 >
 > 登录态 Cookie 在生产环境启用 `Secure`，有效期与 JWT 及服务端会话一致（24 小时），前端 JavaScript 无法读取。JWT 只保存签名身份，服务端同时校验会话摘要、撤销状态、过期时间和当前用户状态。受限接口超过配额时返回 `429 RATE_LIMITED`，并携带 `Retry-After` 与 `X-RateLimit-*` 响应头。
 
+认证写接口使用共享 Zod schema 做运行时校验。损坏 JSON、非对象 JSON 或字段类型/边界错误统一返回：
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "具体校验错误"
+}
+```
+
+这些客户端输入错误的 HTTP 状态均为 `400`，不会作为服务器 `500` 错误处理。
+
 ---
 
 ## 认证相关
@@ -100,7 +111,7 @@
 **请求体:**
 ```json
 {
-  "current_password": "string"
+  "password": "string"
 }
 ```
 
@@ -119,7 +130,7 @@
 **请求体:**
 ```json
 {
-  "code": "123456"
+  "code": "6 位数字"
 }
 ```
 
@@ -131,7 +142,7 @@
 ```json
 {
   "password": "string",
-  "code": "123456"
+  "code": "6 位数字"
 }
 ```
 
