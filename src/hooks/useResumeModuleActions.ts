@@ -12,24 +12,25 @@
 
 import { useCallback } from 'react'
 import type { ResumeModuleType, BasicInfoDisplayConfig } from '@/types/resume'
-import type { ResumeEditorState } from '@/stores/resume-editor'
+import { useResumeEditorStore } from '@/stores/resume-editor'
 
 export function useResumeModuleActions(
-  store: ResumeEditorState,
   triggerAutoSave: () => void,
 ) {
   // 内容变更
   const handleContentChange = useCallback(
     (module: ResumeModuleType, value: unknown) => {
+      const store = useResumeEditorStore.getState()
       store.setContent(module as keyof typeof store.content, value as never)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   // 聚焦到某个模块（折叠其他 + 滚动定位）
   const handleFocusModule = useCallback(
     (module: ResumeModuleType) => {
+      const store = useResumeEditorStore.getState()
       store.focusModule(module)
       // 延迟滚动，等待 Collapse 动画完成
       setTimeout(() => {
@@ -39,20 +40,22 @@ export function useResumeModuleActions(
         }
       }, 100)
     },
-    [store],
+    [],
   )
 
   // 更新展开的模块集合
   const handleExpandModules = useCallback(
     (modules: Set<ResumeModuleType>) => {
-      store.setExpandedModules(modules)
+      useResumeEditorStore.getState().setExpandedModules(modules)
     },
-    [store],
+    [],
   )
 
   // 模块移动（支持 'up'/'down' 方向或目标 enabled 索引）
   const handleMoveModule = useCallback(
     (module: ResumeModuleType, direction: 'up' | 'down' | number) => {
+      // 事件触发时读取最新排序，避免 Hook 为渲染订阅整份编辑器状态。
+      const store = useResumeEditorStore.getState()
       const order = store.modulesOrder
       const enabled = order.filter((m) => store.modulesConfig[m])
       const fromOrderIdx = order.indexOf(module)
@@ -77,35 +80,38 @@ export function useResumeModuleActions(
       store.reorderModules(fromOrderIdx, toOrderIdx)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   // 删除模块（禁用模块）
   const handleDeleteModule = useCallback(
     (module: ResumeModuleType) => {
+      const store = useResumeEditorStore.getState()
       store.toggleModule(module, false)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   // 展示配置变更
   const handleDisplayConfigChange = useCallback(
     (config: BasicInfoDisplayConfig) => {
+      const store = useResumeEditorStore.getState()
       store.setContent('basic_info_display', config)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   // 模块重命名
   const handleRenameModule = useCallback(
     (module: ResumeModuleType, name: string) => {
+      const store = useResumeEditorStore.getState()
       const titles = { ...(store.content.module_titles || {}), [module]: name }
       store.setContent('module_titles', titles)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   return {

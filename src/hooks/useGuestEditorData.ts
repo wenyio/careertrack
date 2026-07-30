@@ -6,18 +6,18 @@
  * - 用 updateGuestResume 替代 useUpdateResume（API mutation）
  * - 用 getGuestProfile 替代 useProfile（React Query）
  *
- * 复用：编辑器初始化、展示偏好、自动保存、打印、保存 payload 和 Zustand store
+ * 复用：编辑器初始化、自动保存、保存 payload 和 Zustand store
  */
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { getGuestResume, updateGuestResume } from '@/services/guest-resume'
 import { getGuestProfile } from '@/services/guest-profile'
 import type { GuestProfile } from '@/services/guest-profile'
 import type { GuestResume } from '@/types/guest'
 import { useAutoSave } from '@/hooks/useAutoSave'
-import { usePrint } from '@/hooks/usePrint'
-import { useResumeEditorPreferences } from '@/hooks/useResumeEditorPreferences'
 import { useResumeEditorStore } from '@/stores/resume-editor'
+import { selectResumeEditorDataActions } from '@/stores/resume-editor-selectors'
 import type { UpdateResumeRequest } from '@/types/resume'
 import { buildResumeSavePayload } from '@/utils/resume-preview'
 import { buildResumeEditorInitialData } from '@/utils/resume-editor'
@@ -27,8 +27,12 @@ export function useGuestEditorData(id: string) {
   const [profile, setProfile] = useState<GuestProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Zustand store
-  const store = useResumeEditorStore()
+  // 与登录模式相同，只订阅稳定 action，正文通过保存回调按需读取。
+  const {
+    initResume,
+    setSaveStatus,
+    resetStore,
+  } = useResumeEditorStore(useShallow(selectResumeEditorDataActions))
 
   // 初始化标记
   const isInitializedRef = useRef(false)
@@ -45,25 +49,20 @@ export function useGuestEditorData(id: string) {
 
   // 初始化数据（useLayoutEffect 确保在浏览器绘制前完成）
   useLayoutEffect(() => {
-    if (resume && store.resumeId !== resume.id) {
-      store.initResume(buildResumeEditorInitialData(resume))
-      isInitializedRef.current = true
+    if (!resume) return
+    if (useResumeEditorStore.getState().resumeId !== resume.id) {
+      initResume(buildResumeEditorInitialData(resume))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand store 引用稳定
-  }, [resume])
+    isInitializedRef.current = true
+  }, [initResume, resume])
 
-  // 获取当前数据（用 ref 保证 timer 回调始终读到最新值）
-  const getCurrentDataRef = useRef<() => Record<string, unknown>>(null!)
-
-  // 在 effect 中同步 ref
-  useEffect(() => {
-    getCurrentDataRef.current = () => buildResumeSavePayload(store, resume?.name)
-  })
-
-  // 手动保存用（同步读取）
+  // 回调执行时读取最新 store，保持 debounce 期间的编辑不会被旧闭包覆盖。
   const getCurrentData = useCallback(
-    () => getCurrentDataRef.current(),
-    [],
+    () => buildResumeSavePayload(
+      useResumeEditorStore.getState(),
+      resume?.name,
+    ),
+    [resume?.name],
   )
 
   // 封装 update 函数，匹配 useAutoSave 期望的签名
@@ -81,33 +80,22 @@ export function useGuestEditorData(id: string) {
   const { triggerAutoSave, handleManualSave } = useAutoSave({
     isInitializedRef,
     updateResume: updateGuestResumeSilent,
-    setSaveStatus: store.setSaveStatus,
+    setSaveStatus,
     getCurrentData,
-  })
-
-  // 打印 Hook
-  const { handlePrint } = usePrint({
-    resumeName: store.resumeName,
   })
 
   // 清理
   useEffect(() => {
     return () => {
-      store.reset()
+      resetStore()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在组件卸载时执行一次
-  }, [])
-
-  const preferences = useResumeEditorPreferences(store, triggerAutoSave)
+  }, [resetStore])
 
   return {
     resume,
     profile,
-    store,
     isLoading,
     triggerAutoSave,
     handleManualSave,
-    handlePrint,
-    ...preferences,
   }
 }

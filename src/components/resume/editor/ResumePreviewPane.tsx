@@ -1,21 +1,19 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 import type { Profile } from '@/types/profile'
-import type {
-  ResumeModuleType,
-  ResumePreviewConfig,
-} from '@/types/resume'
-import type { ResumeEditorState } from '@/stores/resume-editor'
+import type { ResumeModuleType } from '@/types/resume'
+import { useResumeEditorStore } from '@/stores/resume-editor'
+import { selectResumePreviewPane } from '@/stores/resume-editor-selectors'
+import { getPreviewConfig } from '@/utils/resume-preview'
 import PageBreakHints from './PageBreakHints'
 import PreviewControlBar from './PreviewControlBar'
 import ResumeHtmlPreview from './ResumeHtmlPreview'
 
 interface ResumePreviewPaneProps {
-  store: ResumeEditorState
   profile?: Profile
-  previewConfig: ResumePreviewConfig
   onFontSizeChange: (fontSize: number) => void
   onLineHeightChange: (lineHeight: number) => void
   onFocusModule: (module: ResumeModuleType) => void
@@ -40,9 +38,7 @@ interface ResumePreviewPaneProps {
  * 工具栏、表单或侧栏的更新干扰这部分局部 UI 状态。
  */
 export default function ResumePreviewPane({
-  store,
   profile,
-  previewConfig,
   onFontSizeChange,
   onLineHeightChange,
   onFocusModule,
@@ -54,6 +50,13 @@ export default function ResumePreviewPane({
 }: ResumePreviewPaneProps) {
   const [zoom, setZoom] = useState(0.8)
   const previewRef = useRef<HTMLDivElement>(null)
+  const {
+    content,
+    modulesConfig,
+    modulesOrder,
+    template,
+  } = useResumeEditorStore(useShallow(selectResumePreviewPane))
+  const previewConfig = getPreviewConfig(content.preview_config)
 
   return (
     <div
@@ -93,10 +96,10 @@ export default function ResumePreviewPane({
             }}
           >
             <ResumeHtmlPreview
-              content={store.content}
-              modulesConfig={store.modulesConfig}
-              modulesOrder={store.modulesOrder}
-              template={store.template}
+              content={content}
+              modulesConfig={modulesConfig}
+              modulesOrder={modulesOrder}
+              template={template}
               profile={profile}
               fontSize={previewConfig.fontSize}
               lineHeight={previewConfig.lineHeight}

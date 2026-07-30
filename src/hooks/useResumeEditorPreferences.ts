@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { getTemplateConfig } from '@/components/resume/templates/registry'
-import type { ResumeEditorState } from '@/stores/resume-editor'
+import { useResumeEditorStore } from '@/stores/resume-editor'
 import type { ResumeTemplateId } from '@/types/resume'
 import { getPreviewConfig } from '@/utils/resume-preview'
 
@@ -13,11 +13,11 @@ import { getPreviewConfig } from '@/utils/resume-preview'
  * 用户变更后触发所属数据源提供的自动保存。
  */
 export function useResumeEditorPreferences(
-  store: ResumeEditorState,
   triggerAutoSave: () => void,
 ) {
   const handleTemplateChange = useCallback(
     (template: ResumeTemplateId) => {
+      const store = useResumeEditorStore.getState()
       store.setTemplate(template)
       const { defaultPreviewConfig } = getTemplateConfig(template)
       if (defaultPreviewConfig) {
@@ -28,35 +28,36 @@ export function useResumeEditorPreferences(
       }
       triggerAutoSave()
     },
-    [store, triggerAutoSave],
+    [triggerAutoSave],
   )
 
   const handlePreviewFontSizeChange = useCallback(
     (fontSize: number) => {
+      const store = useResumeEditorStore.getState()
       store.setContent('preview_config', {
         ...getPreviewConfig(store.content.preview_config),
         fontSize,
       })
       triggerAutoSave()
     },
-    [store, triggerAutoSave],
+    [triggerAutoSave],
   )
 
   const handlePreviewLineHeightChange = useCallback(
     (lineHeight: number) => {
+      const store = useResumeEditorStore.getState()
       store.setContent('preview_config', {
         ...getPreviewConfig(store.content.preview_config),
         lineHeight,
       })
       triggerAutoSave()
     },
-    [store, triggerAutoSave],
+    [triggerAutoSave],
   )
 
   return {
     handleTemplateChange,
     handlePreviewFontSizeChange,
     handlePreviewLineHeightChange,
-    previewConfig: getPreviewConfig(store.content.preview_config),
   }
 }

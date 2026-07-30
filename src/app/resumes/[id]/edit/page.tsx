@@ -1,8 +1,8 @@
 /**
  * 简历编辑页面（统一入口）
  *
- * 差异仅在数据源和配置，解构和 Shell 传参完全相同。
- * 用子组件分流（Hooks 规则要求），但将共享逻辑提取到 EditorContent。
+ * 差异仅在数据源和公开能力。用子组件分流（Hooks 规则要求），
+ * EditorContent 只编排加载结果；编辑状态由 Shell 内部 selector 消费。
  */
 
 'use client'
@@ -15,23 +15,15 @@ import { publishResume, unpublishResume } from '@/services/resume'
 import { useResumeEditorData } from '@/hooks/useResumeEditorData'
 import { useGuestEditorData } from '@/hooks/useGuestEditorData'
 import type { Profile } from '@/types/profile'
-import type { ResumeTemplateId } from '@/types/resume'
-import type { ResumeEditorState } from '@/stores/resume-editor'
 import ResumeEditorShell from '@/components/resume/editor/ResumeEditorShell'
 
 /** 两种数据源的统一返回类型 */
 interface EditorData {
   resume: { id: string; is_public?: boolean; public_slug?: string | null } | null | undefined
   profile: Profile | null | undefined
-  store: ResumeEditorState
   isLoading: boolean
   triggerAutoSave: () => void
   handleManualSave: () => void
-  handlePrint: () => void
-  handleTemplateChange: (tpl: ResumeTemplateId) => void
-  handlePreviewFontSizeChange: (fontSize: number) => void
-  handlePreviewLineHeightChange: (lineHeight: number) => void
-  previewConfig: { fontSize: number; lineHeight: number }
 }
 
 /** 共享编辑器内容：解构 + 公开逻辑 + Shell 传参 */
@@ -46,10 +38,12 @@ function EditorContent({
   supportsPublic: boolean
   showNotFound: boolean
 }) {
-  const { resume, profile, store, isLoading,
-    triggerAutoSave, handleManualSave, handlePrint,
-    handleTemplateChange, handlePreviewFontSizeChange,
-    handlePreviewLineHeightChange, previewConfig,
+  const {
+    resume,
+    profile,
+    isLoading,
+    triggerAutoSave,
+    handleManualSave,
   } = data
 
   const queryClient = useQueryClient()
@@ -75,18 +69,12 @@ function EditorContent({
 
   return (
     <ResumeEditorShell
-      store={store}
       profile={profile}
       isLoading={isLoading}
       resumeNotFound={showNotFound && !resume}
       hidePublic={!supportsPublic}
       backPath="/resumes"
-      onTemplateChange={handleTemplateChange}
-      onPreviewFontSizeChange={handlePreviewFontSizeChange}
-      onPreviewLineHeightChange={handlePreviewLineHeightChange}
-      previewConfig={previewConfig}
       onSave={handleManualSave}
-      onPrint={handlePrint}
       triggerAutoSave={triggerAutoSave}
       onTogglePublic={supportsPublic ? handleTogglePublic : undefined}
       isPublic={resume?.is_public}

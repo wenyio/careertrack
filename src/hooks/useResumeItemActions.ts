@@ -9,11 +9,10 @@
 
 import { useCallback } from 'react'
 import type { ResumeModuleType, ResumeContent } from '@/types/resume'
-import type { ResumeEditorState } from '@/stores/resume-editor'
+import { useResumeEditorStore } from '@/stores/resume-editor'
 import { ARRAY_MODULES, createEmptyItem } from '@/utils/module-defaults'
 
 export function useResumeItemActions(
-  store: ResumeEditorState,
   triggerAutoSave: () => void,
   handleFocusModule: (module: ResumeModuleType) => void,
 ) {
@@ -21,6 +20,7 @@ export function useResumeItemActions(
   const handleAddItem = useCallback(
     (module: ResumeModuleType) => {
       if (!ARRAY_MODULES.includes(module)) return
+      const store = useResumeEditorStore.getState()
       const currentContent = store.content as Record<string, unknown>
       const existing = (currentContent[module] as unknown[]) || []
       const newItem = createEmptyItem(module)
@@ -30,24 +30,27 @@ export function useResumeItemActions(
       // 聚焦到对应表单模块
       handleFocusModule(module)
     },
-    [triggerAutoSave, handleFocusModule, store],
+    [triggerAutoSave, handleFocusModule],
   )
 
   // 删除条目（预览区删除按钮）
   const handleDeleteItem = useCallback(
     (module: ResumeModuleType, index: number) => {
+      const store = useResumeEditorStore.getState()
       const currentContent = store.content as Record<string, unknown>
       const existing = [...((currentContent[module] as unknown[]) || [])]
       existing.splice(index, 1)
       store.setContent(module as keyof ResumeContent, existing as never)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   // 子条目上下移动
   const handleMoveItem = useCallback(
     (module: ResumeModuleType, index: number, direction: 'up' | 'down') => {
+      // 预览操作可能连续发生，每次都基于当前条目数组计算目标位置。
+      const store = useResumeEditorStore.getState()
       const currentContent = store.content as Record<string, unknown>
       const existing = [...((currentContent[module] as unknown[]) || [])]
       const newIndex = direction === 'up' ? index - 1 : index + 1
@@ -57,7 +60,7 @@ export function useResumeItemActions(
       store.setContent(module as keyof ResumeContent, existing as never)
       triggerAutoSave()
     },
-    [triggerAutoSave, store],
+    [triggerAutoSave],
   )
 
   return {

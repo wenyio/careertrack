@@ -69,7 +69,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 26 个测试文件、197 项测试通过；含编辑器初始化/预览配置、基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
+| `npm run test:unit` | 通过 | 27 个测试文件、199 项测试通过；含编辑器 selector 隔离、初始化/预览配置、基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
 | `npx playwright test --workers=1` | 通过 | Chromium 全量 113/113；含编辑器预览配置保存/重载、OTP 设置键盘流程、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
@@ -482,7 +482,7 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 1. 拆分超大组件和 MCP tool modules；公开简历已将数据加载边界与 A4
    测量/分页/滑动组件分离，MCP tool modules 仍待后续按业务域拆分；
-2. Zustand selector 优化；
+2. Zustand selector 优化；简历编辑器高频输入链路已完成，其他 store 按实际测量继续；
 3. 可访问性基线；
 4. 删除重复配置、死代码和 schema 漂移；
 5. 建立性能预算和关键页面 Web Vitals 观测。
@@ -506,6 +506,11 @@ OTP 设置则按敏感信息生命周期拆出二维码 enrollment 和一次性�
 分页测量引用，因此从 Shell 提取为预览面板；工具栏、模块侧栏和表单编排仍留在
 Shell，避免制造只转发 props 的碎片组件。预览字号、行距边界和默认值现由
 编辑器、REST 校验与 MCP 共用，连续行距可在编辑器中忠实显示和修改。
+在此基础上，编辑器订阅链进一步按真实渲染依赖划分：数据 Hook 只订阅稳定
+action，保存回调在执行时读取最新快照；Shell 只订阅预览显隐；工具栏、模块
+侧栏、表单和 A4 预览分别使用 `useShallow` selector。普通正文更新只改变表单
+和预览切片，侧栏仅在模块结构、焦点或自定义标题变化时更新。表单和预览仍完整
+订阅正文，因为它们确实需要实时响应输入，没有继续拆成字段级 selector。
 
 ## 8. 新功能优先级
 
