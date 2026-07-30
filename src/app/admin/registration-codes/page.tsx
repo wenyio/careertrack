@@ -46,7 +46,13 @@ function getStatusTag(record: RegistrationCode) {
 export default function RegistrationCodesPage() {
   const { message, modal } = App.useApp()
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const { data: codes, isLoading } = useRegistrationCodes(statusFilter)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const { data: codePage, isLoading } = useRegistrationCodes(
+    statusFilter,
+    page,
+    pageSize,
+  )
   const { mutate: createCode, isPending: isCreating } = useCreateRegistrationCode()
   const { mutate: updateStatus } = useUpdateRegistrationCodeStatus()
   const { mutate: deleteCode } = useDeleteRegistrationCode()
@@ -54,6 +60,7 @@ export default function RegistrationCodesPage() {
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [form] = Form.useForm()
+  const codes = codePage?.items
 
   const handleCreate = () => {
     form.validateFields().then((values) => {
@@ -115,7 +122,11 @@ export default function RegistrationCodesPage() {
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => deleteCode(record.id),
+      onOk: () => deleteCode(record.id, {
+        onSuccess: () => {
+          if (page > 1 && codes?.length === 1) setPage(page - 1)
+        },
+      }),
     })
   }
 
@@ -271,7 +282,10 @@ export default function RegistrationCodesPage() {
           <Text type="secondary">状态筛选：</Text>
           <Select
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setStatusFilter(value)
+              setPage(1)
+            }}
             style={{ width: 120 }}
             options={[
               { value: 'all', label: '全部' },
@@ -289,7 +303,17 @@ export default function RegistrationCodesPage() {
         columns={columns}
         rowKey="id"
         loading={isLoading}
-        pagination={false}
+        pagination={{
+          current: page,
+          pageSize,
+          total: codePage?.pagination.total || 0,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 个注册码`,
+          onChange: (nextPage, nextPageSize) => {
+            setPage(nextPageSize === pageSize ? nextPage : 1)
+            setPageSize(nextPageSize)
+          },
+        }}
         size="small"
       />
 

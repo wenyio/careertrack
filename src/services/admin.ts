@@ -5,6 +5,7 @@
  */
 
 import api from './api'
+import { parsePaginatedResponse } from './pagination'
 import type {
   AdminStats,
   AdminUserItem,
@@ -16,6 +17,7 @@ import type {
   AdminOAuthAccount,
 } from '@/types/admin'
 import type { Profile } from '@/types/profile'
+import type { PaginatedData } from '@/types/pagination'
 
 /**
  * 获取概览统计
@@ -28,11 +30,17 @@ export async function getAdminStats(): Promise<AdminStats> {
 /**
  * 获取用户列表
  */
-export async function getAdminUsers(q?: string): Promise<AdminUserItem[]> {
+export async function getAdminUsers(
+  q?: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<AdminUserItem>> {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
+  params.set('page', String(page))
+  params.set('page_size', String(pageSize))
   const response = await api.get<AdminUserItem[]>(`/admin/users?${params.toString()}`)
-  return response.data
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 /**
@@ -54,9 +62,19 @@ export async function updateAdminUserRole(id: string, role: string): Promise<Adm
 /**
  * 获取指定用户的简历列表
  */
-export async function getAdminUserResumes(id: string): Promise<AdminResumeItem[]> {
-  const response = await api.get<AdminResumeItem[]>(`/admin/users/${id}/resumes`)
-  return response.data
+export async function getAdminUserResumes(
+  id: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<AdminResumeItem>> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  const response = await api.get<AdminResumeItem[]>(
+    `/admin/users/${id}/resumes?${params}`,
+  )
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 /**
@@ -93,12 +111,19 @@ export async function batchUpdateAdminUserRole(ids: string[], role: string): Pro
 /**
  * 获取简历列表
  */
-export async function getAdminResumes(q?: string, pub?: string): Promise<AdminResumeItem[]> {
+export async function getAdminResumes(
+  q?: string,
+  pub?: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<AdminResumeItem>> {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (pub && pub !== 'all') params.set('public', pub)
+  params.set('page', String(page))
+  params.set('page_size', String(pageSize))
   const response = await api.get<AdminResumeItem[]>(`/admin/resumes?${params.toString()}`)
-  return response.data
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 /**
@@ -141,11 +166,17 @@ export async function createRegistrationCode(data?: CreateRegistrationCodeReques
  *
  * @param status 筛选状态：all | unused | used | disabled | expired
  */
-export async function getRegistrationCodes(status?: string): Promise<RegistrationCode[]> {
+export async function getRegistrationCodes(
+  status?: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<RegistrationCode>> {
   const params = new URLSearchParams()
   if (status && status !== 'all') params.set('status', status)
+  params.set('page', String(page))
+  params.set('page_size', String(pageSize))
   const response = await api.get<RegistrationCode[]>(`/admin/registration-codes?${params.toString()}`)
-  return response.data
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 // ============ 用户状态管理 ============

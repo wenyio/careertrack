@@ -9,6 +9,7 @@ import {
   idPathParamsSchema,
   mcpKeyActionQuerySchema,
   registrationCodesQuerySchema,
+  resumesQuerySchema,
 } from '@/lib/validation/params'
 
 const VALID_ID = '00000000-0000-4000-8000-000000000000'
@@ -43,8 +44,36 @@ describe('route and query parameter validation', () => {
     )
     expect(parseSearchParams(request, adminResumesQuerySchema)).toEqual({
       success: true,
-      data: { q: 'test', public: 'all' },
+      data: {
+        q: 'test',
+        public: 'all',
+        page: 1,
+        page_size: 20,
+      },
     })
+  })
+
+  it('parses bounded pagination and rejects invalid or duplicate values', () => {
+    const valid = new Request(
+      'http://localhost/api/resumes?page=3&page_size=48',
+    )
+    expect(parseSearchParams(valid, resumesQuerySchema)).toEqual({
+      success: true,
+      data: { page: 3, page_size: 48 },
+    })
+
+    for (const query of [
+      '?page=0',
+      '?page=-1',
+      '?page=1.5',
+      '?page_size=101',
+      '?page=1&page=2',
+    ]) {
+      expect(parseSearchParams(
+        new Request(`http://localhost/api/resumes${query}`),
+        resumesQuerySchema,
+      ).success).toBe(false)
+    }
   })
 
   it('rejects unknown enum values and ambiguous duplicate parameters', () => {

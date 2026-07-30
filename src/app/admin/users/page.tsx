@@ -30,14 +30,16 @@ export default function AdminUsersPage() {
   const { message, modal } = App.useApp()
   const { user: currentUser } = useAuthStore()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
-  const { data: users, isLoading } = useAdminUsers(search)
+  const { data: userPage, isLoading } = useAdminUsers(search, page, pageSize)
   const { mutate: updateRole } = useUpdateAdminUserRole()
   const { mutate: deleteUser } = useDeleteAdminUser()
   const { mutate: batchDelete, isPending: isBatchDeleting } = useBatchDeleteAdminUsers()
   const { mutate: batchRole, isPending: isBatchRole } = useBatchUpdateAdminUserRole()
   const { mutate: updateStatus } = useUpdateUserStatus()
+  const users = userPage?.items
 
   const handleRoleChange = (record: AdminUserItem) => {
     const newRole = record.role === 'admin' ? 'user' : 'admin'
@@ -94,7 +96,11 @@ export default function AdminUsersPage() {
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => deleteUser(record.id),
+      onOk: () => deleteUser(record.id, {
+        onSuccess: () => {
+          if (page > 1 && users?.length === 1) setPage(page - 1)
+        },
+      }),
     })
   }
 
@@ -112,7 +118,12 @@ export default function AdminUsersPage() {
       cancelText: '取消',
       onOk: () => {
         batchDelete(selectedRowKeys, {
-          onSuccess: () => setSelectedRowKeys([]),
+          onSuccess: () => {
+            if (page > 1 && selected.length === users?.length) {
+              setPage(page - 1)
+            }
+            setSelectedRowKeys([])
+          },
         })
       },
     })
@@ -263,7 +274,11 @@ export default function AdminUsersPage() {
           <Input.Search
             placeholder="搜索用户名"
             allowClear
-            onSearch={setSearch}
+            onSearch={(value) => {
+              setSearch(value)
+              setPage(1)
+              setSelectedRowKeys([])
+            }}
             style={{ maxWidth: 300 }}
           />
           {selectedRowKeys.length > 0 && (
@@ -303,7 +318,18 @@ export default function AdminUsersPage() {
           rowKey="id"
           loading={isLoading}
           rowSelection={rowSelection}
-          pagination={{ pageSize, showSizeChanger: true, showTotal: (total) => `共 ${total} 个用户`, onChange: (_page, size) => { if (size !== pageSize) setPageSize(size) } }}
+          pagination={{
+            current: page,
+            pageSize,
+            total: userPage?.pagination.total || 0,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 个用户`,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPageSize === pageSize ? nextPage : 1)
+              setPageSize(nextPageSize)
+              setSelectedRowKeys([])
+            },
+          }}
           scroll={{ x: 700 }}
           size="middle"
         />

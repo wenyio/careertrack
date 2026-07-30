@@ -20,11 +20,18 @@ export default function AdminResumesPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [publicFilter, setPublicFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
-  const { data: resumes, isLoading } = useAdminResumes(search, publicFilter)
+  const { data: resumePage, isLoading } = useAdminResumes(
+    search,
+    publicFilter,
+    page,
+    pageSize,
+  )
   const { mutate: deleteResume } = useDeleteAdminResume()
   const { mutate: batchDelete, isPending: isBatchDeleting } = useBatchDeleteAdminResumes()
+  const resumes = resumePage?.items
 
   const handleDelete = (id: string, name: string) => {
     Modal.confirm({
@@ -33,7 +40,11 @@ export default function AdminResumesPage() {
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => deleteResume(id),
+      onOk: () => deleteResume(id, {
+        onSuccess: () => {
+          if (page > 1 && resumes?.length === 1) setPage(page - 1)
+        },
+      }),
     })
   }
 
@@ -48,7 +59,12 @@ export default function AdminResumesPage() {
       cancelText: '取消',
       onOk: () => {
         batchDelete(selectedRowKeys, {
-          onSuccess: () => setSelectedRowKeys([]),
+          onSuccess: () => {
+            if (page > 1 && selected.length === resumes?.length) {
+              setPage(page - 1)
+            }
+            setSelectedRowKeys([])
+          },
         })
       },
     })
@@ -142,12 +158,20 @@ export default function AdminResumesPage() {
           <Input.Search
             placeholder="搜索简历名称、用户名、slug"
             allowClear
-            onSearch={setSearch}
+            onSearch={(value) => {
+              setSearch(value)
+              setPage(1)
+              setSelectedRowKeys([])
+            }}
             style={{ maxWidth: 320 }}
           />
           <Select
             value={publicFilter}
-            onChange={setPublicFilter}
+            onChange={(value) => {
+              setPublicFilter(value)
+              setPage(1)
+              setSelectedRowKeys([])
+            }}
             style={{ width: 120 }}
             options={[
               { label: '全部', value: 'all' },
@@ -176,7 +200,18 @@ export default function AdminResumesPage() {
           rowKey="id"
           loading={isLoading}
           rowSelection={rowSelection}
-          pagination={{ pageSize, showSizeChanger: true, showTotal: (total) => `共 ${total} 份简历`, onChange: (_page, size) => { if (size !== pageSize) setPageSize(size) } }}
+          pagination={{
+            current: page,
+            pageSize,
+            total: resumePage?.pagination.total || 0,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 份简历`,
+            onChange: (nextPage, nextPageSize) => {
+              setPage(nextPageSize === pageSize ? nextPage : 1)
+              setPageSize(nextPageSize)
+              setSelectedRowKeys([])
+            },
+          }}
           scroll={{ x: 1000 }}
           size="middle"
         />

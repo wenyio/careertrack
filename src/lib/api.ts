@@ -6,12 +6,29 @@
 
 import { NextResponse } from 'next/server'
 import { resolveRequestAuthSession } from '@/lib/security/auth-session'
+import type { PaginatedData } from '@/types/pagination'
 
 /**
  * 成功响应
  */
 export function success<T>(data: T, status = 200) {
   return NextResponse.json(data, { status })
+}
+
+/**
+ * Return an array body for backward compatibility and expose pagination
+ * metadata through headers so existing API consumers keep working.
+ */
+export function paginatedSuccess<T>(data: PaginatedData<T>) {
+  const { pagination } = data
+  return NextResponse.json(data.items, {
+    headers: {
+      'X-Page': String(pagination.page),
+      'X-Page-Size': String(pagination.page_size),
+      'X-Total-Count': String(pagination.total),
+      'X-Total-Pages': String(pagination.total_pages),
+    },
+  })
 }
 
 /**

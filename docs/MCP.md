@@ -161,7 +161,7 @@ curl -X POST https://your-domain.com/api/mcp \
 
 | 工具名 | 说明 |
 |--------|------|
-| `resume_list` | 获取所有简历列表（含公开链接） |
+| `resume_list` | 获取最近更新的简历列表（含公开链接，最多 100 份，不返回完整正文） |
 | `resume_get` | 获取指定简历的完整详情（含公开链接） |
 | `resume_preview_get` | 获取简历预览数据和预览链接（已发布返回公开链接，未发布返回签名临时 URL） |
 

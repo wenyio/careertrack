@@ -5,13 +5,14 @@
  * GET  /api/admin/registration-codes — 查询注册码列表
  */
 
-import { withAdminAuth, success } from '@/lib/api'
+import { withAdminAuth, paginatedSuccess, success } from '@/lib/api'
 import { query } from '@/lib/db'
 import { generateRegistrationCode, hashRegistrationCode } from '@/lib/registration-code'
 import type { RegistrationCode } from '@/types/admin'
 import { parseJsonBody, parseSearchParams } from '@/lib/api-validation'
 import { createRegistrationCodeBodySchema } from '@/lib/validation/admin'
 import { registrationCodesQuerySchema } from '@/lib/validation/params'
+import { paginatedData, paginationOffset } from '@/lib/pagination'
 
 /**
  * 生成注册码
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
       registrationCodesQuerySchema,
     )
     if (!parsedQuery.success) return parsedQuery.response
-    const { status } = parsedQuery.data
+    const { status, page, page_size } = parsedQuery.data
 
     let sql = `
       SELECT id, label, created_by, used_by_user_id, expires_at, disabled_at, used_at, created_at, updated_at
@@ -90,10 +91,21 @@ export async function GET(request: Request) {
       sql += ` WHERE ${conditions.join(' AND ')}`
     }
 
-    sql += ' ORDER BY created_at DESC'
+    const countSql = `SELECT COUNT(*)::int AS total FROM registration_codes${
+      conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : ''
+    }`
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2'
 
-    const result = await query(sql, [])
+    const pagination = { page, pageSize: page_size }
+    const [result, countResult] = await Promise.all([
+      query(sql, [page_size, paginationOffset(pagination)]),
+      query(countSql, []),
+    ])
 
-    return success(result.rows as RegistrationCode[])
+    return paginatedSuccess(paginatedData(
+      result.rows as RegistrationCode[],
+      pagination,
+      Number(countResult.rows[0]?.total || 0),
+    ))
   })
 }

@@ -31,6 +31,17 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 
 动态资源路径中的 `:id`、`:oauthAccountId` 必须是 UUID；公开 `:slug` 最长 50 个字符，只能包含中英文、数字、下划线和连字符。查询参数同样经过 Zod 校验，重复的单值参数、未知枚举值或超过 100 字符的后台搜索条件返回 `400 VALIDATION_ERROR`。
 
+分页列表支持 `page`（默认 `1`，最大 `100000`）和 `page_size`（默认 `20`，最大 `100`）。为兼容已有调用方，响应体继续是 JSON 数组，分页元数据通过以下响应头返回：
+
+| 响应头 | 含义 |
+|------|------|
+| `X-Page` | 当前页码 |
+| `X-Page-Size` | 当前每页条数 |
+| `X-Total-Count` | 符合当前筛选条件的总记录数 |
+| `X-Total-Pages` | 总页数；空列表为 `0` |
+
+当前使用稳定的 offset pagination，并在业务排序字段后追加 `id` 作为确定性排序键。适用端点为 `/api/resumes`、`/api/admin/users`、`/api/admin/resumes`、`/api/admin/users/:id/resumes` 和 `/api/admin/registration-codes`。
+
 所有 `/api/*` 响应都携带 `X-Request-ID`。入站请求中只包含字母、数字、点、下划线、冒号或连字符的 1–128 字符 ID 会被保留；其他情况由服务端生成 UUID。该 ID 同时传入 Route Handler，可用于日志和跨服务排查；它只用于关联请求，不应被视为经过认证的调用方身份。
 
 通用错误响应保持 `{ code, message }` 格式，按 HTTP 语义使用以下稳定错误码：
@@ -303,25 +314,30 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 ### GET /api/resumes
 
-获取简历列表（需认证）
+获取简历列表（需认证）。支持通用分页参数。
 
 **响应:**
 ```json
-{
-  "resumes": [
-    {
-      "id": "uuid",
-      "name": "string",
-      "is_public": false,
-      "public_slug": null,
-      "template": "classic",
-      "revision": 1,
-      "created_at": "2026-05-30T00:00:00Z",
-      "updated_at": "2026-06-03T00:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "name": "string",
+    "is_public": false,
+    "public_slug": null,
+    "template": "classic",
+    "preview_sections": [
+      "basic_info",
+      "education",
+      "skills",
+      "work_experience",
+      "projects"
+    ],
+    "updated_at": "2026-06-03T00:00:00Z"
+  }
+]
 ```
+
+列表 DTO 不包含 `content`、`modules_config`、`modules_order`、`revision` 或创建时间。`preview_sections` 只用于绘制轻量结构缩略图；需要正文、编辑版本或完整配置时调用 `GET /api/resumes/:id`。
 
 ### POST /api/resumes
 
@@ -527,18 +543,18 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 | `/api/admin/users/batch-delete` | POST | 批量删除用户 |
 | `/api/admin/users/batch-role` | POST | 批量修改角色 |
 
-用户列表支持 `q` 模糊搜索，最多 100 个字符。
+用户列表支持 `q` 模糊搜索（最多 100 个字符）和通用分页参数；指定用户简历列表也使用相同分页契约。
 批量用户和简历接口的 `ids` 必须是非空字符串数组，单次最多 100 个 ID；重复 ID 会自动去重。
 
 ### 简历管理
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
-| `/api/admin/resumes` | GET | 简历列表（全量） |
+| `/api/admin/resumes` | GET | 简历列表（分页） |
 | `/api/admin/resumes/:id` | GET/DELETE | 简历详情/删除 |
 | `/api/admin/resumes/batch-delete` | POST | 批量删除简历 |
 
-简历列表支持 `q` 模糊搜索和 `public=all|true|false` 公开状态筛选。
+简历列表支持通用分页参数、`q` 模糊搜索和 `public=all|true|false` 公开状态筛选。
 
 ### 注册码管理
 
@@ -549,7 +565,7 @@ MCP 服务通过 `/api/mcp` 端点提供，使用 MCP (Model Context Protocol) �
 | `/api/admin/registration-codes/:id` | DELETE | 删除未使用的注册码 |
 | `/api/admin/registration-codes/:id/status` | PATCH | 启用/禁用注册码 |
 
-注册码列表的 `status` 支持 `all`、`unused`、`used`、`disabled` 和 `expired`。
+注册码列表支持通用分页参数；`status` 支持 `all`、`unused`、`used`、`disabled` 和 `expired`。
 
 **POST /api/admin/registration-codes 请求体:**
 ```json

@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Row, Col, Empty, Spin, App } from 'antd'
+import { Button, Row, Col, Empty, Spin, App, Pagination } from 'antd'
 import { PlusOutlined, UserOutlined } from '@ant-design/icons'
 import PageContainer from '@/components/layout/PageContainer'
 import ResumeListCard from './ResumeListCard'
@@ -17,6 +17,7 @@ import ResumeCreateModal from './ResumeCreateModal'
 import ResumeRenameModal from './ResumeRenameModal'
 import type { ResumeListResume } from './ResumeListCard'
 import type { Profile } from '@/types/profile'
+import type { PaginationMeta } from '@/types/pagination'
 
 interface ResumeListViewProps {
   /** 简历列表数据 */
@@ -49,6 +50,9 @@ interface ResumeListViewProps {
   onTogglePublic?: (resumeId: string, isPublic: boolean, slug?: string) => void
   /** 创建中状态 */
   isCreating?: boolean
+  /** 服务端分页信息；游客本地列表不传。 */
+  pagination?: PaginationMeta
+  onPageChange?: (page: number, pageSize: number) => void
 }
 
 export default function ResumeListView({
@@ -67,6 +71,8 @@ export default function ResumeListView({
   onPrint,
   onTogglePublic,
   isCreating,
+  pagination,
+  onPageChange,
 }: ResumeListViewProps) {
   const { message, modal } = App.useApp()
   const router = useRouter()
@@ -151,26 +157,41 @@ export default function ResumeListView({
           <Spin size="large" />
         </div>
       ) : resumes.length > 0 ? (
-        <Row gutter={[20, 16]}>
-          {resumes.map((resume) => (
-            <Col key={resume.id} xs={24} sm={24} md={12} lg={12} xl={8}>
-              <ResumeListCard
-                resume={resume}
-                profile={profile}
-                showPublic={showPublic}
-                popoverResumeId={popoverResumeId}
-                exportingId={exportingId}
-                onEdit={onEdit}
-                onRename={handleRenameClick}
-                onDuplicate={onDuplicate}
-                onDelete={handleDelete}
-                onPrint={handlePrint}
-                onTogglePublic={onTogglePublic}
-                onPopoverChange={setPopoverResumeId}
+        <>
+          <Row gutter={[20, 16]}>
+            {resumes.map((resume) => (
+              <Col key={resume.id} xs={24} sm={24} md={12} lg={12} xl={8}>
+                <ResumeListCard
+                  resume={resume}
+                  profile={profile}
+                  showPublic={showPublic}
+                  popoverResumeId={popoverResumeId}
+                  exportingId={exportingId}
+                  onEdit={onEdit}
+                  onRename={handleRenameClick}
+                  onDuplicate={onDuplicate}
+                  onDelete={handleDelete}
+                  onPrint={handlePrint}
+                  onTogglePublic={onTogglePublic}
+                  onPopoverChange={setPopoverResumeId}
+                />
+              </Col>
+            ))}
+          </Row>
+          {pagination && onPageChange && pagination.total > pagination.page_size && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+              <Pagination
+                current={pagination.page}
+                pageSize={pagination.page_size}
+                total={pagination.total}
+                pageSizeOptions={[12, 24, 48]}
+                showSizeChanger
+                showTotal={(total) => `共 ${total} 份简历`}
+                onChange={onPageChange}
               />
-            </Col>
-          ))}
-        </Row>
+            </div>
+          )}
+        </>
       ) : (
         <Empty description="暂无简历" style={{ marginTop: 120 }}>
           {showInitFromProfile && (

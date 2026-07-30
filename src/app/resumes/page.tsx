@@ -37,7 +37,9 @@ function AuthenticatedResumeList() {
   const router = useRouter()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
-  const { data: resumes, isLoading } = useResumes()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
+  const { data: resumePage, isLoading } = useResumes(page, pageSize)
   const { data: profile } = useProfile()
   const { mutate: createResume, isPending: isCreating } = useCreateResume()
   const { mutate: deleteResume } = useDeleteResume()
@@ -48,8 +50,13 @@ function AuthenticatedResumeList() {
   }, [createResume])
 
   const handleDelete = useCallback((id: string) => {
-    deleteResume(id)
-  }, [deleteResume])
+    const shouldMoveBack = page > 1 && resumePage?.items.length === 1
+    deleteResume(id, {
+      onSuccess: () => {
+        if (shouldMoveBack) setPage((current) => Math.max(1, current - 1))
+      },
+    })
+  }, [deleteResume, page, resumePage?.items.length])
 
   const handleDuplicate = useCallback((id: string) => {
     duplicateResume(id)
@@ -100,7 +107,7 @@ function AuthenticatedResumeList() {
 
   return (
     <ResumeListView
-      resumes={resumes || []}
+      resumes={resumePage?.items || []}
       profile={profile}
       isLoading={isLoading}
       title="我的简历"
@@ -115,6 +122,11 @@ function AuthenticatedResumeList() {
       onRename={handleRename}
       onPrint={handlePrint}
       onTogglePublic={handleTogglePublic}
+      pagination={resumePage?.pagination}
+      onPageChange={(nextPage, nextPageSize) => {
+        setPage(nextPageSize === pageSize ? nextPage : 1)
+        setPageSize(nextPageSize)
+      }}
     />
   )
 }

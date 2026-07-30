@@ -44,18 +44,19 @@ export interface ModulesConfig {
 /** 默认模块配置与排序（统一由 config/modules 管理） */
 export { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/config/modules'
 
-/** 简历列表项（含预览数据） */
+/**
+ * 简历列表项（轻量摘要）
+ *
+ * 正文与详细模块配置由详情接口按需加载。列表只携带用于绘制摘要缩略图
+ * 的启用模块，避免每翻一页都传输全部富文本内容。
+ */
 export interface ResumeListItem {
   id: string
   name: string
   is_public: boolean
   public_slug: string | null
-  content: ResumeContent
   template: ResumeTemplateId
-  modules_config: ModulesConfig
-  modules_order: ResumeModuleType[]
-  revision: number
-  created_at: string
+  preview_sections: ResumeModuleType[]
   updated_at: string
 }
 

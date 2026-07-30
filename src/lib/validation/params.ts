@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE,
+  MAX_PAGE_SIZE,
+} from '@/lib/pagination'
 
 const uuidSchema = z.string({ error: '资源 ID 格式错误' })
   .uuid('资源 ID 格式错误')
@@ -7,6 +13,29 @@ const searchTextSchema = z.string({ error: '搜索条件必须是字符串' })
   .trim()
   .max(100, '搜索条件不能超过 100 个字符')
   .default('')
+
+function positiveIntegerQuerySchema(
+  name: string,
+  defaultValue: number,
+  maxValue: number,
+) {
+  return z.preprocess(
+    (value) => value === undefined ? String(defaultValue) : value,
+    z.string({ error: `${name} 必须是正整数` })
+      .regex(/^[1-9]\d*$/, `${name} 必须是正整数`)
+      .transform(Number)
+      .refine((value) => value <= maxValue, `${name} 不能超过 ${maxValue}`),
+  )
+}
+
+const paginationQueryShape = {
+  page: positiveIntegerQuerySchema('page', DEFAULT_PAGE, MAX_PAGE),
+  page_size: positiveIntegerQuerySchema(
+    'page_size',
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+  ),
+}
 
 export const idPathParamsSchema = z.object({
   id: uuidSchema,
@@ -30,6 +59,7 @@ export const publicSlugPathParamsSchema = z.object({
 
 export const adminUsersQuerySchema = z.object({
   q: searchTextSchema,
+  ...paginationQueryShape,
 })
 
 export const adminResumesQuerySchema = z.object({
@@ -37,13 +67,19 @@ export const adminResumesQuerySchema = z.object({
   public: z.enum(['all', 'true', 'false'], {
     error: 'public 必须是 all、true 或 false',
   }).default('all'),
+  ...paginationQueryShape,
 })
 
 export const registrationCodesQuerySchema = z.object({
   status: z.enum(['all', 'unused', 'used', 'disabled', 'expired'], {
     error: '无效的注册码状态',
   }).default('all'),
+  ...paginationQueryShape,
 })
+
+export const resumesQuerySchema = z.object(paginationQueryShape)
+
+export const paginationQuerySchema = z.object(paginationQueryShape)
 
 export const mcpKeyActionQuerySchema = z.object({
   action: z.enum(['delete'], {

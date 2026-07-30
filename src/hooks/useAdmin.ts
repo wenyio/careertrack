@@ -32,13 +32,24 @@ import { getErrorMessage } from '@/utils/error'
 
 /** 查询 key 常量 */
 export const ADMIN_STATS_KEY = ['admin', 'stats']
-export const adminUsersKey = (q?: string) => ['admin', 'users', q || '']
+export const adminUsersKey = (q?: string, page = 1, pageSize = 20) =>
+  ['admin', 'users', q || '', page, pageSize]
 export const adminUserKey = (id: string) => ['admin', 'user', id]
-export const adminUserResumesKey = (id: string) => ['admin', 'user', id, 'resumes']
+export const adminUserResumesKey = (id: string, page = 1, pageSize = 20) =>
+  ['admin', 'user', id, 'resumes', page, pageSize]
 export const adminUserProfileKey = (id: string) => ['admin', 'user', id, 'profile']
-export const adminResumesKey = (q?: string, pub?: string) => ['admin', 'resumes', q || '', pub || 'all']
+export const adminResumesKey = (
+  q?: string,
+  pub?: string,
+  page = 1,
+  pageSize = 20,
+) => ['admin', 'resumes', q || '', pub || 'all', page, pageSize]
 export const adminResumeKey = (id: string) => ['admin', 'resume', id]
-export const adminRegistrationCodesKey = (status?: string) => ['admin', 'registration-codes', status || 'all']
+export const adminRegistrationCodesKey = (
+  status?: string,
+  page = 1,
+  pageSize = 20,
+) => ['admin', 'registration-codes', status || 'all', page, pageSize]
 export const adminUserOAuthAccountsKey = (userId: string) => ['admin', 'user', userId, 'oauth-accounts']
 
 /**
@@ -54,10 +65,10 @@ export function useAdminStats() {
 /**
  * 获取用户列表
  */
-export function useAdminUsers(q?: string) {
+export function useAdminUsers(q?: string, page = 1, pageSize = 20) {
   return useQuery({
-    queryKey: adminUsersKey(q),
-    queryFn: () => getAdminUsers(q),
+    queryKey: adminUsersKey(q, page, pageSize),
+    queryFn: () => getAdminUsers(q, page, pageSize),
   })
 }
 
@@ -157,10 +168,10 @@ export function useBatchUpdateAdminUserRole() {
 /**
  * 获取指定用户的简历列表
  */
-export function useAdminUserResumes(id: string) {
+export function useAdminUserResumes(id: string, page = 1, pageSize = 20) {
   return useQuery({
-    queryKey: adminUserResumesKey(id),
-    queryFn: () => getAdminUserResumes(id),
+    queryKey: adminUserResumesKey(id, page, pageSize),
+    queryFn: () => getAdminUserResumes(id, page, pageSize),
     enabled: !!id,
   })
 }
@@ -179,10 +190,15 @@ export function useAdminUserProfile(id: string) {
 /**
  * 获取简历列表
  */
-export function useAdminResumes(q?: string, pub?: string) {
+export function useAdminResumes(
+  q?: string,
+  pub?: string,
+  page = 1,
+  pageSize = 20,
+) {
   return useQuery({
-    queryKey: adminResumesKey(q, pub),
-    queryFn: () => getAdminResumes(q, pub),
+    queryKey: adminResumesKey(q, pub, page, pageSize),
+    queryFn: () => getAdminResumes(q, pub, page, pageSize),
   })
 }
 
@@ -209,6 +225,7 @@ export function useDeleteAdminResume() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'resumes'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
       message.success('删除成功')
     },
@@ -230,6 +247,7 @@ export function useBatchDeleteAdminResumes() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'resumes'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
       message.success(`已删除 ${data.deleted} 份简历`)
     },
@@ -244,10 +262,14 @@ export function useBatchDeleteAdminResumes() {
 /**
  * 获取注册码列表
  */
-export function useRegistrationCodes(status?: string) {
+export function useRegistrationCodes(
+  status?: string,
+  page = 1,
+  pageSize = 20,
+) {
   return useQuery({
-    queryKey: adminRegistrationCodesKey(status),
-    queryFn: () => getRegistrationCodes(status),
+    queryKey: adminRegistrationCodesKey(status, page, pageSize),
+    queryFn: () => getRegistrationCodes(status, page, pageSize),
   })
 }
 

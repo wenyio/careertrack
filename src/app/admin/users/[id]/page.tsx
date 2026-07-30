@@ -53,9 +53,15 @@ export default function AdminUserDetailPage() {
   const id = params.id as string
   const { message, modal } = App.useApp()
   const { user: currentUser } = useAuthStore()
+  const [resumePageNumber, setResumePageNumber] = useState(1)
+  const [resumePageSize, setResumePageSize] = useState(20)
 
   const { data: userDetail, isLoading } = useAdminUser(id)
-  const { data: resumes, isLoading: resumesLoading } = useAdminUserResumes(id)
+  const { data: resumePage, isLoading: resumesLoading } = useAdminUserResumes(
+    id,
+    resumePageNumber,
+    resumePageSize,
+  )
   const { data: profile, isLoading: profileLoading } = useAdminUserProfile(id)
   const { data: oauthAccounts, isLoading: oauthLoading } = useAdminUserOAuthAccounts(id)
   const { mutate: updateRole } = useUpdateAdminUserRole()
@@ -65,6 +71,7 @@ export default function AdminUserDetailPage() {
   const { mutate: unbindOAuth, isPending: isUnbinding } = useDeleteAdminUserOAuthAccount()
 
   const [activeTab, setActiveTab] = useState('account')
+  const resumes = resumePage?.items
 
   const handleRoleChange = () => {
     if (!userDetail) return
@@ -141,7 +148,13 @@ export default function AdminUserDetailPage() {
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => deleteResume(resumeId),
+      onOk: () => deleteResume(resumeId, {
+        onSuccess: () => {
+          if (resumePageNumber > 1 && resumes?.length === 1) {
+            setResumePageNumber(resumePageNumber - 1)
+          }
+        },
+      }),
     })
   }
 
@@ -373,7 +386,7 @@ export default function AdminUserDetailPage() {
                   )}
                 </Descriptions.Item>
                 <Descriptions.Item label="简历数量">
-                  {resumes?.length ?? '-'}
+                  {resumePage?.pagination.total ?? '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="注册时间">
                   {formatDate(userDetail.created_at, 'YYYY-MM-DD HH:mm')}
@@ -429,14 +442,26 @@ export default function AdminUserDetailPage() {
           },
           {
             key: 'resumes',
-            label: `简历列表 (${resumes?.length ?? 0})`,
+            label: `简历列表 (${resumePage?.pagination.total ?? 0})`,
             children: (
               <Table
                 dataSource={resumes || []}
                 columns={resumeColumns}
                 rowKey="id"
                 loading={resumesLoading}
-                pagination={false}
+                pagination={{
+                  current: resumePageNumber,
+                  pageSize: resumePageSize,
+                  total: resumePage?.pagination.total || 0,
+                  showSizeChanger: true,
+                  showTotal: (total) => `共 ${total} 份简历`,
+                  onChange: (nextPage, nextPageSize) => {
+                    setResumePageNumber(
+                      nextPageSize === resumePageSize ? nextPage : 1,
+                    )
+                    setResumePageSize(nextPageSize)
+                  },
+                }}
                 size="small"
                 scroll={{ x: 800 }}
               />

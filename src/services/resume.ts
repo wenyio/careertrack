@@ -5,6 +5,7 @@
  */
 
 import api from './api'
+import { parsePaginatedResponse } from './pagination'
 import type {
   Resume,
   ResumeListItem,
@@ -13,15 +14,23 @@ import type {
   PublishResumeRequest,
   PublicResume,
 } from '@/types/resume'
+import type { PaginatedData } from '@/types/pagination'
 
 /**
  * 获取简历列表
  *
  * @returns 简历列表
  */
-export async function getResumes(): Promise<ResumeListItem[]> {
-  const response = await api.get<ResumeListItem[]>('/resumes')
-  return response.data
+export async function getResumes(
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<ResumeListItem>> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  const response = await api.get<ResumeListItem[]>(`/resumes?${params}`)
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 /**

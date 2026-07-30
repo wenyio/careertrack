@@ -8,6 +8,12 @@ import { query } from '@/lib/db'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/config/modules'
 import { getSigningSecret } from '@/lib/security/secrets'
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  paginatedData,
+  paginationOffset,
+} from '@/lib/pagination'
 import type {
   Resume,
   ResumeListItem,
@@ -18,6 +24,7 @@ import type {
   ResumePreviewConfig,
   PublicResume,
 } from '@/types/resume'
+import type { PaginatedData, PaginationParams } from '@/types/pagination'
 
 export class ResumeConflictError extends Error {
   constructor() {
@@ -26,16 +33,72 @@ export class ResumeConflictError extends Error {
   }
 }
 
-/** 获取用户的简历列表 */
-export async function listResumes(userId: string): Promise<ResumeListItem[]> {
-  const result = await query(
-    `SELECT id, name, is_public, public_slug, content, template, modules_config, modules_order, revision, created_at, updated_at
+interface ResumeListRow {
+  id: string
+  name: string
+  is_public: boolean
+  public_slug: string | null
+  template: ResumeTemplateId
+  modules_config: ModulesConfig
+  modules_order: ResumeModuleType[]
+  updated_at: string
+}
+
+function toResumeListItem(row: ResumeListRow): ResumeListItem {
+  const config = row.modules_config || DEFAULT_MODULES_CONFIG
+  const order = Array.isArray(row.modules_order)
+    ? row.modules_order
+    : DEFAULT_MODULES_ORDER
+  const previewSections = order.filter((module, index) =>
+    DEFAULT_MODULES_ORDER.includes(module)
+    && order.indexOf(module) === index
+    && config[module] !== false
+  )
+
+  return {
+    id: row.id,
+    name: row.name,
+    is_public: row.is_public,
+    public_slug: row.public_slug,
+    template: row.template,
+    preview_sections: previewSections,
+    updated_at: row.updated_at,
+  }
+}
+
+/**
+ * 获取用户的简历列表。
+ *
+ * 列表查询不读取 content；完整正文只由详情接口返回。MCP 和 REST 共用
+ * 同一分页上限，避免任一入口退化成无界查询。
+ */
+export async function listResumes(
+  userId: string,
+  pagination: PaginationParams = {
+    page: DEFAULT_PAGE,
+    pageSize: DEFAULT_PAGE_SIZE,
+  },
+): Promise<PaginatedData<ResumeListItem>> {
+  const offset = paginationOffset(pagination)
+  const [itemsResult, countResult] = await Promise.all([
+    query(
+      `SELECT id, name, is_public, public_slug, template, modules_config, modules_order, updated_at
      FROM resumes
      WHERE user_id = $1
-     ORDER BY updated_at DESC`,
-    [userId]
-  )
-  return result.rows as unknown as ResumeListItem[]
+     ORDER BY updated_at DESC, id DESC
+     LIMIT $2 OFFSET $3`,
+      [userId, pagination.pageSize, offset],
+    ),
+    query(
+      'SELECT COUNT(*)::int AS total FROM resumes WHERE user_id = $1',
+      [userId],
+    ),
+  ])
+
+  const items = (itemsResult.rows as unknown as ResumeListRow[])
+    .map(toResumeListItem)
+  const total = Number(countResult.rows[0]?.total || 0)
+  return paginatedData(items, pagination, total)
 }
 
 /** 获取简历详情（校验所有权） */

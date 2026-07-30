@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC, id DESC);
 
 -- 可撤销登录会话表
 CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -97,6 +99,10 @@ CREATE TABLE IF NOT EXISTS resumes (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_updated ON resumes(user_id, updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_resumes_public_updated ON resumes(is_public, updated_at DESC, id DESC);
 
 -- MCP Key 表
 CREATE TABLE IF NOT EXISTS mcp_keys (
@@ -141,6 +147,8 @@ CREATE TABLE IF NOT EXISTS registration_codes (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 CREATE UNIQUE INDEX idx_registration_codes_hash ON registration_codes(code_hash);
+CREATE INDEX idx_registration_codes_created_at ON registration_codes(created_at DESC, id DESC);
+CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabled_at, expires_at, created_at DESC);
 ```
 
 > 完整的建表 SQL 见 `src/lib/storage/schema.ts`。
@@ -176,6 +184,7 @@ CREATE TABLE users (
 
 -- 索引
 CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_created_at ON users(created_at DESC, id DESC);
 ```
 
 **字段说明:**
@@ -392,6 +401,9 @@ CREATE TABLE resumes (
 
 -- 索引
 CREATE INDEX idx_resumes_user_id ON resumes(user_id);
+CREATE INDEX idx_resumes_user_updated ON resumes(user_id, updated_at DESC, id DESC);
+CREATE INDEX idx_resumes_updated_at ON resumes(updated_at DESC, id DESC);
+CREATE INDEX idx_resumes_public_updated ON resumes(is_public, updated_at DESC, id DESC);
 CREATE INDEX idx_resumes_public_slug ON resumes(public_slug) WHERE public_slug IS NOT NULL;
 CREATE INDEX idx_resumes_template ON resumes(template);
 ```
@@ -468,6 +480,8 @@ CREATE TABLE registration_codes (
 
 -- 索引
 CREATE INDEX idx_registration_codes_hash ON registration_codes(code_hash);
+CREATE INDEX idx_registration_codes_created_at ON registration_codes(created_at DESC, id DESC);
+CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabled_at, expires_at, created_at DESC);
 ```
 
 **字段说明:**

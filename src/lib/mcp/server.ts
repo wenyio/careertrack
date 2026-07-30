@@ -24,6 +24,7 @@ import {
   unpublishResume,
   generatePreviewToken,
 } from '@/lib/services/resume'
+import { MAX_PAGE_SIZE } from '@/lib/pagination'
 // DEFAULT_MODULES_ORDER is used indirectly via resume services
 import { textToDoc, validateRichTextDoc } from '@/utils/rich-text'
 import type { ResumeModuleType, ResumeTemplateId, RichTextNode } from '@/types/resume'
@@ -337,10 +338,13 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
   // ========== resume_list ==========
   server.tool(
     'resume_list',
-    '获取当前用户的所有简历列表',
+    `获取当前用户最近更新的简历列表（最多 ${MAX_PAGE_SIZE} 份）`,
     {},
     async () => {
-      const resumes = await listResumes(userId)
+      const { items: resumes } = await listResumes(userId, {
+        page: 1,
+        pageSize: MAX_PAGE_SIZE,
+      })
       return {
         content: [
           {

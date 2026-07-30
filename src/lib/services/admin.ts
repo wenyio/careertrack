@@ -6,6 +6,13 @@
  */
 
 import { query } from '@/lib/db'
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  paginatedData,
+  paginationOffset,
+} from '@/lib/pagination'
+import type { PaginationParams } from '@/types/pagination'
 
 /** 用户角色类型 */
 export type UserRole = 'user' | 'admin'
@@ -17,10 +24,13 @@ export async function listAdminResumes(opts: {
   q?: string
   pub?: 'all' | 'true' | 'false'
   userId?: string
+  pagination?: PaginationParams
 }) {
-  let sql = `
-    SELECT r.id, r.name, r.user_id, u.username, r.is_public, r.public_slug,
-      r.template, r.created_at, r.updated_at
+  const pagination = opts.pagination || {
+    page: DEFAULT_PAGE,
+    pageSize: DEFAULT_PAGE_SIZE,
+  }
+  const fromSql = `
     FROM resumes r
     JOIN users u ON r.user_id = u.id
   `
@@ -46,14 +56,37 @@ export async function listAdminResumes(opts: {
     conditions.push(`r.is_public = false`)
   }
 
-  if (conditions.length > 0) {
-    sql += ` WHERE ${conditions.join(' AND ')}`
-  }
+  const whereSql = conditions.length > 0
+    ? ` WHERE ${conditions.join(' AND ')}`
+    : ''
+  const dataParams = [
+    ...params,
+    pagination.pageSize,
+    paginationOffset(pagination),
+  ]
+  const limitParam = params.length + 1
+  const offsetParam = params.length + 2
 
-  sql += ` ORDER BY r.updated_at DESC`
+  const [itemsResult, countResult] = await Promise.all([
+    query(
+      `SELECT r.id, r.name, r.user_id, u.username, r.is_public, r.public_slug,
+        r.template, r.created_at, r.updated_at
+       ${fromSql}${whereSql}
+       ORDER BY r.updated_at DESC, r.id DESC
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      dataParams,
+    ),
+    query(
+      `SELECT COUNT(*)::int AS total ${fromSql}${whereSql}`,
+      params,
+    ),
+  ])
 
-  const result = await query(sql, params)
-  return result.rows
+  return paginatedData(
+    itemsResult.rows,
+    pagination,
+    Number(countResult.rows[0]?.total || 0),
+  )
 }
 
 /** 管理员简历详情（含用户名） */
@@ -90,29 +123,52 @@ export async function batchDeleteAdminResumes(ids: string[]) {
 // ============ 用户管理 ============
 
 /** 管理员用户列表（含简历计数） */
-export async function listAdminUsers(opts: { q?: string }) {
-  let sql = `
+export async function listAdminUsers(opts: {
+  q?: string
+  pagination?: PaginationParams
+}) {
+  const pagination = opts.pagination || {
+    page: DEFAULT_PAGE,
+    pageSize: DEFAULT_PAGE_SIZE,
+  }
+  const selectSql = `
     SELECT u.id, u.username, u.role, u.otp_enabled, u.auth_provider, u.disabled_at,
       u.created_at, u.updated_at,
-      COALESCE(r.cnt, 0)::int AS resume_count
+      (SELECT COUNT(*) FROM resumes r WHERE r.user_id = u.id)::int AS resume_count
     FROM users u
-    LEFT JOIN (
-      SELECT user_id, COUNT(*) AS cnt
-      FROM resumes
-      GROUP BY user_id
-    ) r ON r.user_id = u.id
   `
+  let whereSql = ''
   const params: unknown[] = []
 
   if (opts.q) {
-    sql += ` WHERE u.username ILIKE $1`
+    whereSql = ' WHERE u.username ILIKE $1'
     params.push(`%${opts.q}%`)
   }
 
-  sql += ` ORDER BY u.created_at DESC`
+  const limitParam = params.length + 1
+  const offsetParam = params.length + 2
+  const [itemsResult, countResult] = await Promise.all([
+    query(
+      `${selectSql}${whereSql}
+       ORDER BY u.created_at DESC, u.id DESC
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      [
+        ...params,
+        pagination.pageSize,
+        paginationOffset(pagination),
+      ],
+    ),
+    query(
+      `SELECT COUNT(*)::int AS total FROM users u${whereSql}`,
+      params,
+    ),
+  ])
 
-  const result = await query(sql, params)
-  return result.rows
+  return paginatedData(
+    itemsResult.rows,
+    pagination,
+    Number(countResult.rows[0]?.total || 0),
+  )
 }
 
 /** 管理员用户详情 */

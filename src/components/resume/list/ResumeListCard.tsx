@@ -17,6 +17,7 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons'
 import ResumeMiniPreview from '@/components/resume/ResumeMiniPreview'
+import ResumeSummaryThumbnail from '@/components/resume/ResumeSummaryThumbnail'
 import PublicLinkPopover from '@/components/resume/PublicLinkPopover'
 import { formatDate } from '@/utils/format'
 import { DEFAULT_MODULES_ORDER } from '@/types/resume'
@@ -28,9 +29,10 @@ const { Text } = Typography
 export interface ResumeListResume {
   id: string
   name: string
-  content: ResumeContent
-  modules_config: ModulesConfig
-  modules_order: ResumeModuleType[]
+  content?: ResumeContent
+  modules_config?: ModulesConfig
+  modules_order?: ResumeModuleType[]
+  preview_sections?: ResumeModuleType[]
   template: ResumeTemplateId
   updated_at: string
   is_public?: boolean
@@ -83,14 +85,22 @@ export default function ResumeListCard({
           onClick={() => onEdit(resume.id)}
           aria-hidden="true"
         >
-          <ResumeMiniPreview
-            content={resume.content}
-            modulesConfig={resume.modules_config}
-            modulesOrder={resume.modules_order || DEFAULT_MODULES_ORDER}
-            template={resume.template || 'classic'}
-            profile={profile ?? undefined}
-            width={120}
-          />
+          {resume.content && resume.modules_config ? (
+            <ResumeMiniPreview
+              content={resume.content}
+              modulesConfig={resume.modules_config}
+              modulesOrder={resume.modules_order || DEFAULT_MODULES_ORDER}
+              template={resume.template || 'classic'}
+              profile={profile ?? undefined}
+              width={120}
+            />
+          ) : (
+            <ResumeSummaryThumbnail
+              sections={resume.preview_sections || []}
+              template={resume.template || 'classic'}
+              width={120}
+            />
+          )}
         </div>
 
         {/* 右侧：信息与操作 */}

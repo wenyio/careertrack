@@ -37,6 +37,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | DATA-01 | 已关闭 | SQLite/PostgreSQL 新增事务；SQLite 进程内写事务串行化，避免 async 回调与同步 busy wait 互锁；注册、注册码原子领取及 GitHub 首次注册纳入事务；注册码哈希唯一 |
 | DATA-02 | 已关闭 | 简历引入 `revision` 条件写入和 409 冲突；自动保存改为单飞串行队列 |
 | OPS-01 | 已关闭 | Docker 数据固定为 `/data/careertrack.db`，修复 UID 1001 权限，声明 volume 与健康检查 |
+| SCALE-01 | 已关闭 | 5 个 REST 列表接入有界服务端分页；个人简历改为无正文摘要 DTO；MCP 限制 100 份；补稳定排序与索引 |
 
 同期完成的 P1 基础项：
 
@@ -44,25 +45,25 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 修复公开页 SSR 404 和动态 sitemap，收紧 standalone 文件追踪；
 - 增加安全响应头、数据库健康检查和专项安全冒烟脚本；
 - 全部 19 个 JSON 写接口接入共享 JSON/Zod 运行时校验，非法输入统一返回 400；
-- 全部 18 个动态 API 路由和 6 组查询参数接入共享校验，通用错误码按 HTTP 语义收敛；
+- 全部 18 个动态 API 路由和 8 组查询参数接入共享校验，通用错误码按 HTTP 语义收敛；
 - JSON 请求体增加 1 MiB 流式字节上限和结构复杂度预算，全部 API 响应增加 request ID；
 - REST 与 MCP 共用富文本节点/mark/样式语义校验及 URL 协议白名单；
-- ESLint 已清零；单元测试增加到 170 个；
+- ESLint 已清零；单元测试增加到 173 个；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
-仍未关闭、不得被本轮改动掩盖的重点包括：TOTP secret 加密与恢复码、列表分页/轻量 DTO、多实例共享限流、PostgreSQL 集成测试、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+仍未关闭、不得被本轮改动掩盖的重点包括：TOTP secret 加密与恢复码、多实例共享限流、PostgreSQL 集成测试、超大数据集 cursor pagination、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 19 个测试文件、170 项测试通过 |
+| `npm run test:unit` | 通过 | 20 个测试文件、173 项测试通过 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 42 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 105/105，通过时间 6.1 分钟 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 108/108，通过时间 5.8 分钟；含 3 项分页/轻量 DTO 专项回归 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
 
 本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
@@ -238,7 +239,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 
 项目已经依赖 Zod，但主要用于 MCP。REST route 多数直接消费 `request.json()`：缺少字段长度、枚举、数组形状、slug 规则、批量上限和 body 大小限制。部分错误响应还会直接带出底层错误文本。
 
-**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 6 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举、重复查询参数、超大或结构异常 JSON 均有单元和真实接口 E2E。REST 与 MCP 现已共用 TipTap 节点层级、mark/样式属性、富文本预算和外链协议白名单；通用错误 envelope 已按 HTTP 语义使用稳定错误码，全部 API 响应携带 request ID，后续只需继续细化少数业务专用码。
+**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 8 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码、分页和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举、重复查询参数、超大或结构异常 JSON 均有单元和真实接口 E2E。REST 与 MCP 现已共用 TipTap 节点层级、mark/样式属性、富文本预算和外链协议白名单；通用错误 envelope 已按 HTTP 语义使用稳定错误码，全部 API 响应携带 request ID，后续只需继续细化少数业务专用码。
 
 建议建立共享 schema 层，覆盖：
 
@@ -296,7 +297,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 在干净工作树/容器上下文中构建，并增加镜像大小门禁；
 - 检查 13 MB 的 `public` 字体：当前完整 Noto Sans SC TTF 与多个 WOFF/分片并存，统一字体策略和子集。
 
-### SCALE-01：列表接口无分页，并返回过重内容
+### SCALE-01：列表接口无分页，并返回过重内容（已关闭）
 
 简历列表为生成卡片预览返回每份简历的完整 `content`、模块配置和顺序。管理员用户、简历和注册码列表也未见可靠分页。
 
@@ -307,6 +308,17 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 详情按需加载；
 - 管理后台增加搜索条件与相应索引；
 - 对 sitemap、批量操作、MCP list 同样设置上限。
+
+落实（2026-07-30）：
+
+- `/api/resumes`、后台用户、后台简历、指定用户简历和注册码列表统一接入 `page/page_size`，默认每页 20、最大 100；
+- 为避免破坏已有 API 调用方，响应体继续使用数组，分页元数据放入 `X-Page`、`X-Page-Size`、`X-Total-Count` 和 `X-Total-Pages`；
+- 个人简历列表 SQL 不再读取 `content`，响应只包含身份、公开状态、模板、更新时间和 `preview_sections`；卡片改用结构摘要缩略图；
+- 后台 Ant Design 表格由浏览器内分页切换为服务端受控分页，筛选变化重置页码；
+- MCP `resume_list` 限制最近更新的 100 份，完整内容继续由 `resume_get` 按需读取；
+- 增加用户创建时间、简历用户/更新时间和注册码创建时间索引，排序追加 `id` 保证同时间记录顺序稳定。
+
+当前采用 offset pagination 以兼容后台总数跳页和既有表格交互。进入百万级记录或高频并发写入场景前，应升级为 cursor pagination；这属于后续规模化增强，不再阻塞当前单实例受控部署。
 
 ### AUTH-03：认证硬化仍不完整
 
@@ -426,7 +438,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 
 1. 消除 build-time DB 副作用；
 2. 修复 sitemap/404/查询去重；
-3. 列表分页、轻量 DTO、缩略图和索引；
+3. ~~列表分页、轻量 DTO、缩略图和索引；~~（2026-07-30 已完成当前规模方案）
 4. 收紧 output tracing 和字体资产；
 5. 清零 lint error，修复 E2E helper 与测试隔离；
 6. CI 加入 lint、unit、build、SQLite/PostgreSQL integration、E2E smoke、audit/SBOM；

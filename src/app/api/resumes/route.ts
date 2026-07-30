@@ -5,19 +5,25 @@
  * POST /api/resumes - 创建简历
  */
 
-import { withAuth, success } from '@/lib/api'
+import { withAuth, paginatedSuccess, success } from '@/lib/api'
 import { listResumes, createResume, buildInitialContentFromProfile } from '@/lib/services/resume'
 import { getProfile } from '@/lib/services/profile'
-import { parseJsonBody } from '@/lib/api-validation'
+import { parseJsonBody, parseSearchParams } from '@/lib/api-validation'
 import { createResumeBodySchema } from '@/lib/validation/business'
+import { resumesQuerySchema } from '@/lib/validation/params'
 
 /**
  * 获取简历列表
  */
 export async function GET(request: Request) {
   return withAuth(request, async (user) => {
-    const resumes = await listResumes(user.id)
-    return success(resumes)
+    const parsedQuery = parseSearchParams(request, resumesQuerySchema)
+    if (!parsedQuery.success) return parsedQuery.response
+    const resumes = await listResumes(user.id, {
+      page: parsedQuery.data.page,
+      pageSize: parsedQuery.data.page_size,
+    })
+    return paginatedSuccess(resumes)
   })
 }
 
