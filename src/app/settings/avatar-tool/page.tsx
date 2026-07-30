@@ -15,10 +15,15 @@ import {
   PictureOutlined,
 } from '@ant-design/icons'
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout'
+import {
+  AVATAR_EXPORT_SIZE,
+  getAvatarFileExtension,
+  renderContainedSquareImage,
+  type AvatarExportFormat,
+} from '@/utils/avatar-image'
 
 const { Text, Paragraph } = Typography
 
-const EXPORT_SIZE = 1024
 const AVATAR_WIDTH = 88
 const AVATAR_HEIGHT = 106
 
@@ -26,53 +31,61 @@ export default function AvatarToolPage() {
   const { message } = App.useApp()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const exportFormatRef = useRef<AvatarExportFormat>('image/png')
+  const renderRequestRef = useRef(0)
 
-  const [exportFormat, setExportFormat] = useState<'image/png' | 'image/jpeg'>('image/png')
+  const [exportFormat, setExportFormat] =
+    useState<AvatarExportFormat>('image/png')
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [originalUrl, setOriginalUrl] = useState<string>('')
   const [fileName, setFileName] = useState<string>('')
 
   /**
-   * 将图片处理为 1:1 方图（白色背景，左右/上下补白，不裁剪）
+   * Decode and render one source using the explicitly requested format.
+   *
+   * Passing the format avoids reading stale React state when the user changes
+   * PNG/JPEG while an image callback is still pending.
    */
+  const renderImageSource = useCallback((
+    source: string,
+    format: AvatarExportFormat,
+  ) => {
+    const requestId = ++renderRequestRef.current
+    const image = new Image()
+    image.onload = () => {
+      // Rapid format changes may finish decoding out of order; only the most
+      // recent request is allowed to update the preview.
+      if (requestId !== renderRequestRef.current) return
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      try {
+        setPreviewUrl(renderContainedSquareImage(canvas, image, format))
+      } catch {
+        message.error('图片处理失败，请更换图片后重试')
+      }
+    }
+    image.onerror = () => {
+      if (requestId !== renderRequestRef.current) return
+      message.error('图片读取失败，请选择有效的图片文件')
+    }
+    image.src = source
+  }, [message])
+
+  /** Read a local image without uploading it, then render the latest format. */
   const processImage = useCallback((file: File) => {
     setFileName(file.name.replace(/\.[^.]+$/, ''))
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        setOriginalUrl(img.src)
-
-        // 创建 1:1 画布，白色背景
-        const canvas = canvasRef.current
-        if (!canvas) return
-        canvas.width = EXPORT_SIZE
-        canvas.height = EXPORT_SIZE
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-
-        // 白色背景
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE)
-
-        // 计算缩放：保持原图比例，完整放入方框内（contain）
-        const scale = Math.min(EXPORT_SIZE / img.width, EXPORT_SIZE / img.height)
-        const drawWidth = img.width * scale
-        const drawHeight = img.height * scale
-        const drawX = (EXPORT_SIZE - drawWidth) / 2
-        const drawY = (EXPORT_SIZE - drawHeight) / 2
-
-        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
-
-        // 生成预览
-        const mimeType = exportFormat
-        const quality = mimeType === 'image/jpeg' ? 0.92 : undefined
-        setPreviewUrl(canvas.toDataURL(mimeType, quality))
-      }
-      img.src = e.target?.result as string
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return
+      setOriginalUrl(reader.result)
+      renderImageSource(reader.result, exportFormatRef.current)
+    }
+    reader.onerror = () => {
+      message.error('图片读取失败，请重试')
     }
     reader.readAsDataURL(file)
-  }, [exportFormat])
+  }, [message, renderImageSource])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -84,41 +97,22 @@ export default function AvatarToolPage() {
     processImage(file)
   }
 
-  const handleReprocess = useCallback(() => {
-    if (!originalUrl) return
-    const img = new Image()
-    img.onload = () => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      canvas.width = EXPORT_SIZE
-      canvas.height = EXPORT_SIZE
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE)
-
-      const scale = Math.min(EXPORT_SIZE / img.width, EXPORT_SIZE / img.height)
-      const drawWidth = img.width * scale
-      const drawHeight = img.height * scale
-      const drawX = (EXPORT_SIZE - drawWidth) / 2
-      const drawY = (EXPORT_SIZE - drawHeight) / 2
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
-
-      const quality = exportFormat === 'image/jpeg' ? 0.92 : undefined
-      setPreviewUrl(canvas.toDataURL(exportFormat, quality))
-    }
-    img.src = originalUrl
-  }, [originalUrl, exportFormat])
+  const handleExportFormatChange = useCallback((
+    nextFormat: AvatarExportFormat,
+  ) => {
+    exportFormatRef.current = nextFormat
+    setExportFormat(nextFormat)
+    if (originalUrl) renderImageSource(originalUrl, nextFormat)
+  }, [originalUrl, renderImageSource])
 
   const handleDownload = () => {
     if (!previewUrl) {
       message.warning('请先选择图片')
       return
     }
-    const ext = exportFormat === 'image/png' ? 'png' : 'jpg'
+    const extension = getAvatarFileExtension(exportFormat)
     const link = document.createElement('a')
-    link.download = `${fileName || 'avatar'}_1x1.${ext}`
+    link.download = `${fileName || 'avatar'}_1x1.${extension}`
     link.href = previewUrl
     link.click()
     message.success('已下载')
@@ -170,19 +164,13 @@ export default function AvatarToolPage() {
           <Text strong style={{ marginRight: 12 }}>导出格式</Text>
           <Radio.Group
             value={exportFormat}
-            onChange={(e) => {
-              setExportFormat(e.target.value)
-              if (originalUrl) {
-                // 用 setTimeout 等 state 更新后再重新处理
-                setTimeout(() => handleReprocess(), 0)
-              }
-            }}
+            onChange={(event) => handleExportFormatChange(event.target.value)}
           >
             <Radio.Button value="image/png">PNG</Radio.Button>
             <Radio.Button value="image/jpeg">JPEG</Radio.Button>
           </Radio.Group>
           <Text type="secondary" style={{ marginLeft: 12 }}>
-            导出尺寸 {EXPORT_SIZE}×{EXPORT_SIZE}
+            导出尺寸 {AVATAR_EXPORT_SIZE}×{AVATAR_EXPORT_SIZE}
           </Text>
         </div>
 

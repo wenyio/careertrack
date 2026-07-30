@@ -69,10 +69,10 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 23 个测试文件、182 项测试通过；含 JSON 双形态容错、密钥加解密、生产 fail-closed、恢复码、原子消费和旧库迁移 |
+| `npm run test:unit` | 通过 | 24 个测试文件、187 项测试通过；含 Canvas contain/编码、JSON 双形态容错、密钥加解密、生产 fail-closed、恢复码、原子消费和旧库迁移 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 110/110，通过时间 6.1 分钟；含 OTP、列表分页/轻量 DTO 和公开 A4 分页专项回归 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 111/111；含 OTP、列表分页/轻量 DTO、公开 A4 分页和证件照 PNG/JPEG 格式切换专项回归 |
 | `npm run test:postgres` | 待 CI 实跑 | 隔离脚本和 PostgreSQL 15 service 门禁已实现；当前开发机没有 PostgreSQL/Docker 运行时，不能把静态检查冒充真实通过 |
 | `.github/workflows/ci.yml` | 静态通过 | YAML 解析通过；quality、postgres、browser 三作业将在 push/PR 首次执行 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
@@ -489,8 +489,11 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 本阶段遵循“按稳定职责提取、不以缩短单文件为目标”的原则。公开简历三个重复
 JSON 解析器已收敛到共享 util，编辑器、公开页、缩略图、模板和打印的 A4 尺寸
-也已改为同一常量来源。登录/游客编辑 hook 因 revision 与 localStorage 语义
-不同，暂不强行抽象为带大量模式参数的共享 hook。
+也已改为同一常量来源。证件照工具重复的 contain 几何、白底 Canvas 绘制和
+PNG/JPEG 编码已收敛为可单测 util，同时修复格式切换旧闭包和异步解码竞态；
+单次使用且无独立状态的预览 JSX 保留在页面内，避免为了缩短文件而拆组件。
+登录/游客编辑 hook 因 revision 与 localStorage 语义不同，暂不强行抽象为带
+大量模式参数的共享 hook。
 
 ## 8. 新功能优先级
 

@@ -14,7 +14,24 @@ const {
   testIp,
 } = require('./helpers')
 
+const TOTP_PERIOD_MS = 30_000
+const TOTP_MIN_VALIDITY_MS = 2_000
+
 registerHooks(test)
+
+/**
+ * Avoid generating a token just before its 30-second period expires.
+ *
+ * The API request may otherwise arrive after the boundary and make this
+ * end-to-end test fail intermittently even though both clocks are correct.
+ */
+async function generateStableTotp(secret) {
+  const remainingMs = TOTP_PERIOD_MS - (Date.now() % TOTP_PERIOD_MS)
+  if (remainingMs < TOTP_MIN_VALIDITY_MS) {
+    await new Promise((resolve) => setTimeout(resolve, remainingMs + 50))
+  }
+  return generateSync({ secret })
+}
 
 test.describe('OTP 二次验证', () => {
   test('加密密钥、一次性恢复码、会话轮换和登录切换形成闭环', async ({
@@ -41,7 +58,7 @@ test.describe('OTP 二次验证', () => {
     expect(JSON.parse(pendingOtp.otp_recovery_codes)).toEqual([])
     expect(pendingOtp.otp_enabled).toBe(0)
 
-    const token = generateSync({ secret: setup.secret })
+    const token = await generateStableTotp(setup.secret)
     const verifyResponse = await request.post('/api/auth/verify-otp', {
       headers: { Cookie: account.token },
       data: { code: token },
@@ -117,7 +134,7 @@ test.describe('OTP 二次验证', () => {
       data: {
         username: account.username,
         password: account.password,
-        otp_code: generateSync({ secret: setup.secret }),
+        otp_code: await generateStableTotp(setup.secret),
       },
     })
     expect(totpLogin.status(), await totpLogin.text()).toBe(200)
@@ -126,7 +143,7 @@ test.describe('OTP 二次验证', () => {
       headers: { Cookie: verifiedCookie },
       data: {
         password: account.password,
-        code: generateSync({ secret: setup.secret }),
+        code: await generateStableTotp(setup.secret),
       },
     })
     expect(regenerateResponse.status(), await regenerateResponse.text()).toBe(200)
