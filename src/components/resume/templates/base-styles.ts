@@ -5,6 +5,7 @@
  */
 
 import type { TemplateStyleOverrides } from './types'
+import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 
 interface BaseStylesConfig {
   primaryColor: string
@@ -33,8 +34,8 @@ export function getBaseStyles(
       lineHeight,
       color: '#333',
       padding: '36px 36px 32px 36px',
-      width: 794,
-      minHeight: 1123,
+      width: A4_PAGE_WIDTH_PX,
+      minHeight: A4_PAGE_HEIGHT_PX,
       backgroundColor: '#fff',
       boxSizing: 'border-box' as const,
     },

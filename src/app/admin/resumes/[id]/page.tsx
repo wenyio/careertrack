@@ -27,6 +27,7 @@ import { formatDate } from '@/utils/format'
 import { DEFAULT_MODULES_ORDER } from '@/types/resume'
 import PageContainer from '@/components/layout/PageContainer'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
+import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 
 export default function AdminResumeDetailPage() {
   const router = useRouter()
@@ -140,8 +141,8 @@ export default function AdminResumeDetailPage() {
         >
           <div
             style={{
-              width: 794,
-              minHeight: 1123,
+              width: A4_PAGE_WIDTH_PX,
+              minHeight: A4_PAGE_HEIGHT_PX,
               background: '#fff',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               transformOrigin: 'top center',

@@ -7,6 +7,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { query } from '@/lib/db'
+import { parseJsonValue } from '@/utils/safe-json'
 
 // ============ 数据读取 ============
 
@@ -17,15 +18,6 @@ export interface OGResumeData {
   degree: string
   workYears: string
   city: string
-}
-
-/** 安全解析 JSON */
-function safeParse<T>(value: unknown, fallback: T): T {
-  if (!value) return fallback
-  if (typeof value === 'string') {
-    try { return JSON.parse(value) as T } catch { return fallback }
-  }
-  return value as T
 }
 
 /**
@@ -49,7 +41,10 @@ export async function fetchOGResumeData(slug: string): Promise<OGResumeData> {
     )
     if (result.rows.length === 0) return data
 
-    const content = safeParse(result.rows[0].content, {} as Record<string, unknown>) as Record<string, unknown>
+    const content = parseJsonValue<Record<string, unknown>>(
+      result.rows[0].content,
+      {},
+    )
     const basicInfo = (content.basic_info || {}) as Record<string, unknown>
     const jobIntention = (basicInfo.job_intention || {}) as Record<string, unknown>
     const other = (basicInfo.other || {}) as Record<string, unknown>

@@ -83,4 +83,45 @@ test.describe('简历公开', () => {
     await expect(page.getByText('updated@test.com').filter({ visible: true })).toBeVisible()
     await screenshot(page, '公开简历', '内容同步更新')
   })
+
+  test('长简历按 A4 高度分页并支持分页器切换', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'publicpages')
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_公开分页_${Date.now()}`,
+    )
+
+    const workExperience = Array.from({ length: 12 }, (_, index) => ({
+      company: `分页测试公司 ${index + 1}`,
+      position: '高级工程师',
+      date_range: '2020-2026',
+      description: '负责核心功能设计、跨团队协作和稳定性治理，持续交付高质量结果。'.repeat(6),
+    }))
+    const updateResponse = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        content: {
+          basic_info: { name: 'E2E_分页用户' },
+          work_experience: workExperience,
+        },
+        modules_config: {
+          basic_info: true,
+          work_experience: true,
+        },
+      },
+    })
+    expect(updateResponse.status(), await updateResponse.text()).toBe(200)
+
+    const slug = `e2e-pages-${Date.now()}`
+    await publishResumeByApi(request, account.token, resume.id, slug)
+    await goto(page, `/resume/${slug}`)
+
+    const nextPageButton = page.getByRole('button', { name: '下一页' })
+    await expect(nextPageButton).toBeVisible({ timeout: 10_000 })
+    await nextPageButton.click()
+    await expect(page.getByRole('button', { name: '第 2 页' }))
+      .toHaveAttribute('aria-current', 'page')
+    await screenshot(page, '公开简历', 'A4分页切换')
+  })
 })

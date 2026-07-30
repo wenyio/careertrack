@@ -34,9 +34,7 @@ import PageBreakHints from './PageBreakHints'
 import type { Profile } from '@/types/profile'
 import type { ResumeTemplateId } from '@/types/resume'
 import type { ResumeEditorState } from '@/stores/resume-editor'
-
-const A4_PREVIEW_WIDTH = 794
-const A4_PREVIEW_HEIGHT = 1123
+import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 
 interface ResumeEditorShellProps {
   store: ResumeEditorState
@@ -289,7 +287,7 @@ export default function ResumeEditorShell({
 
               {/* 预览内容 */}
               <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-                <div style={{ width: A4_PREVIEW_WIDTH * previewZoom, margin: '0 auto' }}>
+                <div style={{ width: A4_PAGE_WIDTH_PX * previewZoom, margin: '0 auto' }}>
                   <div
                     ref={previewRef}
                     className="resume-a4-preview"
@@ -298,8 +296,8 @@ export default function ResumeEditorShell({
                       boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
                       borderRadius: 4,
                       backgroundColor: '#fff',
-                      width: A4_PREVIEW_WIDTH,
-                      minHeight: A4_PREVIEW_HEIGHT,
+                      width: A4_PAGE_WIDTH_PX,
+                      minHeight: A4_PAGE_HEIGHT_PX,
                       transform: `scale(${previewZoom})`,
                       transformOrigin: 'top left',
                     }}

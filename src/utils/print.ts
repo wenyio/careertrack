@@ -9,9 +9,7 @@ import { createRoot } from 'react-dom/client'
 import type { Resume, ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
 import ResumeHtmlPreview from '@/components/resume/editor/ResumeHtmlPreview'
-
-/** A4 像素宽度 */
-const A4_WIDTH_PX = 794
+import { A4_PAGE_WIDTH_PX } from '@/constants'
 
 const PRINT_RICH_TEXT_CSS = `
   .resume-desc {
@@ -68,7 +66,7 @@ function copyComputedStyles(source: Element, target: Element) {
 export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   const clone = sourceEl.cloneNode(true) as HTMLElement
   copyComputedStyles(sourceEl, clone)
-  clone.style.width = `${A4_WIDTH_PX}px`
+  clone.style.width = `${A4_PAGE_WIDTH_PX}px`
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
   clone.style.transformOrigin = 'top left'
@@ -105,9 +103,9 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     align-items: flex-start;
   }
   body > .resume-a4-preview {
-    flex: 0 0 ${A4_WIDTH_PX}px !important;
-    width: ${A4_WIDTH_PX}px !important;
-    max-width: ${A4_WIDTH_PX}px !important;
+    flex: 0 0 ${A4_PAGE_WIDTH_PX}px !important;
+    width: ${A4_PAGE_WIDTH_PX}px !important;
+    max-width: ${A4_PAGE_WIDTH_PX}px !important;
     margin: 0 auto !important;
     transform: none !important;
     transform-origin: top left !important;
@@ -220,7 +218,10 @@ export async function printResume(resume: Resume): Promise<void> {
 
     await new Promise<void>((resolve) => {
       root.render(
-        createElement('div', { className: 'resume-a4-preview', style: { width: A4_WIDTH_PX } },
+        createElement('div', {
+          className: 'resume-a4-preview',
+          style: { width: A4_PAGE_WIDTH_PX },
+        },
           createElement(ResumeHtmlPreview, { content, modulesConfig, modulesOrder, template }),
         ),
       )

@@ -12,6 +12,7 @@ import type {
   TemplateRendererProps,
 } from '../types'
 import type { ResumeModuleType } from '@/types/resume'
+import { A4_PAGE_HEIGHT_PX } from '@/constants'
 import {
   StandardBasicInfoHeader,
   renderStandardModule,
@@ -102,7 +103,6 @@ function ModernRenderer({
   }
 
   // ── 多页高度对齐 ──
-  const A4_HEIGHT = 1123
   const pageRef = useRef<HTMLDivElement>(null)
   const [pageHeight, setPageHeight] = useState<number | undefined>(undefined)
 
@@ -110,8 +110,8 @@ function ModernRenderer({
     const el = pageRef.current
     if (!el) return
     const contentHeight = el.scrollHeight
-    const pages = Math.ceil(contentHeight / A4_HEIGHT)
-    const targetHeight = pages * A4_HEIGHT
+    const pages = Math.ceil(contentHeight / A4_PAGE_HEIGHT_PX)
+    const targetHeight = pages * A4_PAGE_HEIGHT_PX
     if (targetHeight !== contentHeight) {
       setPageHeight(targetHeight)
     }

@@ -8,6 +8,7 @@
 'use client'
 
 import { getModuleLabel } from '@/config/modules'
+import { A4_PAGE_RATIO } from '@/constants'
 import type { ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 
 interface ResumeSummaryThumbnailProps {
@@ -15,8 +16,6 @@ interface ResumeSummaryThumbnailProps {
   template: ResumeTemplateId
   width?: number
 }
-
-const PAGE_RATIO = 1123 / 794
 
 const TEMPLATE_ACCENTS: Record<ResumeTemplateId, {
   accent: string
@@ -34,7 +33,7 @@ export default function ResumeSummaryThumbnail({
   template,
   width = 120,
 }: ResumeSummaryThumbnailProps) {
-  const height = Math.round(width * PAGE_RATIO)
+  const height = Math.round(width * A4_PAGE_RATIO)
   const colors = TEMPLATE_ACCENTS[template] || TEMPLATE_ACCENTS.classic
   const visibleSections = sections
     .filter((section) => section !== 'basic_info')

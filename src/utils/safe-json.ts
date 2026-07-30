@@ -1,4 +1,20 @@
 /**
+ * Parse a value that may be a JSON string or an already-decoded database
+ * value. SQLite returns JSON columns as strings while PostgreSQL returns
+ * objects, so public rendering paths must accept both forms.
+ */
+export function parseJsonValue<T>(value: unknown, fallback: T): T {
+  if (value == null || value === '') return fallback
+  if (typeof value !== 'string') return value as T
+
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return fallback
+  }
+}
+
+/**
  * Serialize JSON for embedding inside an HTML <script> element.
  *
  * JSON.stringify alone is not safe in an HTML raw-text element because a

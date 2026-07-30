@@ -9,6 +9,10 @@
 import type { ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import type { Profile } from '@/types/profile'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
+import {
+  A4_PAGE_HEIGHT_PX,
+  A4_PAGE_WIDTH_PX,
+} from '@/constants'
 
 interface ResumeMiniPreviewProps {
   content: ResumeContent
@@ -19,9 +23,6 @@ interface ResumeMiniPreviewProps {
   /** 缩略图容器宽度（px），默认 120 */
   width?: number
 }
-
-const PAGE_WIDTH = 794
-const PAGE_HEIGHT = 1123
 
 /**
  * 简历缩略图预览
@@ -37,8 +38,10 @@ export default function ResumeMiniPreview({
   profile,
   width = 120,
 }: ResumeMiniPreviewProps) {
-  const visibleHeight = Math.round(width * (PAGE_HEIGHT / PAGE_WIDTH))
-  const scale = width / PAGE_WIDTH
+  const visibleHeight = Math.round(
+    width * (A4_PAGE_HEIGHT_PX / A4_PAGE_WIDTH_PX),
+  )
+  const scale = width / A4_PAGE_WIDTH_PX
 
   return (
     <div style={{
@@ -50,8 +53,8 @@ export default function ResumeMiniPreview({
       boxShadow: '0 1px 4px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.04)',
     }}>
       <div style={{
-        width: PAGE_WIDTH,
-        height: PAGE_HEIGHT,
+        width: A4_PAGE_WIDTH_PX,
+        height: A4_PAGE_HEIGHT_PX,
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
         pointerEvents: 'none',

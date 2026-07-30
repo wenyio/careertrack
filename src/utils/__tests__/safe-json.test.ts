@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { serializeJsonForHtml } from '@/utils/safe-json'
+import { parseJsonValue, serializeJsonForHtml } from '@/utils/safe-json'
+
+describe('parseJsonValue', () => {
+  const fallback = { status: 'fallback' }
+
+  it('accepts SQLite JSON strings and PostgreSQL decoded values', () => {
+    expect(parseJsonValue('{"name":"CareerTrack"}', fallback)).toEqual({
+      name: 'CareerTrack',
+    })
+
+    const decoded = { name: 'CareerTrack' }
+    expect(parseJsonValue(decoded, fallback)).toBe(decoded)
+  })
+
+  it('returns the fallback for missing or malformed JSON', () => {
+    expect(parseJsonValue(null, fallback)).toBe(fallback)
+    expect(parseJsonValue('', fallback)).toBe(fallback)
+    expect(parseJsonValue('{invalid', fallback)).toBe(fallback)
+  })
+})
 
 describe('serializeJsonForHtml', () => {
   it('preserves the JSON value after parsing', () => {

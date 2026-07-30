@@ -7,8 +7,7 @@
 'use client'
 
 import { useState, useEffect, type RefObject } from 'react'
-
-const A4_PREVIEW_HEIGHT = 1123
+import { A4_PAGE_HEIGHT_PX } from '@/constants'
 
 export default function PageBreakHints({ previewRef }: { previewRef: RefObject<HTMLDivElement | null> }) {
   const [breakPositions, setBreakPositions] = useState<number[]>([])
@@ -27,15 +26,18 @@ export default function PageBreakHints({ previewRef }: { previewRef: RefObject<H
 
     const updateBreaks = () => {
       const contentHeight = Math.max(
-        A4_PREVIEW_HEIGHT,
+        A4_PAGE_HEIGHT_PX,
         ...getContentElements().map((child) => child.offsetTop + child.scrollHeight),
       )
-      const pageCount = Math.ceil(contentHeight / A4_PREVIEW_HEIGHT)
-      const minHeight = `${pageCount * A4_PREVIEW_HEIGHT}px`
+      const pageCount = Math.ceil(contentHeight / A4_PAGE_HEIGHT_PX)
+      const minHeight = `${pageCount * A4_PAGE_HEIGHT_PX}px`
       if (previewEl.style.minHeight !== minHeight) {
         previewEl.style.minHeight = minHeight
       }
-      const next = Array.from({ length: Math.max(0, pageCount - 1) }, (_, i) => (i + 1) * A4_PREVIEW_HEIGHT)
+      const next = Array.from(
+        { length: Math.max(0, pageCount - 1) },
+        (_, index) => (index + 1) * A4_PAGE_HEIGHT_PX,
+      )
       setBreakPositions((prev) => (
         prev.length === next.length && prev.every((value, index) => value === next[index]) ? prev : next
       ))

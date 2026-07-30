@@ -23,21 +23,10 @@ import {
   detectResumeLanguage,
   SEO_FALLBACK,
 } from '@/utils/seo'
-import { serializeJsonForHtml } from '@/utils/safe-json'
+import { parseJsonValue, serializeJsonForHtml } from '@/utils/safe-json'
 
 interface PageProps {
   params: Promise<{ slug: string }>
-}
-
-/** 安全解析简历 content JSON */
-function safeParseContent(content: unknown): ResumeContent {
-  try {
-    if (!content) return {}
-    if (typeof content === 'string') return JSON.parse(content) as ResumeContent
-    return content as ResumeContent
-  } catch {
-    return {}
-  }
 }
 
 /** 生成动态 SEO 元数据 */
@@ -59,7 +48,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     const resume = result.rows[0]
-    const content = safeParseContent(resume.content)
+    const content = parseJsonValue<ResumeContent>(resume.content, {})
     const lang = detectResumeLanguage(content)
 
     // 生成 title / description
@@ -108,7 +97,7 @@ export default async function PublicResumePage({ params }: PageProps) {
     notFound()
   }
   const row = result.rows[0]
-  const resumeContent = safeParseContent(row.content)
+  const resumeContent = parseJsonValue<ResumeContent>(row.content, {})
   // 传递给客户端组件，避免重复请求
   const initialData = {
     name: row.name,

@@ -57,3 +57,13 @@ export const REQUEST_TIMEOUT = 30000
 
 /** 简历名称最大长度（前后端共享） */
 export const MAX_RESUME_NAME_LENGTH = 50
+
+/**
+ * A4 预览的统一像素尺寸。
+ *
+ * 编辑器、公开页、缩略图和打印都基于同一个 96 DPI 布局坐标系；集中定义可避免
+ * 分页阈值与实际渲染尺寸因局部修改而漂移。
+ */
+export const A4_PAGE_WIDTH_PX = 794
+export const A4_PAGE_HEIGHT_PX = 1123
+export const A4_PAGE_RATIO = A4_PAGE_HEIGHT_PX / A4_PAGE_WIDTH_PX
