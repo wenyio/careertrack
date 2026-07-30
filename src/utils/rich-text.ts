@@ -7,33 +7,51 @@ import type { DescriptionField, RichTextNode } from '@/types/resume'
 // ============ 安全校验 ============
 
 /** 允许的 URL 协议白名单 */
-const ALLOWED_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
+const ALLOWED_WEB_PROTOCOLS = new Set(['http:', 'https:'])
+const URL_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/
+const URL_SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:/i
+
+function hasAllowedProtocol(
+  url: string,
+  protocols: ReadonlySet<string>,
+): boolean {
+  if (!url || URL_CONTROL_CHARACTERS.test(url)) return false
+  const value = url.trim()
+  if (!value) return false
+
+  try {
+    return protocols.has(new URL(value).protocol)
+  } catch {
+    // Scheme-less and relative links are resolved by the browser/application.
+    // A malformed value that still declares a scheme must not be downgraded
+    // to a relative link (for example, an incomplete "https://" value).
+    return !URL_SCHEME_PREFIX.test(value)
+  }
+}
 
 /** 校验链接 URL 安全性（共用于 HTML 预览和 PDF 导出） */
 export function isSafeUrl(url: string): boolean {
-  if (!url) return false
-  try {
-    // 绝对 URL：检查协议
-    const parsed = new URL(url)
-    return ALLOWED_PROTOCOLS.includes(parsed.protocol)
-  } catch {
-    // 相对路径：排除 javascript: 等危险协议
-    const lower = url.trim().toLowerCase()
-    if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
-      return false
-    }
-    // 允许相对路径（/path、./path、../path、#anchor 等）
-    return true
-  }
+  return hasAllowedProtocol(url, ALLOWED_PROTOCOLS)
+}
+
+/** 校验图片、作品和个人主页等 Web URL；允许相对上传路径。 */
+export function isSafeWebUrl(url: string): boolean {
+  return hasAllowedProtocol(url, ALLOWED_WEB_PROTOCOLS)
 }
 
 /** 严格的颜色值校验：#RGB / #RRGGBB / rgb() / rgba() */
 export function isValidColor(value: string): boolean {
   if (!value) return false
   const v = value.trim()
-  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)
-    || /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/.test(v)
-    || /^rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(0|1|0?\.\d+)\s*\)$/.test(v)
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) return true
+
+  const rgb = v.match(
+    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/,
+  )
+  if (!rgb) return false
+  if (rgb.slice(1, 4).some((channel) => Number(channel) > 255)) return false
+  return v.startsWith('rgba(') ? rgb[4] !== undefined : rgb[4] === undefined
 }
 
 /** 严格的字号校验：8-48px */
@@ -48,8 +66,10 @@ export function isValidFontSize(value: string): boolean {
 /** 严格的行高校验：1-3 范围内小数 */
 export function isValidLineHeight(value: string): boolean {
   if (!value) return false
-  const n = parseFloat(value.trim())
-  return !isNaN(n) && n >= 1 && n <= 3
+  const normalized = value.trim()
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return false
+  const n = Number(normalized)
+  return n >= 1 && n <= 3
 }
 
 /** 允许的 textAlign 值 */
@@ -266,6 +286,209 @@ const ALLOWED_MARK_TYPES = new Set([
   'bold', 'italic', 'underline', 'code', 'strike',
   'link', 'textStyle',
 ])
+const EMPTY_KEYS = new Set<string>()
+const RICH_TEXT_NODE_KEYS = new Set([
+  'type', 'content', 'marks', 'text', 'attrs',
+])
+const RICH_TEXT_MARK_KEYS = new Set(['type', 'attrs'])
+const PARAGRAPH_ATTRIBUTE_KEYS = new Set([
+  'textAlign', 'indent', 'lineHeight',
+])
+const ORDERED_LIST_ATTRIBUTE_KEYS = new Set(['start', 'type'])
+const LINK_ATTRIBUTE_KEYS = new Set([
+  'href', 'target', 'rel', 'class', 'title',
+])
+const TEXT_STYLE_ATTRIBUTE_KEYS = new Set([
+  'color', 'fontSize', 'lineHeight',
+])
+const INLINE_NODE_TYPES = new Set(['text', 'hardBreak'])
+const BLOCK_NODE_TYPES = new Set(['paragraph', 'bulletList', 'orderedList'])
+const LIST_ITEM_NODE_TYPE = new Set(['listItem'])
+const ALLOWED_LIST_STYLES = new Set(['1', 'a', 'A', 'i', 'I'])
+const ALLOWED_LINK_TARGETS = new Set(['_blank', '_self'])
+
+export const MAX_RICH_TEXT_DEPTH = 16
+export const MAX_RICH_TEXT_NODES = 2_000
+export const MAX_RICH_TEXT_MARKS_PER_NODE = 8
+export const MAX_RICH_TEXT_URL_LENGTH = 2_048
+
+type RichTextValidationResult = { valid: true } | { valid: false; error: string }
+
+type RichTextStackEntry = {
+  node: unknown
+  path: string
+  depth: number
+}
+
+function invalidRichText(error: string): RichTextValidationResult {
+  return { valid: false, error }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function findUnknownKey(
+  value: Record<string, unknown>,
+  allowedKeys: ReadonlySet<string>,
+): string | undefined {
+  return Object.keys(value).find((key) => !allowedKeys.has(key))
+}
+
+function validateNodeAttributes(
+  type: string,
+  attrs: unknown,
+  path: string,
+): RichTextValidationResult {
+  if (attrs === undefined) return { valid: true }
+  if (!isRecord(attrs)) return invalidRichText(`${path}.attrs: 必须是对象`)
+
+  const allowedKeys = type === 'paragraph' || type === 'listItem'
+    ? PARAGRAPH_ATTRIBUTE_KEYS
+    : type === 'orderedList'
+      ? ORDERED_LIST_ATTRIBUTE_KEYS
+      : EMPTY_KEYS
+
+  const unknownKey = findUnknownKey(attrs, allowedKeys)
+  if (unknownKey) {
+    return invalidRichText(`${path}.attrs.${unknownKey}: 不允许的节点属性`)
+  }
+
+  if (type === 'paragraph' || type === 'listItem') {
+    const { textAlign, indent, lineHeight } = attrs
+    if (
+      textAlign !== undefined
+      && textAlign !== null
+      && (typeof textAlign !== 'string' || !isValidTextAlign(textAlign))
+    ) {
+      return invalidRichText(`${path}.attrs.textAlign: 对齐方式无效`)
+    }
+    if (
+      indent !== undefined
+      && indent !== null
+      && (typeof indent !== 'number' || !isValidIndent(indent))
+    ) {
+      return invalidRichText(`${path}.attrs.indent: 缩进必须是 0-8 的整数`)
+    }
+    if (
+      lineHeight !== undefined
+      && lineHeight !== null
+      && (typeof lineHeight !== 'string' || !isValidLineHeight(lineHeight))
+    ) {
+      return invalidRichText(`${path}.attrs.lineHeight: 行高必须在 1-3 之间`)
+    }
+  }
+
+  if (type === 'orderedList') {
+    const { start, type: listStyle } = attrs
+    if (
+      start !== undefined
+      && (!Number.isInteger(start) || (start as number) < 1)
+    ) {
+      return invalidRichText(`${path}.attrs.start: 列表起始值必须是正整数`)
+    }
+    if (
+      listStyle !== undefined
+      && listStyle !== null
+      && !ALLOWED_LIST_STYLES.has(listStyle as string)
+    ) {
+      return invalidRichText(`${path}.attrs.type: 有序列表类型无效`)
+    }
+  }
+
+  return { valid: true }
+}
+
+function validateMark(
+  mark: unknown,
+  path: string,
+): RichTextValidationResult & { type?: string } {
+  if (!isRecord(mark)) return invalidRichText(`${path}: mark 必须是对象`)
+
+  const unknownKey = findUnknownKey(mark, RICH_TEXT_MARK_KEYS)
+  if (unknownKey) {
+    return invalidRichText(`${path}.${unknownKey}: 不允许的 mark 字段`)
+  }
+
+  const type = mark.type
+  if (typeof type !== 'string' || !ALLOWED_MARK_TYPES.has(type)) {
+    return invalidRichText(`${path}: 不允许的 mark 类型 "${String(type)}"`)
+  }
+
+  const attrs = mark.attrs
+  if (attrs !== undefined && !isRecord(attrs)) {
+    return invalidRichText(`${path}.attrs: 必须是对象`)
+  }
+  const markAttrs = attrs || {}
+
+  if (type === 'link') {
+    const unknownAttr = findUnknownKey(markAttrs, LINK_ATTRIBUTE_KEYS)
+    if (unknownAttr) {
+      return invalidRichText(`${path}.attrs.${unknownAttr}: 不允许的链接属性`)
+    }
+
+    const href = markAttrs.href
+    if (
+      typeof href !== 'string'
+      || href.length > MAX_RICH_TEXT_URL_LENGTH
+      || !isSafeUrl(href)
+    ) {
+      return invalidRichText(`${path}.attrs.href: 链接 URL 无效或协议不受支持`)
+    }
+
+    const target = markAttrs.target
+    if (
+      target !== undefined
+      && target !== null
+      && !ALLOWED_LINK_TARGETS.has(target as string)
+    ) {
+      return invalidRichText(`${path}.attrs.target: 链接打开方式无效`)
+    }
+
+    for (const key of ['rel', 'class', 'title'] as const) {
+      const value = markAttrs[key]
+      if (
+        value !== undefined
+        && value !== null
+        && (typeof value !== 'string' || value.length > 200)
+      ) {
+        return invalidRichText(`${path}.attrs.${key}: 链接属性无效`)
+      }
+    }
+  } else if (type === 'textStyle') {
+    const unknownAttr = findUnknownKey(markAttrs, TEXT_STYLE_ATTRIBUTE_KEYS)
+    if (unknownAttr) {
+      return invalidRichText(`${path}.attrs.${unknownAttr}: 不允许的文本样式`)
+    }
+
+    const { color, fontSize, lineHeight } = markAttrs
+    if (
+      color !== undefined
+      && color !== null
+      && (typeof color !== 'string' || !isValidColor(color))
+    ) {
+      return invalidRichText(`${path}.attrs.color: 颜色格式无效`)
+    }
+    if (
+      fontSize !== undefined
+      && fontSize !== null
+      && (typeof fontSize !== 'string' || !isValidFontSize(fontSize))
+    ) {
+      return invalidRichText(`${path}.attrs.fontSize: 字号必须在 8-48px 之间`)
+    }
+    if (
+      lineHeight !== undefined
+      && lineHeight !== null
+      && (typeof lineHeight !== 'string' || !isValidLineHeight(lineHeight))
+    ) {
+      return invalidRichText(`${path}.attrs.lineHeight: 行高必须在 1-3 之间`)
+    }
+  } else if (Object.keys(markAttrs).length > 0) {
+    return invalidRichText(`${path}.attrs: ${type} mark 不允许附加属性`)
+  }
+
+  return { valid: true, type }
+}
 
 /**
  * 将纯文本转换为 TipTap doc JSON
@@ -289,43 +512,139 @@ export function textToDoc(text: string): RichTextNode {
  * 校验 TipTap doc JSON 结构的合法性
  *
  * - 根节点必须是 doc
- * - 只允许白名单内的节点类型和 mark 类型
- * - text 节点必须有 text 字段
- * - 非 text 节点的 text 字段会被忽略
+ * - 节点层级必须符合 doc/paragraph/list 的 TipTap 语义
+ * - 节点、mark 和属性均使用白名单
+ * - 链接、颜色、字号、行高、对齐与缩进经过边界校验
  */
-export function validateRichTextDoc(node: RichTextNode): { valid: boolean; error?: string } {
-  if (!node || typeof node !== 'object') {
-    return { valid: false, error: '节点必须是对象' }
-  }
-  if (node.type !== 'doc') {
-    return { valid: false, error: '根节点必须是 doc 类型' }
-  }
-  return validateNode(node, 'doc')
-}
+export function validateRichTextDoc(input: unknown): RichTextValidationResult {
+  if (!isRecord(input)) return invalidRichText('doc: 节点必须是对象')
+  if (input.type !== 'doc') return invalidRichText('doc: 根节点必须是 doc 类型')
 
-function validateNode(node: RichTextNode, path: string): { valid: boolean; error?: string } {
-  if (!ALLOWED_NODE_TYPES.has(node.type)) {
-    return { valid: false, error: `${path}: 不允许的节点类型 "${node.type}"` }
-  }
+  const stack: RichTextStackEntry[] = [{
+    node: input,
+    path: 'doc',
+    depth: 0,
+  }]
+  const visited = new WeakSet<object>()
+  let nodeCount = 0
 
-  if (node.type === 'text') {
-    if (typeof node.text !== 'string') {
-      return { valid: false, error: `${path}: text 节点必须有 text 字段` }
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) break
+    if (!isRecord(current.node)) {
+      return invalidRichText(`${current.path}: 节点必须是对象`)
     }
-  }
+    if (visited.has(current.node)) {
+      return invalidRichText(`${current.path}: 富文本树不能包含循环引用`)
+    }
+    visited.add(current.node)
 
-  if (node.marks) {
-    for (const mark of node.marks) {
-      if (!ALLOWED_MARK_TYPES.has(mark.type)) {
-        return { valid: false, error: `${path}: 不允许的 mark 类型 "${mark.type}"` }
+    nodeCount += 1
+    if (nodeCount > MAX_RICH_TEXT_NODES) {
+      return invalidRichText(`doc: 节点数量不能超过 ${MAX_RICH_TEXT_NODES} 个`)
+    }
+    if (current.depth > MAX_RICH_TEXT_DEPTH) {
+      return invalidRichText(`doc: 嵌套层级不能超过 ${MAX_RICH_TEXT_DEPTH} 层`)
+    }
+
+    const node = current.node
+    const type = node.type
+    if (typeof type !== 'string' || !ALLOWED_NODE_TYPES.has(type)) {
+      return invalidRichText(
+        `${current.path}: 不允许的节点类型 "${String(type)}"`,
+      )
+    }
+
+    const unknownKey = findUnknownKey(node, RICH_TEXT_NODE_KEYS)
+    if (unknownKey) {
+      return invalidRichText(`${current.path}.${unknownKey}: 不允许的节点字段`)
+    }
+
+    const attrsResult = validateNodeAttributes(type, node.attrs, current.path)
+    if (!attrsResult.valid) return attrsResult
+
+    if (type === 'text') {
+      if (typeof node.text !== 'string' || node.text.length === 0) {
+        return invalidRichText(`${current.path}: text 节点必须包含非空文本`)
+      }
+    } else if (node.text !== undefined) {
+      return invalidRichText(`${current.path}.text: 仅 text 节点允许文本字段`)
+    }
+
+    const marks = node.marks
+    if (marks !== undefined) {
+      if (!INLINE_NODE_TYPES.has(type) || !Array.isArray(marks)) {
+        return invalidRichText(`${current.path}.marks: 仅行内节点允许 mark 数组`)
+      }
+      if (marks.length > MAX_RICH_TEXT_MARKS_PER_NODE) {
+        return invalidRichText(
+          `${current.path}.marks: 不能超过 ${MAX_RICH_TEXT_MARKS_PER_NODE} 个`,
+        )
+      }
+
+      const markTypes = new Set<string>()
+      for (let index = 0; index < marks.length; index += 1) {
+        const markResult = validateMark(
+          marks[index],
+          `${current.path}.marks[${index}]`,
+        )
+        if (!markResult.valid) return markResult
+        if (markResult.type && markTypes.has(markResult.type)) {
+          return invalidRichText(
+            `${current.path}.marks: 不能重复使用 ${markResult.type} mark`,
+          )
+        }
+        if (markResult.type) markTypes.add(markResult.type)
       }
     }
-  }
 
-  if (node.content) {
-    for (let i = 0; i < node.content.length; i++) {
-      const childResult = validateNode(node.content[i], `${path}.${node.type}[${i}]`)
-      if (!childResult.valid) return childResult
+    const content = node.content
+    if (content !== undefined && !Array.isArray(content)) {
+      return invalidRichText(`${current.path}.content: 必须是节点数组`)
+    }
+    const children = Array.isArray(content) ? content : []
+
+    let allowedChildren: ReadonlySet<string>
+    if (type === 'doc') {
+      if (children.length === 0) return invalidRichText('doc.content: 不能为空')
+      allowedChildren = BLOCK_NODE_TYPES
+    } else if (type === 'paragraph') {
+      allowedChildren = INLINE_NODE_TYPES
+    } else if (type === 'bulletList' || type === 'orderedList') {
+      if (children.length === 0) {
+        return invalidRichText(`${current.path}.content: 列表不能为空`)
+      }
+      allowedChildren = LIST_ITEM_NODE_TYPE
+    } else if (type === 'listItem') {
+      if (children.length === 0) {
+        return invalidRichText(`${current.path}.content: 列表项不能为空`)
+      }
+      allowedChildren = BLOCK_NODE_TYPES
+    } else {
+      if (children.length > 0) {
+        return invalidRichText(`${current.path}.content: 行内节点不能包含子节点`)
+      }
+      allowedChildren = EMPTY_KEYS
+    }
+
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      const child = children[index]
+      const childType = isRecord(child) ? child.type : undefined
+      if (typeof childType !== 'string' || !allowedChildren.has(childType)) {
+        return invalidRichText(
+          `${current.path}.content[${index}]: ${type} 不允许包含 "${String(childType)}"`,
+        )
+      }
+      if (type === 'listItem' && index === 0 && childType !== 'paragraph') {
+        return invalidRichText(
+          `${current.path}.content[0]: 列表项必须以 paragraph 开始`,
+        )
+      }
+      stack.push({
+        node: child,
+        path: `${current.path}.content[${index}]`,
+        depth: current.depth + 1,
+      })
     }
   }
 

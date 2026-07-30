@@ -28,6 +28,11 @@ import {
 import { textToDoc, validateRichTextDoc } from '@/utils/rich-text'
 import type { ResumeModuleType, ResumeTemplateId, RichTextNode } from '@/types/resume'
 import type { McpScope } from '@/lib/services/mcp-key'
+import {
+  profileArrayEntrySchemas,
+  resumeContentSchema,
+  safeWebUrlSchema,
+} from '@/lib/validation/business'
 
 export interface McpAuthContext {
   userId: string
@@ -111,7 +116,7 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
         name: z.string().optional(),
         phone: z.string().optional(),
         email: z.string().optional(),
-        avatar: z.string().optional(),
+        avatar: safeWebUrlSchema.optional(),
         job_intention: z.object({
           current_status: z.string().optional(),
           position: z.string().optional(),
@@ -120,10 +125,10 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
         }).partial().optional(),
         other: z.object({
           education_level: z.string().optional(),
-          website: z.string().optional(),
+          website: safeWebUrlSchema.optional(),
           wechat: z.string().optional(),
           city: z.string().optional(),
-          github: z.string().optional(),
+          github: safeWebUrlSchema.optional(),
           age: z.number().optional(),
           work_years: z.number().optional(),
           gender: z.string().optional(),
@@ -175,7 +180,22 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
     },
     async (args) => {
       try {
-        const updated = await addProfileEntry(userId, args.field as ProfileArrayField, args.entry)
+        const parsedEntry = profileArrayEntrySchemas[args.field].safeParse(args.entry)
+        if (!parsedEntry.success) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `错误：${parsedEntry.error.issues[0]?.message || '条目格式无效'}`,
+            }],
+            isError: true,
+          }
+        }
+
+        const updated = await addProfileEntry(
+          userId,
+          args.field as ProfileArrayField,
+          parsedEntry.data,
+        )
         const entries = (updated as unknown as Record<string, unknown>)[args.field] as unknown[]
         return {
           content: [{
@@ -205,7 +225,23 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
     },
     async (args) => {
       try {
-        const updated = await updateProfileEntry(userId, args.field as ProfileArrayField, args.entryId, args.updates)
+        const parsedUpdates = profileArrayEntrySchemas[args.field].safeParse(args.updates)
+        if (!parsedUpdates.success) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `错误：${parsedUpdates.error.issues[0]?.message || '条目格式无效'}`,
+            }],
+            isError: true,
+          }
+        }
+
+        const updated = await updateProfileEntry(
+          userId,
+          args.field as ProfileArrayField,
+          args.entryId,
+          parsedUpdates.data,
+        )
         return {
           content: [{
             type: 'text' as const,
@@ -388,20 +424,7 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
     '局部更新简历内容。只传需要修改的模块字段，支持 deep merge。数组字段（如 education、skills）会整体替换。',
     {
       resumeId: z.string().describe('简历 ID'),
-      content: z.object({
-        basic_info: z.record(z.string(), z.unknown()).optional(),
-        education: z.array(z.record(z.string(), z.unknown())).optional(),
-        skills: z.array(z.record(z.string(), z.unknown())).optional(),
-        work_experience: z.array(z.record(z.string(), z.unknown())).optional(),
-        projects: z.array(z.record(z.string(), z.unknown())).optional(),
-        portfolio: z.array(z.record(z.string(), z.unknown())).optional(),
-        awards: z.array(z.record(z.string(), z.unknown())).optional(),
-        other_experience: z.array(z.record(z.string(), z.unknown())).optional(),
-        research: z.array(z.record(z.string(), z.unknown())).optional(),
-        summary: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-        basic_info_display: z.record(z.string(), z.unknown()).optional(),
-        module_titles: z.record(z.string(), z.string()).optional(),
-      }).describe('要更新的 content 字段（局部 patch）'),
+      content: resumeContentSchema.describe('要更新的 content 字段（局部 patch）'),
     },
     async (args) => {
       const resume = await getResume(args.resumeId, userId)

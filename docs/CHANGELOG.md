@@ -22,8 +22,10 @@
 - 全部 19 个 JSON 写接口接入共享 Zod 运行时 schema；损坏 JSON、非对象请求、错误字段类型、非法 slug/role/revision 和超量批处理稳定返回 `400 VALIDATION_ERROR`
 - 全部 18 个动态 API 路由和 6 组查询参数接入共享 Zod 校验；资源 ID 强制 UUID，筛选枚举、搜索长度和重复单值参数不再被静默接受
 - JSON 请求体改为 1 MiB 上限的流式读取，并限制嵌套深度、值节点数量和单字段长度；超限稳定返回 `413 PAYLOAD_TOO_LARGE`
+- REST 与 MCP 共用细粒度富文本语义校验：限制 TipTap 节点层级、marks、样式属性、链接协议、16 层深度和 2,000 节点预算，字符串化的历史 `doc` 不能绕过校验
+- 头像、主页、GitHub、项目及作品 URL 增加 2,048 字符和协议白名单，保留相对上传路径并拒绝 `javascript:`、`data:`、`vbscript:`、`ftp:` 等危险输入
 - 通用错误 envelope 按 HTTP 语义统一为 `BAD_REQUEST`、`UNAUTHORIZED`、`FORBIDDEN`、`NOT_FOUND`、`CONFLICT` 和 `INTERNAL_ERROR`，保留 OTP、禁用账号等专用错误码
-- 全部 API 响应增加 `X-Request-ID`，安全保留可信上游追踪 ID，否则生成 UUID 并传递给 Route Handler
+- 全部 API 响应增加 `X-Request-ID`，安全保留格式合法的入站追踪 ID，否则生成 UUID 并传递给 Route Handler
 - GitHub 绑定回调重新校验当前服务端会话，并要求 state 中用户 ID 与会话用户一致，阻止伪造 OAuth Cookie 跨账号绑定
 - 密码最小长度提升到 10 个字符
 
@@ -56,12 +58,12 @@
 - Playwright 默认使用隔离 SQLite 测试库和专用测试密钥，避免本机环境变量与安全限流污染回归
 - 安全冒烟脚本可自动启动并清理独立测试服务；会话撤销加入单元、E2E 与真实接口冒烟覆盖
 - 新增 `test:security-smoke`，覆盖 HttpOnly 会话、并发注册码、revision 冲突、公开 DTO、JSON-LD XSS、MCP 禁用用户和服务端会话撤销
-- 最终验收通过 ESLint、生产构建、18 个文件共 161 项单元测试、7 项安全冒烟及 Chromium 105/105 全量 E2E
+- 最终验收通过 ESLint、生产构建、19 个文件共 170 项单元测试、7 项安全冒烟及 Chromium 105/105 全量 E2E
 
 ### 已知限制
 
 - 当前限流器为单进程内存实现；多实例生产部署必须在反向代理或 Redis 等共享存储层增加全局限流
-- 富文本节点/URL 的细粒度语义 schema、分页、TOTP 密钥加密/恢复码和 PostgreSQL 集成测试仍在后续路线中
+- 分页、TOTP 密钥加密/恢复码和 PostgreSQL 集成测试仍在后续路线中
 
 ## [1.0.0] - 2026-06-05
 

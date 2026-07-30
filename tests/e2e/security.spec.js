@@ -58,6 +58,19 @@ test.describe('业务请求 Schema', () => {
     })
     expect(invalidProfile.status()).toBe(400)
 
+    const unsafeProfileUrl = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        basic_info: {
+          avatar: 'javascript:alert(1)',
+        },
+      },
+    })
+    expect(unsafeProfileUrl.status()).toBe(400)
+    await expect(unsafeProfileUrl.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    })
+
     const oversizedProfile = await request.put('/api/profile', {
       headers: { Cookie: account.token },
       data: { summary: 'x'.repeat(1024 * 1024) },
@@ -81,6 +94,88 @@ test.describe('业务请求 Schema', () => {
       account.token,
       `E2E_TEST_SCHEMA_${Date.now()}`,
     )
+    const validRichText = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        content: {
+          summary: {
+            type: 'doc',
+            content: [{
+              type: 'paragraph',
+              attrs: { textAlign: 'center', indent: 1 },
+              content: [{
+                type: 'text',
+                text: '项目主页',
+                marks: [
+                  { type: 'bold' },
+                  {
+                    type: 'link',
+                    attrs: {
+                      href: 'https://example.com/project',
+                      target: '_blank',
+                      rel: 'noopener noreferrer nofollow',
+                      class: null,
+                      title: null,
+                    },
+                  },
+                  {
+                    type: 'textStyle',
+                    attrs: { color: '#1677ff', fontSize: '16px' },
+                  },
+                ],
+              }],
+            }],
+          },
+          portfolio: [{
+            link: '/portfolio/example',
+            image: 'https://cdn.example.com/work.png',
+          }],
+        },
+      },
+    })
+    expect(validRichText.status()).toBe(200)
+
+    const invalidRichText = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        content: {
+          summary: {
+            type: 'doc',
+            content: [{
+              type: 'paragraph',
+              content: [{
+                type: 'text',
+                text: 'unsafe',
+                marks: [{
+                  type: 'link',
+                  attrs: { href: 'javascript:alert(1)' },
+                }],
+              }],
+            }],
+          },
+          projects: [{ link: 'data:text/html,<script>alert(1)</script>' }],
+        },
+      },
+    })
+    expect(invalidRichText.status()).toBe(400)
+    await expect(invalidRichText.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    })
+
+    const invalidSerializedRichText = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        summary: JSON.stringify({
+          type: 'doc',
+          content: [{ type: 'heading', content: [] }],
+        }),
+      },
+    })
+    expect(invalidSerializedRichText.status()).toBe(400)
+    await expect(invalidSerializedRichText.json()).resolves.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    })
+
     const invalidSlug = await request.post(`/api/resumes/${resume.id}/publish`, {
       headers: { Cookie: account.token },
       data: { slug: '../private' },

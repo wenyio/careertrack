@@ -81,6 +81,97 @@ describe('business request validation', () => {
     }).success).toBe(false)
   })
 
+  it('validates rich-text semantics in profile and resume content', () => {
+    const validDoc = {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        attrs: { textAlign: null, indent: 0 },
+        content: [{
+          type: 'text',
+          text: 'CareerTrack',
+          marks: [{
+            type: 'link',
+            attrs: { href: 'https://example.com/careertrack' },
+          }],
+        }],
+      }],
+    }
+
+    expect(profileUpdateBodySchema.safeParse({
+      summary: validDoc,
+      projects: [{ description: validDoc }],
+    }).success).toBe(true)
+    expect(profileUpdateBodySchema.safeParse({
+      summary: JSON.stringify(validDoc),
+    }).success).toBe(true)
+    expect(updateResumeBodySchema.safeParse({
+      content: { summary: validDoc },
+    }).success).toBe(true)
+
+    expect(profileUpdateBodySchema.safeParse({
+      summary: {
+        type: 'doc',
+        content: [{ type: 'heading', content: [] }],
+      },
+    }).success).toBe(false)
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        summary: {
+          type: 'doc',
+          content: [{
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: 'unsafe',
+              marks: [{
+                type: 'link',
+                attrs: { href: 'javascript:alert(1)' },
+              }],
+            }],
+          }],
+        },
+      },
+    }).success).toBe(false)
+    expect(profileUpdateBodySchema.safeParse({
+      summary: JSON.stringify({
+        type: 'doc',
+        content: [{ type: 'heading', content: [] }],
+      }),
+    }).success).toBe(false)
+  })
+
+  it('accepts relative and web URLs while rejecting unsafe protocols', () => {
+    expect(profileUpdateBodySchema.safeParse({
+      basic_info: {
+        avatar: '/uploads/avatar.png',
+        other: {
+          website: 'https://example.com',
+          github: 'github.com/example',
+        },
+      },
+      projects: [{ link: 'https://example.com/project' }],
+      portfolio: [{
+        link: '/portfolio/example',
+        image: 'https://cdn.example.com/work.png',
+      }],
+    }).success).toBe(true)
+
+    expect(profileUpdateBodySchema.safeParse({
+      basic_info: { avatar: 'data:image/svg+xml,<svg />' },
+    }).success).toBe(false)
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        projects: [{ link: 'javascript:alert(1)' }],
+      },
+    }).success).toBe(false)
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        portfolio: [{ image: 'ftp://example.com/work.png' }],
+      },
+    }).success).toBe(false)
+  })
+
   it('validates public slugs and defaults MCP scope', () => {
     expect(publishResumeBodySchema.parse({
       slug: '  中文-resume_01  ',

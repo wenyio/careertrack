@@ -223,6 +223,10 @@ curl -X POST https://your-domain.com/api/mcp \
 只允许以下 mark 类型：
 - `bold`、`italic`、`underline`、`code`、`strike`、`link`、`textStyle`
 
+`doc` 模式还会校验节点父子关系、mark/样式属性、链接协议、16 层深度和 2,000 节点上限。富文本链接允许 `http`、`https`、`mailto`、`tel` 和相对路径。
+
+头像、主页、GitHub、项目与作品 URL 允许 `http`、`https` 和相对路径，拒绝 `javascript:`、`data:`、`vbscript:`、`ftp:` 等协议。`profile_add_entry`、`profile_update_entry`、`profile_update_rich_text`、`resume_patch_content` 和 `resume_update_rich_text_field` 与 REST API 共用这些语义规则。
+
 ## 限制与安全说明
 
 ### 鉴权

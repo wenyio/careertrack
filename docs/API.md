@@ -25,6 +25,10 @@ MCP Key 和注册码创建接口的请求字段全部可选，因此允许空 HT
 
 JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限返回 `413 PAYLOAD_TOO_LARGE`。解析后的 JSON 最多允许 32 层嵌套、10,000 个值节点，单个文本字段最多 262,144 个字符，避免异常富文本树消耗过多验证和渲染资源。
 
+富文本字段兼容纯字符串和 TipTap `doc` JSON；历史数据中的字符串化 `doc` 也会先执行相同校验再按原格式保存。结构化内容仅允许 `doc`、`paragraph`、`text`、`bulletList`、`orderedList`、`listItem`、`hardBreak` 节点，以及编辑器支持的文本 marks；服务端同时校验父子层级、节点/mark 属性、颜色、8–48px 字号、1–3 行高、0–8 缩进和链接协议。单个富文本树最多 16 层、2,000 个节点，每个行内节点最多 8 个不重复 marks。
+
+富文本链接最长 2,048 字符，支持 `http`、`https`、`mailto`、`tel` 和相对路径。头像、个人主页、GitHub、项目链接、作品链接及作品图片只支持 `http`、`https` 或相对路径；`javascript:`、`data:`、`vbscript:`、`ftp:`、控制字符和声明了协议但无法解析的 URL 会返回 `400 VALIDATION_ERROR`。REST 与 MCP 写工具共用这些规则。
+
 动态资源路径中的 `:id`、`:oauthAccountId` 必须是 UUID；公开 `:slug` 最长 50 个字符，只能包含中英文、数字、下划线和连字符。查询参数同样经过 Zod 校验，重复的单值参数、未知枚举值或超过 100 字符的后台搜索条件返回 `400 VALIDATION_ERROR`。
 
 所有 `/api/*` 响应都携带 `X-Request-ID`。入站请求中只包含字母、数字、点、下划线、冒号或连字符的 1–128 字符 ID 会被保留；其他情况由服务端生成 UUID。该 ID 同时传入 Route Handler，可用于日志和跨服务排查；它只用于关联请求，不应被视为经过认证的调用方身份。
