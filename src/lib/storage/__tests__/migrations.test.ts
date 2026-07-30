@@ -97,5 +97,6 @@ describe('versioned storage migrations', () => {
       .toBe('SZXVJNBXDEJR6EMY7ARWTOHL5CVCZ7ZI')
     expect(migrated.otp_recovery_codes).toBe('[]')
     expect(versions).toContain('003_encrypt_totp_and_recovery_codes')
+    expect(versions).toContain('004_consolidate_postgres_resume_config')
   })
 })

@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:unit": "vitest run",
+    "test:postgres": "node scripts/postgres-integration.mjs",
     "test:security-smoke": "node scripts/smoke-v103.mjs",
     "test:e2e": "playwright test",
     "test:e2e:report": "node tests/e2e/generate-report.mjs"

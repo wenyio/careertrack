@@ -163,6 +163,9 @@ CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabl
 - `003_encrypt_totp_and_recovery_codes` 增加恢复码摘要列、扩展 PostgreSQL
   `otp_secret` 容量，并使用 AES-256-GCM 将历史明文 TOTP 密钥原位迁移为绑定
   用户 ID 的 `v1` 密文
+- `004_consolidate_postgres_resume_config` 将旧 PostgreSQL 独立列
+  `module_titles`、`basic_info_display`、`preview_config` 的非空数据合并到
+  `content`；已有 `content` 键优先，完成后删除旧列，使双驱动恢复同一存储模型
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
@@ -388,7 +391,7 @@ CREATE TABLE resumes (
         "summary": false
     }',
 
-    -- 简历内容（可以覆盖个人信息）
+    -- 简历内容（可以覆盖个人信息；模块标题、基本信息显示和预览配置也存放于此）
     content JSONB DEFAULT '{}',
 
     -- 公开相关
@@ -397,15 +400,6 @@ CREATE TABLE resumes (
 
     -- 模块排序
     modules_order JSONB DEFAULT '["basic_info", "education", "skills", "work_experience", "projects", "portfolio", "awards", "other_experience", "research", "summary"]',
-
-    -- 自定义模块标题
-    module_titles JSONB DEFAULT '{}',
-
-    -- 基本信息显示配置
-    basic_info_display JSONB DEFAULT '{}',
-
-    -- 预览配置（字号、行距等）
-    preview_config JSONB DEFAULT '{}',
 
     revision INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -422,6 +416,11 @@ CREATE INDEX idx_resumes_template ON resumes(template);
 ```
 
 `revision` 用于简历乐观并发控制。客户端更新时提交最近一次读取到的值，服务端使用 `WHERE ... AND revision = ?` 条件更新；版本过期时 API 返回 `409`。
+
+SQLite 与 PostgreSQL 均以 `content.module_titles`、
+`content.basic_info_display`、`content.preview_config` 为唯一存储位置。迁移 004
+只在 PostgreSQL 发现历史独立列时执行数据归并和删列，新建数据库不会再创建
+这些冗余列。
 
 ### mcp_keys MCP Key 表
 

@@ -1,5 +1,7 @@
 # 职迹 CareerTrack
 
+[![CI](https://github.com/wenyio/careertrack/actions/workflows/ci.yml/badge.svg)](https://github.com/wenyio/careertrack/actions/workflows/ci.yml)
+
 > 记录职业成长轨迹，打造专属职业名片。
 
 An Open-Source Career Portfolio & Resume Platform
@@ -142,15 +144,22 @@ npm run build
 
 # 自动启动隔离测试服务，验证会话、TOTP 恢复码、并发写入、公开页 XSS 与 MCP 权限
 npm run test:security-smoke
+
+# 需要名称包含 ci/test 且允许创建临时数据库的 PostgreSQL 实例
+POSTGRES_TEST_URL=postgresql://postgres:password@127.0.0.1:5432/careertrack_test \
+  npm run test:postgres
 ```
 
 如需对已运行的外部实例执行冒烟测试，请同时设置 `E2E_BASE_URL`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`。
+push 和 pull request 会通过 GitHub Actions 并行执行静态质量、PostgreSQL 集成
+及 Chromium 全量回归，详见[持续集成文档](docs/CI.md)。
 
 ## 📚 文档
 
 - [API 接口文档](docs/API.md)
 - [数据库设计文档](docs/DATABASE.md)
 - [部署指南](docs/DEPLOYMENT.md)
+- [持续集成](docs/CI.md)
 - [MCP 服务文档](docs/MCP.md)
 - [更新日志](docs/CHANGELOG.md)
 

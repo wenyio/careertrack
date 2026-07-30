@@ -45,6 +45,7 @@
 - 注册用户、Profile 创建和一次性注册码领取改为单事务，注册码通过条件更新原子消费
 - GitHub 首次注册与账号绑定写入改为事务
 - 引入 `schema_migrations` 和顺序迁移；为注册码哈希建立唯一索引
+- 新增迁移 004：安全归并 PostgreSQL 历史简历配置列到 `content` 并删除冗余列，使 SQLite/PostgreSQL Schema 恢复一致
 - 简历新增递增 `revision`，条件更新冲突返回 `409`
 - 编辑器自动保存改为单飞串行队列，只保留最新快照并展示保存失败状态
 
@@ -62,6 +63,9 @@
 - 安全冒烟脚本可自动启动并清理独立测试服务；会话撤销加入单元、E2E 与真实接口冒烟覆盖
 - 新增 `test:security-smoke`，覆盖 HttpOnly 会话、TOTP 恢复码、并发注册码、revision 冲突、公开 DTO、JSON-LD XSS、MCP 禁用用户和服务端会话撤销
 - 新增 TOTP 密文用户绑定、恢复码摘要、并发单次消费和浏览器登录切换专项回归
+- 新增 GitHub Actions CI：并行执行 lint/unit/build、PostgreSQL 15 集成和 Chromium 全量回归，浏览器失败产物保留 7 天
+- 新增安全隔离的 `test:postgres`：随机子数据库覆盖自动建库、顺序迁移、注册码事务、JSONB/revision、TOTP 恢复码及历史列归并，结束后只删除生成的数据库
+- PostgreSQL 正常启动路径不再创建探测连接池；仅在收到标准 `3D000` 缺库错误时使用短连接建库，并显式拒绝缺失 `DATABASE_URL`
 - 最终验收通过 ESLint、生产构建、23 个文件共 180 项单元测试、8 项安全冒烟及 Chromium 109/109 全量 E2E
 
 ### 性能与规模
@@ -75,7 +79,7 @@
 ### 已知限制
 
 - 当前限流器为单进程内存实现；多实例生产部署必须在反向代理或 Redis 等共享存储层增加全局限流
-- PostgreSQL 集成测试、`TOTP_ENCRYPTION_KEY` 在线轮换和超大数据集所需的 cursor pagination 仍在后续路线中
+- PostgreSQL 集成门禁需要 CI 服务或本地隔离实例完成真实执行；`TOTP_ENCRYPTION_KEY` 在线轮换和超大数据集所需的 cursor pagination 仍在后续路线中
 
 ## [1.0.0] - 2026-06-05
 

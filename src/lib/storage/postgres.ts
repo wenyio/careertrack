@@ -5,7 +5,7 @@
  * 首次查询时自动建库、建表
  */
 
-import { Pool } from 'pg'
+import { Client, Pool } from 'pg'
 import { PG_SCHEMA_SQL } from './schema'
 import type { DatabaseQuery } from './types'
 
@@ -19,39 +19,73 @@ const globalForDb = globalThis as unknown as {
   initPromise: Promise<Pool> | undefined
 }
 
-/**
- * 确保数据库存在
- * 如果目标数据库不存在，连接到默认 postgres 库并创建
- */
-async function ensureDatabase(): Promise<void> {
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) return
-
-  const url = new URL(connectionString)
-  const dbName = url.pathname.slice(1)
-  if (!dbName || dbName === 'postgres') return
-
-  try {
-    const testPool = new Pool({ connectionString, connectionTimeoutMillis: 5000 })
-    await testPool.query('SELECT 1')
-    await testPool.end()
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('does not exist')) {
-      console.log(`[postgres] 数据库 "${dbName}" 不存在，尝试自动创建...`)
-      const defaultUrl = new URL(connectionString)
-      defaultUrl.pathname = '/postgres'
-      const defaultPool = new Pool({ connectionString: defaultUrl.toString(), connectionTimeoutMillis: 10000 })
-      try {
-        await defaultPool.query(`CREATE DATABASE "${dbName}"`)
-        console.log(`[postgres] 数据库 "${dbName}" 已创建`)
-      } catch (createErr) {
-        console.warn('[postgres] 创建数据库失败:', createErr instanceof Error ? createErr.message : createErr)
-      } finally {
-        await defaultPool.end()
-      }
-    }
+function configuredDatabaseUrl(): string {
+  const connectionString = process.env.DATABASE_URL?.trim()
+  if (!connectionString) {
+    throw new Error('[postgres] STORAGE_DRIVER=postgres 时必须设置 DATABASE_URL')
   }
+  return connectionString
+}
+
+function createPool(connectionString: string): Pool {
+  const pool = new Pool({
+    connectionString,
+    max: 10,
+    idleTimeoutMillis: 300000,
+    connectionTimeoutMillis: 30000,
+  })
+  pool.on('error', (error) => {
+    console.error('数据库连接池错误:', error)
+  })
+  return pool
+}
+
+function postgresErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return undefined
+  }
+  return typeof error.code === 'string' ? error.code : undefined
+}
+
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replace(/"/g, '""')}"`
+}
+
+/**
+ * Create a missing target database through one short-lived maintenance
+ * connection. Existing databases take the normal path and allocate only the
+ * application pool.
+ */
+async function createMissingDatabase(connectionString: string): Promise<void> {
+  const targetUrl = new URL(connectionString)
+  const databaseName = decodeURIComponent(targetUrl.pathname.slice(1))
+  if (!databaseName || databaseName === 'postgres') {
+    throw new Error('[postgres] 目标数据库不存在且无法自动确定数据库名')
+  }
+
+  const maintenanceUrl = new URL(targetUrl)
+  maintenanceUrl.pathname = '/postgres'
+  const client = new Client({
+    connectionString: maintenanceUrl.toString(),
+    connectionTimeoutMillis: 10000,
+  })
+
+  await client.connect()
+  try {
+    console.log(`[postgres] 数据库 "${databaseName}" 不存在，尝试自动创建...`)
+    await client.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`)
+    console.log(`[postgres] 数据库 "${databaseName}" 已创建`)
+  } catch (error) {
+    // Another replica may have created it after our first connection attempt.
+    if (postgresErrorCode(error) !== '42P04') throw error
+  } finally {
+    await client.end()
+  }
+}
+
+async function initializeSchema(pool: Pool): Promise<void> {
+  await pool.query(PG_SCHEMA_SQL)
+  console.log('[postgres] Schema 初始化完成')
 }
 
 /**
@@ -61,38 +95,37 @@ async function ensureDatabase(): Promise<void> {
 function ensureInitialized(): Promise<Pool> {
   if (!globalForDb.initPromise) {
     globalForDb.initPromise = (async () => {
-      // 1. 确保数据库存在
-      await ensureDatabase()
+      const connectionString = configuredDatabaseUrl()
+      let pool = createPool(connectionString)
 
-      // 2. 创建连接池
-      const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        max: 10,
-        idleTimeoutMillis: 300000,
-        connectionTimeoutMillis: 30000,
-      })
-      pool.on('error', (err) => {
-        console.error('数据库连接池错误:', err)
-      })
+      try {
+        await initializeSchema(pool)
+      } catch (error) {
+        await pool.end().catch(() => undefined)
+        if (postgresErrorCode(error) !== '3D000') throw error
+
+        await createMissingDatabase(connectionString)
+        pool = createPool(connectionString)
+        try {
+          await initializeSchema(pool)
+        } catch (retryError) {
+          await pool.end().catch(() => undefined)
+          throw retryError
+        }
+      }
+
       globalForDb.pool = pool
-
-      // 3. 建表
-      await pool.query(PG_SCHEMA_SQL)
-      console.log('[postgres] Schema 初始化完成')
-
       return pool
-    })().catch(err => {
+    })().catch((error) => {
+      globalForDb.pool = undefined
       globalForDb.initPromise = undefined
-      throw err
+      throw error
     })
   }
   return globalForDb.initPromise
 }
 
-/**
- * 获取数据库连接池（同步）
- * 如果尚未初始化，会触发异步初始化并返回临时池
- */
+/** 等待一次性初始化完成并返回正式应用连接池。 */
 export async function getPool(): Promise<Pool> {
   return ensureInitialized()
 }

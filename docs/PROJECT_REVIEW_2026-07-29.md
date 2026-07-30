@@ -51,12 +51,17 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - REST 与 MCP 共用富文本节点/mark/样式语义校验及 URL 协议白名单；
 - ESLint 已清零；TOTP 密钥、恢复码和并发消费已加入单元与真实认证链路回归；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
+- GitHub Actions 增加静态质量、PostgreSQL 15 集成和 Chromium 三个并行门禁；
+- PostgreSQL 集成脚本使用随机子数据库验证自动建库、迁移、事务、JSONB、
+  revision 和 TOTP，结束后仅删除生成的测试库；
+- 迁移 004 将 PostgreSQL 历史简历配置列归并到 `content`，恢复双驱动 Schema 一致性；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
 仍未关闭、不得被本轮改动掩盖的重点包括：`TOTP_ENCRYPTION_KEY`
-在线轮换、多实例共享限流、PostgreSQL 集成测试、超大数据集 cursor pagination、
-系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+在线轮换、多实例共享限流、PostgreSQL 门禁首次 CI 实跑、依赖审计/SBOM、
+超大数据集 cursor pagination 以及系统性可访问性审计。这些继续按本文 P1/P2
+路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
@@ -67,9 +72,13 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
 | `npx playwright test --workers=1` | 通过 | Chromium 全量 109/109，通过时间 5.9 分钟；含 OTP 和分页/轻量 DTO 专项回归 |
+| `npm run test:postgres` | 待 CI 实跑 | 隔离脚本和 PostgreSQL 15 service 门禁已实现；当前开发机没有 PostgreSQL/Docker 运行时，不能把静态检查冒充真实通过 |
+| `.github/workflows/ci.yml` | 静态通过 | YAML 解析通过；quality、postgres、browser 三作业将在 push/PR 首次执行 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
 
-本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
+本轮已达到“单实例受控部署/试运行”的发布质量。首次 CI 的 PostgreSQL 与
+browser 作业通过后，可把自动化门禁视为正式闭环；若进入多实例公网部署，仍应
+先完成共享限流和备份恢复演练。
 
 ## 2. 本次评估方法
 
@@ -251,7 +260,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 最大简历大小、批量操作数量、头像/外链限制；
 - 稳定错误码、统一错误 envelope、request ID，生产环境不返回数据库细节。
 
-### DB-01：没有版本化迁移体系，双数据库 schema 已经漂移
+### DB-01：没有版本化迁移体系，双数据库 schema 已经漂移（主体已关闭）
 
 当前依赖 `CREATE TABLE IF NOT EXISTS` 初始化，没有 migration version、ALTER 或回滚策略。已有安装无法自动获得后续字段与约束。
 
@@ -263,6 +272,12 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 每次迁移在事务中执行，并提供向前升级与备份说明；
 - 明确配置的唯一存储位置，删除死列或补齐两端；
 - CI 同时跑 SQLite 与 PostgreSQL schema/服务集成测试。
+
+**整改状态（2026-07-30）：主体已关闭。** `schema_migrations` 已包含 001～004；
+迁移 004 在不覆盖 `content` 现有键的前提下归并 PostgreSQL 三个历史 JSONB
+配置列并删列，新建 Schema 不再创建冗余列。CI 已配置 PostgreSQL 15 服务，
+隔离脚本覆盖自动建库、迁移、注册码事务、JSONB/revision 和 TOTP 恢复码。
+当前仅剩首次远端 CI 实跑确认，不能因本机缺少 PostgreSQL 运行时提前标记通过。
 
 ### OPS-02：模块导入和生产构建会访问并初始化数据库
 
@@ -366,6 +381,11 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 - 补充并发、迁移、MCP scope、Docker、PostgreSQL 和 accessibility 测试；
 - 增加 CI；本次仓库中未发现 `.github` workflow。
 
+**现行状态：** 上述 lint、unit、build、SQLite 安全冒烟、Chromium 全量 E2E
+已经恢复并形成 `.github/workflows/ci.yml`；PostgreSQL 作业也已接入。依赖审计
+尚未加入门禁，因为当前环境未获授权向 registry advisory 接口提交依赖清单，
+后续应在确认披露策略后独立接入。
+
 ### PRIV-01：公开 API 暴露内部简历 ID，公开字段缺少细粒度隐私模型
 
 隔离安全 E2E 确认 `/api/public/:slug` 没有暴露 `user_id`，但仍返回内部 `resume.id`。单独的 UUID 暴露通常不是直接越权，不过没有业务需要时不应暴露内部标识。
@@ -394,7 +414,8 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 - SQLite 适配器用正则翻译 PostgreSQL SQL，长期容易在复杂 SQL、RETURNING、布尔值和时间函数上产生边界差异；
 - `better-sqlite3` 是同步调用，高并发时会阻塞 Node event loop；至少开启 WAL、busy timeout，并明确单实例边界；
-- PostgreSQL `getPool()` 初始化路径可能创建额外临时 pool，统一为单一 Promise；
+- PostgreSQL 正常初始化已收敛为单一应用 Pool；仅标准 `3D000` 缺库路径使用
+  一条短生命周期 maintenance Client，仍需首次 CI 实跑确认；
 - profile 的“查不到就创建”存在并发插入窗口；
 - profile 条目和 MCP patch 采用读改写，应改为事务或结构化行模型。
 
@@ -452,7 +473,8 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 3. ~~列表分页、轻量 DTO、缩略图和索引；~~（2026-07-30 已完成当前规模方案）
 4. 收紧 output tracing 和字体资产；
 5. 清零 lint error，修复 E2E helper 与测试隔离；
-6. CI 加入 lint、unit、build、SQLite/PostgreSQL integration、E2E smoke、audit/SBOM；
+6. ~~CI 加入 lint、unit、build、SQLite/PostgreSQL integration、E2E smoke；~~
+   audit/SBOM 在确认依赖元数据披露策略后继续接入；
 7. 加入结构化日志、request ID、错误监控和健康检查。
 
 ### 阶段 3：代码质量与体验，持续进行

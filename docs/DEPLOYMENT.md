@@ -58,6 +58,14 @@ docker run -d \
   postgres:15-alpine
 ```
 
+仓库提供真实 PostgreSQL 集成门禁。测试账号需允许创建和删除临时数据库，且
+基准数据库名必须包含独立的 `ci` 或 `test` 段；脚本不会直接写入基准数据库：
+
+```bash
+POSTGRES_TEST_URL=postgresql://postgres:password@localhost:5432/careertrack_test \
+  npm run test:postgres
+```
+
 ---
 
 ## Docker 部署
@@ -350,6 +358,11 @@ fuser .careertrack/careertrack.db
 一条长期稳定的密钥；所有应用副本必须使用同一值。迁移在事务中运行，失败不会
 被标记为已应用。
 
+`004_consolidate_postgres_resume_config` 仅影响 PostgreSQL：它把历史
+`module_titles`、`basic_info_display`、`preview_config` 独立 JSONB 列中尚未
+进入 `content` 的值归并到 `content`，以已有 `content` 键为准，然后删除三个
+旧列。升级前备份要求不变。
+
 ```bash
 # 拉取最新代码
 git pull
@@ -373,6 +386,7 @@ bash deploy.sh
 - [ ] `NEXT_PUBLIC_SITE_URL` 设置为实际域名
 - [ ] 已配置 HTTPS
 - [ ] 多实例部署已配置共享全局限流
+- [ ] GitHub Actions 的 quality、PostgreSQL、browser 三个作业均通过
 - [ ] `/api/health` 已接入容器编排或监控
 - [ ] 数据库备份策略已就位
 - [ ] `NODE_ENV=production`（standalone 构建自动设置）

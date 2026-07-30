@@ -119,6 +119,51 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: '004_consolidate_postgres_resume_config',
+    async run(driver, query) {
+      if (driver !== 'postgres') return
+
+      const legacyColumnNames = [
+        'module_titles',
+        'basic_info_display',
+        'preview_config',
+      ]
+      const columns = await query<{ column_name: string }>(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'resumes'
+           AND column_name IN (
+             'module_titles',
+             'basic_info_display',
+             'preview_config'
+           )`,
+      )
+      const existingColumns = new Set(
+        columns.rows.map((column) => column.column_name),
+      )
+
+      for (const columnName of legacyColumnNames) {
+        if (!existingColumns.has(columnName)) continue
+
+        // content is the canonical location on both storage drivers. Preserve
+        // an existing content key and only import non-empty legacy values.
+        await query(
+          `UPDATE resumes
+           SET content = COALESCE(content, '{}'::jsonb)
+             || jsonb_build_object($1, ${columnName})
+           WHERE ${columnName} IS NOT NULL
+             AND ${columnName} <> '{}'::jsonb
+             AND NOT (COALESCE(content, '{}'::jsonb) ? $1)`,
+          [columnName],
+        )
+        await query(
+          `ALTER TABLE resumes DROP COLUMN IF EXISTS ${columnName}`,
+        )
+      }
+    },
+  },
 ]
 
 export async function runMigrations(

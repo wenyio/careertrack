@@ -63,6 +63,7 @@ scripts/
 !scripts/
 scripts/*
 !scripts/smoke-v103.mjs
+!scripts/postgres-integration.mjs
 tmp/
 
 # Next.js 自动生成
