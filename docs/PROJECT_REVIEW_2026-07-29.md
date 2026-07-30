@@ -72,7 +72,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | `npm run test:unit` | 通过 | 25 个测试文件、193 项测试通过；含基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 112/112；含 OTP、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 113/113；含 OTP 设置键盘流程、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
 | `npm run test:postgres` | 待 CI 实跑 | 隔离脚本和 PostgreSQL 15 service 门禁已实现；当前开发机没有 PostgreSQL/Docker 运行时，不能把静态检查冒充真实通过 |
 | `.github/workflows/ci.yml` | 静态通过 | YAML 解析通过；quality、postgres、browser 三作业将在 push/PR 首次执行 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
@@ -496,6 +496,10 @@ PNG/JPEG 编码已收敛为可单测 util，同时修复格式切换旧闭包和
 提取为组件，并将配置增删、图标切换、值判定和年龄计算收敛为纯 util；姓名、
 头像和求职意向仍留在父表单。本轮同时修复隐藏字段会丢失 `avatar_left` 的问题，
 并为字段操作补齐键盘入口和可访问名称。
+OTP 设置则按敏感信息生命周期拆出二维码 enrollment 和一次性恢复码面板：
+密码凭据在进入二维码步骤前清空，首次验证码使用独立 Form；启用和恢复码重新
+生成支持键盘提交，二维码生成失败保留本地手动密钥回退。状态卡片和账号管理
+操作仍留在父组件，避免把同一状态机拆散到更多层。
 登录/游客编辑 hook 因 revision 与 localStorage 语义不同，暂不强行抽象为带
 大量模式参数的共享 hook。
 

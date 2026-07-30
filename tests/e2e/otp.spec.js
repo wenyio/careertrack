@@ -10,6 +10,7 @@ const {
   createUserByApi,
   getSessionCookie,
   goto,
+  loginByUi,
   registerHooks,
   testIp,
 } = require('./helpers')
@@ -218,5 +219,67 @@ test.describe('OTP 二次验证', () => {
       },
     })
     expect(passwordOnlyLogin.status(), await passwordOnlyLogin.text()).toBe(200)
+  })
+
+  test('安全设置支持键盘完成启用和重新生成恢复码', async ({
+    page,
+    request,
+  }) => {
+    const account = await createUserByApi(request, 'otp-settings')
+    await loginByUi(page, account.username, account.password)
+    await goto(page, '/settings/security?tab=otp')
+
+    const passwordInput = page.getByPlaceholder('输入密码以继续')
+    await passwordInput.fill(account.password)
+    const setupResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/auth/setup-otp')
+        && response.request().method() === 'POST',
+    )
+    await passwordInput.press('Enter')
+    const setupResponse = await setupResponsePromise
+    expect(setupResponse.status(), await setupResponse.text()).toBe(200)
+    const setup = await setupResponse.json()
+
+    await expect(page.getByAltText('OTP 二维码')).toBeVisible()
+    await expect(passwordInput).toBeHidden()
+
+    const firstCode = await generateStableTotp(setup.secret)
+    const verifyResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/auth/verify-otp')
+        && response.request().method() === 'POST',
+    )
+    const enrollmentCodeInput = page.getByPlaceholder('000000')
+    await enrollmentCodeInput.fill(firstCode)
+    await enrollmentCodeInput.press('Enter')
+    const verifyResponse = await verifyResponsePromise
+    expect(verifyResponse.status(), await verifyResponse.text()).toBe(200)
+    await expect(
+      page.getByText('立即保存恢复码', { exact: true }),
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: '我已安全保存' }).click()
+    await expect(page.getByText('OTP 二次验证：已启用')).toBeVisible()
+    await expect(passwordInput).toHaveValue('')
+
+    // 管理表单的 Enter 默认执行非破坏性的“重新生成恢复码”。
+    await passwordInput.fill(account.password)
+    const currentCodeInput = page.getByPlaceholder('6 位验证码或恢复码')
+    await currentCodeInput.fill(await generateStableTotp(setup.secret))
+    const regenerateResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/auth/recovery-codes')
+        && response.request().method() === 'POST',
+    )
+    await currentCodeInput.press('Enter')
+    const regenerateResponse = await regenerateResponsePromise
+    expect(
+      regenerateResponse.status(),
+      await regenerateResponse.text(),
+    ).toBe(200)
+    await expect(
+      page.getByText('立即保存恢复码', { exact: true }),
+    ).toBeVisible()
   })
 })

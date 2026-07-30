@@ -9,18 +9,16 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Alert, Form, Input, Button, Space, Typography, App } from 'antd'
+import { useState } from 'react'
+import { Form, Input, Button, Space, Typography } from 'antd'
 import {
   LockOutlined,
   SafetyOutlined,
-  SecurityScanOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   GithubOutlined,
   KeyOutlined,
 } from '@ant-design/icons'
-import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/useAuthStore'
 import {
   useSetupOtp,
@@ -29,12 +27,19 @@ import {
   useRegenerateRecoveryCodes,
 } from '@/hooks/useAuth'
 import { AUTH_PROVIDER } from '@/constants/auth'
+import type { SetupOtpResponse } from '@/types/auth'
+import OtpEnrollmentPanel from './OtpEnrollmentPanel'
+import OtpRecoveryCodesPanel from './OtpRecoveryCodesPanel'
 
 const { Text } = Typography
 
+interface CredentialFields {
+  password: string
+  otp_code?: string
+}
+
 export default function OtpSettings() {
   const { user } = useAuthStore()
-  const { message } = App.useApp()
   const { mutate: setupOtp, isPending: isSettingUpOtp } = useSetupOtp()
   const { mutate: verifyOtp, isPending: isVerifyingOtp } = useVerifyOtp()
   const { mutate: disableOtp, isPending: isDisablingOtp } = useDisableOtp()
@@ -43,86 +48,58 @@ export default function OtpSettings() {
     isPending: isRegeneratingRecoveryCodes,
   } = useRegenerateRecoveryCodes()
 
-  const [form] = Form.useForm()
-  const [otpData, setOtpData] = useState<{ secret: string; qr_code_url: string } | null>(null)
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [credentialForm] = Form.useForm<CredentialFields>()
+  const [otpData, setOtpData] = useState<SetupOtpResponse | null>(null)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
 
   // 判断是否为账号密码用户
   const hasPassword = user ? (user.auth_provider & AUTH_PROVIDER.PASSWORD) !== 0 : false
 
-  // 客户端生成 QR 码（避免向第三方 API 泄露 OTP 密钥）
-  useEffect(() => {
-    if (!otpData?.qr_code_url) return
-
-    let cancelled = false
-    QRCode.toDataURL(otpData.qr_code_url, {
-      width: 180,
-      margin: 1,
-      color: { dark: '#000000', light: '#ffffff' },
-    })
-      .then((url) => {
-        if (!cancelled) setQrDataUrl(url)
-      })
-      .catch((err) => {
-        if (!cancelled) console.error('QR 码生成失败:', err)
-      })
-
-    return () => { cancelled = true }
-  }, [otpData?.qr_code_url])
-
-  const handleSetupOtp = () => {
-    const password = form.getFieldValue('password')
-    if (!password) {
-      message.error('请输入密码')
-      return
-    }
+  const handleSetupOtp = ({ password }: CredentialFields) => {
     setupOtp(password, {
-      onSuccess: (data) => setOtpData(data),
+      onSuccess: (data) => {
+        // The enrollment panel has its own Form instance; clear the password
+        // before rendering the secret and QR code.
+        credentialForm.resetFields()
+        setOtpData(data)
+      },
     })
   }
 
-  const handleVerifyOtp = () => {
-    const code = form.getFieldValue('otp_code')
-    if (!code) {
-      message.error('请输入验证码')
-      return
-    }
+  const handleVerifyOtp = (code: string) => {
     verifyOtp(code, {
       onSuccess: (data) => {
         setRecoveryCodes(data.recovery_codes)
         setOtpData(null)
-        setQrDataUrl(null)
-        form.resetFields()
       },
     })
   }
 
-  const handleDisableOtp = () => {
-    const password = form.getFieldValue('password')
-    const code = form.getFieldValue('otp_code')
-    if (!password || !code) {
-      message.error('请输入密码和验证码')
-      return
-    }
-    disableOtp({ password, code }, {
-      onSuccess: () => form.resetFields(),
+  const handleDisableOtp = ({ password, otp_code }: CredentialFields) => {
+    if (!otp_code) return
+    disableOtp({ password, code: otp_code }, {
+      onSuccess: () => credentialForm.resetFields(),
     })
   }
 
-  const handleRegenerateRecoveryCodes = () => {
-    const password = form.getFieldValue('password')
-    const code = form.getFieldValue('otp_code')
-    if (!password || !code) {
-      message.error('请输入密码和当前验证码或恢复码')
-      return
-    }
-    regenerateRecoveryCodes({ password, code }, {
+  const handleRegenerateRecoveryCodes = ({
+    password,
+    otp_code,
+  }: CredentialFields) => {
+    if (!otp_code) return
+    regenerateRecoveryCodes({ password, code: otp_code }, {
       onSuccess: (data) => {
         setRecoveryCodes(data.recovery_codes)
-        form.resetFields()
+        credentialForm.resetFields()
       },
     })
+  }
+
+  const handleDisableOtpClick = () => {
+    void credentialForm
+      .validateFields()
+      .then(handleDisableOtp)
+      .catch(() => undefined)
   }
 
   const isEnabled = user?.otp_enabled
@@ -192,143 +169,39 @@ export default function OtpSettings() {
 
       {/* 操作区域 */}
       {recoveryCodes.length > 0 ? (
-        /* 恢复码明文不会持久化，用户离开此区域后无法再次查看。 */
-        <div>
-          <Alert
-            type="warning"
-            showIcon
-            message="立即保存恢复码"
-            description="每个恢复码只能使用一次。请保存到密码管理器或其他安全位置；关闭后无法再次查看。"
-            style={{ marginBottom: 16 }}
-          />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 8,
-              padding: 16,
-              marginBottom: 16,
-              background: '#fafafa',
-              border: '1px solid #f0f0f0',
-              borderRadius: 10,
-            }}
-          >
-            {recoveryCodes.map((code) => (
-              <Text code key={code} style={{ textAlign: 'center' }}>
-                {code}
-              </Text>
-            ))}
-          </div>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Text copyable={{ text: recoveryCodes.join('\n') }}>
-              复制全部恢复码
-            </Text>
-            <Button
-              type="primary"
-              block
-              onClick={() => setRecoveryCodes([])}
-              style={{ height: 42, borderRadius: 8 }}
-            >
-              我已安全保存
-            </Button>
-          </Space>
-        </div>
+        <OtpRecoveryCodesPanel
+          codes={recoveryCodes}
+          onConfirmSaved={() => setRecoveryCodes([])}
+        />
       ) : otpData ? (
-        /* 扫码验证流程 */
-        <div>
-          <div style={{ marginBottom: 24 }}>
-            <Text strong style={{ display: 'block', fontSize: 15, marginBottom: 12 }}>
-              <SecurityScanOutlined style={{ marginRight: 8, color: '#1677ff' }} />
-              扫描二维码
-            </Text>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: 24,
-                backgroundColor: '#fafafa',
-                borderRadius: 10,
-                border: '1px solid #f0f0f0',
-              }}
-            >
-              <div
-                style={{
-                  padding: 16,
-                  background: '#fff',
-                  borderRadius: 10,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  marginBottom: 16,
-                }}
-              >
-                {qrDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- QR 码为 data URL，无需 next/image 优化
-                  <img
-                    src={qrDataUrl}
-                    alt="OTP QR Code"
-                    style={{ display: 'block', borderRadius: 4 }}
-                  />
-                ) : (
-                  <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>
-                    生成中...
-                  </div>
-                )}
-              </div>
-              <Text type="secondary" style={{ fontSize: 13, textAlign: 'center', marginBottom: 8 }}>
-                使用身份验证器应用扫描此二维码
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                支持 Google Authenticator、Microsoft Authenticator、1Password
-              </Text>
-              <div style={{ marginTop: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  或手动输入密钥：<Text copyable style={{ fontSize: 12 }}>{otpData.secret}</Text>
-                </Text>
-              </div>
-            </div>
-          </div>
-
-          <Form form={form} layout="vertical" requiredMark={false}>
-            <Form.Item
-              name="otp_code"
-              label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>输入 6 位验证码</Text>}
-              rules={[{ required: true, message: '请输入验证码' }]}
-              style={{ marginBottom: 20 }}
-            >
-              <Input
-                prefix={<SafetyOutlined style={{ color: '#bfbfbf' }} />}
-                placeholder="000000"
-                maxLength={6}
-                style={{ height: 42, borderRadius: 8, fontSize: 16, letterSpacing: 4 }}
-              />
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Space style={{ width: '100%' }}>
-                <Button
-                  type="primary"
-                  onClick={handleVerifyOtp}
-                  loading={isVerifyingOtp}
-                  style={{ height: 42, borderRadius: 8, minWidth: 120 }}
-                >
-                  验证并启用
-                </Button>
-                <Button
-                  onClick={() => { setOtpData(null); setQrDataUrl(null); form.resetFields() }}
-                  style={{ height: 42, borderRadius: 8 }}
-                >
-                  取消
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </div>
+        <OtpEnrollmentPanel
+          key={otpData.secret}
+          otpData={otpData}
+          isVerifying={isVerifyingOtp}
+          onVerify={handleVerifyOtp}
+          onCancel={() => setOtpData(null)}
+        />
       ) : (
-        /* 初始状态：输入密码 */
-        <Form form={form} layout="vertical" requiredMark={false}>
+        <Form<CredentialFields>
+          form={credentialForm}
+          layout="vertical"
+          requiredMark={false}
+          disabled={
+            isSettingUpOtp
+            || isRegeneratingRecoveryCodes
+            || isDisablingOtp
+          }
+          onFinish={
+            isEnabled ? handleRegenerateRecoveryCodes : handleSetupOtp
+          }
+        >
           <Form.Item
             name="password"
-            label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>账号密码</Text>}
+            label={
+              <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
+                账号密码
+              </Text>
+            }
             rules={[{ required: true, message: '请输入密码' }]}
             style={{ marginBottom: 20 }}
           >
@@ -342,13 +215,18 @@ export default function OtpSettings() {
           {isEnabled && (
             <Form.Item
               name="otp_code"
-              label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>当前验证码或恢复码</Text>}
+              label={
+                <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
+                  当前验证码或恢复码
+                </Text>
+              }
               rules={[{ required: true, message: '请输入验证码或恢复码' }]}
               style={{ marginBottom: 20 }}
             >
               <Input
                 prefix={<SafetyOutlined style={{ color: '#bfbfbf' }} />}
                 placeholder="6 位验证码或恢复码"
+                autoComplete="one-time-code"
                 maxLength={19}
                 style={{ height: 42, borderRadius: 8, fontSize: 16 }}
               />
@@ -357,11 +235,11 @@ export default function OtpSettings() {
 
           <Form.Item style={{ marginBottom: 0 }}>
             {isEnabled ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 <Button
                   block
                   icon={<KeyOutlined />}
-                  onClick={handleRegenerateRecoveryCodes}
+                  htmlType="submit"
                   loading={isRegeneratingRecoveryCodes}
                   disabled={isDisablingOtp}
                   style={{ height: 42, borderRadius: 8, fontSize: 15 }}
@@ -372,7 +250,8 @@ export default function OtpSettings() {
                   type="primary"
                   danger
                   block
-                  onClick={handleDisableOtp}
+                  htmlType="button"
+                  onClick={handleDisableOtpClick}
                   loading={isDisablingOtp}
                   disabled={isRegeneratingRecoveryCodes}
                   style={{ height: 42, borderRadius: 8, fontSize: 15 }}
@@ -383,9 +262,14 @@ export default function OtpSettings() {
             ) : (
               <Button
                 type="primary"
-                onClick={handleSetupOtp}
+                htmlType="submit"
                 loading={isSettingUpOtp}
-                style={{ height: 42, borderRadius: 8, width: '100%', fontSize: 15 }}
+                style={{
+                  height: 42,
+                  borderRadius: 8,
+                  width: '100%',
+                  fontSize: 15,
+                }}
               >
                 启用 OTP 二次验证
               </Button>
