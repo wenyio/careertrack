@@ -55,8 +55,22 @@ if [ -z "${JWT_SECRET:-}" ]; then
     exit 1
 fi
 
-if [ "${#JWT_SECRET}" -lt 32 ] || [ "$JWT_SECRET" = "change-me-in-production" ]; then
+if [ "${#JWT_SECRET}" -lt 32 ] \
+    || [ "$JWT_SECRET" = "change-me-in-production" ] \
+    || [ "$JWT_SECRET" = "replace-with-at-least-32-random-characters" ]; then
     echo "❌ JWT_SECRET 必须至少 32 个字符，且不能使用示例默认值。"
+    exit 1
+fi
+
+if [ -z "${TOTP_ENCRYPTION_KEY:-}" ]; then
+    echo "❌ TOTP_ENCRYPTION_KEY 未设置。请另行生成并长期保存该密钥。"
+    exit 1
+fi
+
+if [ "${#TOTP_ENCRYPTION_KEY}" -lt 32 ] \
+    || [ "$TOTP_ENCRYPTION_KEY" = "careertrack-totp-encryption-key" ] \
+    || [ "$TOTP_ENCRYPTION_KEY" = "replace-with-a-different-stable-random-key" ]; then
+    echo "❌ TOTP_ENCRYPTION_KEY 必须至少 32 个字符，且不能使用示例默认值。"
     exit 1
 fi
 

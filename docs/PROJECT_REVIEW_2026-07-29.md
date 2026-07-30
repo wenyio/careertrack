@@ -34,6 +34,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | MCP-01 | 已关闭 | `read_only` 只注册 5 个读取工具；Key 鉴权关联未禁用用户；增加 scope 契约测试 |
 | AUTH-01 | 已关闭 | `start.sh` 删除默认 JWT 密钥，生产强制不少于 32 字符并拒绝已知弱值 |
 | AUTH-02 | 已关闭 | 浏览器改用 HttpOnly Cookie，移除 localStorage token；服务端仅登记 JWT 摘要并支持登出、改密、改名、禁用即时撤销；GitHub 绑定回调校验实时会话与 state 用户归属；关键入口限流；密码最小 10 位 |
+| AUTH-03 | 主体已关闭 | TOTP secret 改为用户绑定的 AES-256-GCM 密文；增加 10 个一次性恢复码、原子消费、再生成和启禁用会话轮换；可信代理/canonical origin 仍需结合真实部署确认 |
 | DATA-01 | 已关闭 | SQLite/PostgreSQL 新增事务；SQLite 进程内写事务串行化，避免 async 回调与同步 busy wait 互锁；注册、注册码原子领取及 GitHub 首次注册纳入事务；注册码哈希唯一 |
 | DATA-02 | 已关闭 | 简历引入 `revision` 条件写入和 409 冲突；自动保存改为单飞串行队列 |
 | OPS-01 | 已关闭 | Docker 数据固定为 `/data/careertrack.db`，修复 UID 1001 权限，声明 volume 与健康检查 |
@@ -48,22 +49,24 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - 全部 18 个动态 API 路由和 8 组查询参数接入共享校验，通用错误码按 HTTP 语义收敛；
 - JSON 请求体增加 1 MiB 流式字节上限和结构复杂度预算，全部 API 响应增加 request ID；
 - REST 与 MCP 共用富文本节点/mark/样式语义校验及 URL 协议白名单；
-- ESLint 已清零；单元测试增加到 173 个；
+- ESLint 已清零；TOTP 密钥、恢复码和并发消费已加入单元与真实认证链路回归；
 - Playwright 改用隔离 SQLite 测试库、独立测试密钥和稳定测试 IP，修复本机环境与限流对回归的污染；
 - 简历名称创建/更新统一增加 50 字符服务端校验，补齐简历卡片和富文本工具栏的关键可访问名称；
 - 文档已同步到 v1.0.3。
 
-仍未关闭、不得被本轮改动掩盖的重点包括：TOTP secret 加密与恢复码、多实例共享限流、PostgreSQL 集成测试、超大数据集 cursor pagination、系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
+仍未关闭、不得被本轮改动掩盖的重点包括：`TOTP_ENCRYPTION_KEY`
+在线轮换、多实例共享限流、PostgreSQL 集成测试、超大数据集 cursor pagination、
+系统性可访问性审计以及 CI 持续门禁。这些继续按本文 P1/P2 路线推进。
 
 ### 1.2 v1.0.3 最终验收
 
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 20 个测试文件、173 项测试通过 |
-| `npm run build` | 通过 | Next.js 生产编译、类型检查和 42 个静态页面生成通过；构建阶段未访问数据库 |
-| `npm run test:security-smoke` | 通过 | 7 项：HttpOnly 会话、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 108/108，通过时间 5.8 分钟；含 3 项分页/轻量 DTO 专项回归 |
+| `npm run test:unit` | 通过 | 23 个测试文件、180 项测试通过；含密钥加解密、生产 fail-closed、恢复码、原子消费和旧库迁移 |
+| `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
+| `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 109/109，通过时间 5.9 分钟；含 OTP 和分页/轻量 DTO 专项回归 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
 
 本轮已达到“单实例受控部署/试运行”的发布质量。若进入多实例公网部署，仍应先完成共享限流、PostgreSQL 集成回归、备份恢复演练和 CI 门禁。
@@ -320,7 +323,7 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 
 当前采用 offset pagination 以兼容后台总数跳页和既有表格交互。进入百万级记录或高频并发写入场景前，应升级为 cursor pagination；这属于后续规模化增强，不再阻塞当前单实例受控部署。
 
-### AUTH-03：认证硬化仍不完整
+### AUTH-03：认证硬化主体已关闭
 
 - JWT 约 24 小时，但客户端 cookie 曾设置为 7 天，生命周期不一致；
 - 改密和角色变化没有可靠撤销已签发 JWT；
@@ -330,6 +333,14 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 - `next.config.ts` 未设置 CSP、HSTS、`X-Content-Type-Options`、Referrer-Policy、Permissions-Policy 等安全头。
 
 这些应与 AUTH-02 一起形成统一的 session/security hardening 任务，而不是零散补丁。
+
+**整改状态（2026-07-30）：主体已关闭。** JWT/Cookie 生命周期与服务端会话
+现已统一，改密、改名、禁用账号以及启用/禁用 OTP 均可撤销旧会话；预览签名
+和安全响应头已收紧。TOTP secret 使用独立主密钥派生的 AES-256-GCM 密钥加密，
+AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC 摘要，同一码通过
+条件更新最多消费一次，支持重新生成并使旧码全部失效。当前剩余项是结合真实
+反向代理拓扑固定 OAuth canonical origin，以及为加密主密钥提供不中断的在线
+轮换/keyring 机制。
 
 ### TEST-01：测试门禁当前不能代表“可发布”（整改前基线）
 

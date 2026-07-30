@@ -13,6 +13,7 @@ import { query as pgQuery, transaction as pgTransaction, getPool as getPgPool } 
 import { ensureAdmin } from '../bootstrap'
 import type { DatabaseQuery, DatabaseTransaction } from './types'
 import { runMigrations } from './migrations'
+import { validateRuntimeSecrets } from '@/lib/security/secrets'
 
 /** 判断使用的存储驱动 */
 const driver =
@@ -33,11 +34,13 @@ let initializePromise: Promise<void> | null = null
 /** 首次运行时显式初始化管理员；模块导入本身不再访问数据库。 */
 export function ensureStorageInitialized(): Promise<void> {
   if (!initializePromise) {
-    initializePromise = runMigrations(driver, rawTransaction)
+    initializePromise = Promise.resolve()
+      .then(() => validateRuntimeSecrets())
+      .then(() => runMigrations(driver, rawTransaction))
       .then(() => ensureAdmin(rawQuery))
       .catch((error) => {
-      initializePromise = null
-      throw error
+        initializePromise = null
+        throw error
       })
   }
   return initializePromise

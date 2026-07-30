@@ -3,6 +3,7 @@ import { once } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { generateSync } from 'otplib'
 
 const externalBaseUrl = process.env.E2E_BASE_URL
 const managesServer = !externalBaseUrl
@@ -38,6 +39,7 @@ async function startManagedServer() {
       STORAGE_DRIVER: 'sqlite',
       SQLITE_DB_PATH: join(temporaryDirectory, 'smoke.db'),
       JWT_SECRET: 'careertrack-smoke-jwt-secret-at-least-32-characters',
+      TOTP_ENCRYPTION_KEY: 'careertrack-smoke-totp-key-at-least-32-characters',
       ADMIN_USERNAME: adminUsername,
       ADMIN_PASSWORD: adminPassword,
     },
@@ -160,11 +162,56 @@ assert(
 
 const registered = registrationResults.find((result) => result.response.status === 201)
 assert(registered && !('token' in registered.body), 'register response must not expose JWT')
-const userCookie = sessionCookie(registered, 'registration')
+let userCookie = sessionCookie(registered, 'registration')
 const userId = registered.body.user.id
 
 const me = await request('/api/auth/me', { cookie: userCookie })
 assert(me.response.status === 200, `cookie session failed: ${me.text}`)
+
+const otpSetup = await request('/api/auth/setup-otp', {
+  method: 'POST',
+  cookie: userCookie,
+  body: { password: 'SmokePassword123!' },
+})
+assert(otpSetup.response.status === 200, `OTP setup failed: ${otpSetup.text}`)
+const otpVerify = await request('/api/auth/verify-otp', {
+  method: 'POST',
+  cookie: userCookie,
+  body: { code: generateSync({ secret: otpSetup.body.secret }) },
+})
+assert(otpVerify.response.status === 200, `OTP verify failed: ${otpVerify.text}`)
+assert(
+  Array.isArray(otpVerify.body.recovery_codes)
+    && otpVerify.body.recovery_codes.length === 10,
+  'OTP verify did not return ten one-time recovery codes',
+)
+const preOtpCookie = userCookie
+userCookie = sessionCookie(otpVerify, 'OTP verification')
+const preOtpSession = await request('/api/auth/me', { cookie: preOtpCookie })
+assert(preOtpSession.response.status === 401, 'OTP enable did not revoke the old session')
+
+const recoveryLogin = await request('/api/auth/login', {
+  method: 'POST',
+  body: {
+    username: registered.body.user.username,
+    password: 'SmokePassword123!',
+    recovery_code: otpVerify.body.recovery_codes[0],
+  },
+})
+assert(recoveryLogin.response.status === 200, `recovery login failed: ${recoveryLogin.text}`)
+assert(
+  recoveryLogin.body.recovery_codes_remaining === 9,
+  'recovery login did not consume exactly one code',
+)
+const recoveryReplay = await request('/api/auth/login', {
+  method: 'POST',
+  body: {
+    username: registered.body.user.username,
+    password: 'SmokePassword123!',
+    recovery_code: otpVerify.body.recovery_codes[0],
+  },
+})
+assert(recoveryReplay.response.status === 400, 'used recovery code was accepted twice')
 
 const createdResume = await request('/api/resumes', {
   method: 'POST',
@@ -280,6 +327,7 @@ console.log(JSON.stringify({
   status: 'ok',
   checks: [
     'httpOnly-session',
+    'totp-recovery-code',
     'atomic-registration-code',
     'resume-revision-conflict',
     'public-dto',

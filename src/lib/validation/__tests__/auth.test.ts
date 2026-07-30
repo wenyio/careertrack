@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { parseJsonBody } from '@/lib/api-validation'
 import {
   disableOtpBodySchema,
+  loginBodySchema,
   passwordBodySchema,
+  recoveryCodesBodySchema,
   registerBodySchema,
   usernameBodySchema,
 } from '@/lib/validation/auth'
@@ -102,5 +104,33 @@ describe('authentication request validation', () => {
       password: 'ValidPassword123!',
       code: '123456',
     }).success).toBe(true)
+    expect(disableOtpBodySchema.safeParse({
+      password: 'ValidPassword123!',
+      code: 'ABCD-EF01-2345-6789',
+    }).success).toBe(true)
+    expect(recoveryCodesBodySchema.safeParse({
+      password: 'ValidPassword123!',
+      code: 'abcdef0123456789',
+    }).success).toBe(true)
+  })
+
+  it('accepts exactly one second-factor credential during login', () => {
+    const credentials = {
+      username: 'tester',
+      password: 'ValidPassword123!',
+    }
+    expect(loginBodySchema.safeParse({
+      ...credentials,
+      otp_code: '123456',
+    }).success).toBe(true)
+    expect(loginBodySchema.safeParse({
+      ...credentials,
+      recovery_code: 'ABCD-EF01-2345-6789',
+    }).success).toBe(true)
+    expect(loginBodySchema.safeParse({
+      ...credentials,
+      otp_code: '123456',
+      recovery_code: 'ABCD-EF01-2345-6789',
+    }).success).toBe(false)
   })
 })

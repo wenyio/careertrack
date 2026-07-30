@@ -9,7 +9,13 @@
 
 import { useState, useEffect } from 'react'
 import { Form, Input, Button, Typography, App } from 'antd'
-import { UserOutlined, LockOutlined, SafetyOutlined, GithubOutlined } from '@ant-design/icons'
+import {
+  UserOutlined,
+  LockOutlined,
+  SafetyOutlined,
+  GithubOutlined,
+  KeyOutlined,
+} from '@ant-design/icons'
 import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
@@ -29,6 +35,7 @@ export default function LoginPage() {
   const { loginSuccess } = useAuthStore()
   const { message } = App.useApp()
   const [showOtp, setShowOtp] = useState(false)
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false)
 
   // 处理 OAuth 回调带回的错误
   useEffect(() => {
@@ -56,7 +63,13 @@ export default function LoginPage() {
     onSuccess: (data) => {
       queryClient.clear()
       loginSuccess(data.user)
-      message.success('登录成功')
+      if (data.recovery_code_used) {
+        message.warning(
+          `恢复码已使用，还剩 ${data.recovery_codes_remaining ?? 0} 个`,
+        )
+      } else {
+        message.success('登录成功')
+      }
       router.push(hasGuestData() ? '/auth/migrate' : '/resumes')
     },
     onError: (error: Error) => {
@@ -122,27 +135,60 @@ export default function LoginPage() {
         </Form.Item>
 
         {showOtp && (
-          <Form.Item
-            name="otp_code"
-            style={{ marginBottom: 16 }}
-            rules={[
-              { required: true, message: '请输入 OTP 验证码' },
-              { len: 6, message: 'OTP 验证码为 6 位数字' },
-            ]}
-            extra={
-              <span style={{ fontSize: 12 }}>
-                <SafetyOutlined style={{ marginRight: 4 }} />
-                请输入 Google Authenticator 中的验证码
-              </span>
-            }
-          >
-            <Input
-              prefix={<SafetyOutlined />}
-              placeholder="6 位 OTP 验证码"
-              maxLength={6}
-              autoFocus
-            />
-          </Form.Item>
+          <>
+            <Form.Item
+              name={useRecoveryCode ? 'recovery_code' : 'otp_code'}
+              style={{ marginBottom: 8 }}
+              rules={useRecoveryCode
+                ? [
+                  { required: true, message: '请输入恢复码' },
+                  {
+                    pattern: /^[A-Fa-f0-9]{4}(?:-?[A-Fa-f0-9]{4}){3}$/,
+                    message: '恢复码格式错误',
+                  },
+                ]
+                : [
+                  { required: true, message: '请输入 OTP 验证码' },
+                  { pattern: /^\d{6}$/, message: 'OTP 验证码为 6 位数字' },
+                ]}
+              extra={
+                <span style={{ fontSize: 12 }}>
+                  {useRecoveryCode ? (
+                    <KeyOutlined style={{ marginRight: 4 }} />
+                  ) : (
+                    <SafetyOutlined style={{ marginRight: 4 }} />
+                  )}
+                  {useRecoveryCode
+                    ? '每个恢复码只能使用一次'
+                    : '请输入身份验证器应用中的验证码'}
+                </span>
+              }
+            >
+              <Input
+                prefix={useRecoveryCode
+                  ? <KeyOutlined />
+                  : <SafetyOutlined />}
+                placeholder={useRecoveryCode ? 'XXXX-XXXX-XXXX-XXXX' : '6 位 OTP 验证码'}
+                maxLength={useRecoveryCode ? 19 : 6}
+                autoComplete="one-time-code"
+                autoFocus
+              />
+            </Form.Item>
+            <Button
+              type="link"
+              size="small"
+              style={{ padding: 0, marginBottom: 12 }}
+              onClick={() => {
+                form.setFieldValue(
+                  useRecoveryCode ? 'recovery_code' : 'otp_code',
+                  undefined,
+                )
+                setUseRecoveryCode((current) => !current)
+              }}
+            >
+              {useRecoveryCode ? '使用身份验证器验证码' : '改用恢复码'}
+            </Button>
+          </>
         )}
 
         <Form.Item style={{ marginBottom: 12 }}>

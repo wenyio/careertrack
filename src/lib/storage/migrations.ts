@@ -1,4 +1,8 @@
 import type { DatabaseQuery, DatabaseTransaction } from './types'
+import {
+  encryptTotpSecret,
+  isEncryptedTotpSecret,
+} from '@/lib/security/totp-credentials'
 
 type StorageDriver = 'sqlite' | 'postgres'
 
@@ -76,6 +80,43 @@ const migrations: Migration[] = [
       await query(
         'CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)',
       )
+    },
+  },
+  {
+    version: '003_encrypt_totp_and_recovery_codes',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        const columns = await query<{ name: string }>('PRAGMA table_info(users)')
+        if (!columns.rows.some((column) => column.name === 'otp_recovery_codes')) {
+          await query(
+            `ALTER TABLE users
+             ADD COLUMN otp_recovery_codes TEXT NOT NULL DEFAULT '[]'`,
+          )
+        }
+      } else {
+        await query(
+          `ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS otp_recovery_codes JSONB NOT NULL DEFAULT '[]'`,
+        )
+        await query(
+          'ALTER TABLE users ALTER COLUMN otp_secret TYPE VARCHAR(512)',
+        )
+      }
+
+      const users = await query<{ id: string; otp_secret: string }>(
+        'SELECT id, otp_secret FROM users WHERE otp_secret IS NOT NULL',
+      )
+      for (const user of users.rows) {
+        if (isEncryptedTotpSecret(user.otp_secret)) continue
+        await query(
+          'UPDATE users SET otp_secret = $1 WHERE id = $2 AND otp_secret = $3',
+          [
+            encryptTotpSecret(user.otp_secret, user.id),
+            user.id,
+            user.otp_secret,
+          ],
+        )
+      }
     },
   },
 ]

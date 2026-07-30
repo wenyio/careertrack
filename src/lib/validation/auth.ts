@@ -4,11 +4,25 @@ function requiredString(message: string) {
   return z.string({ error: message }).min(1, message)
 }
 
+const otpCodeSchema = z.string({ error: 'OTP 验证码格式错误' })
+  .regex(/^\d{6}$/, 'OTP 验证码错误')
+
+const recoveryCodeSchema = z.string({ error: '恢复码格式错误' })
+  .trim()
+  .regex(
+    /^[A-Fa-f0-9]{4}(?:-?[A-Fa-f0-9]{4}){3}$/,
+    '恢复码格式错误',
+  )
+
 export const loginBodySchema = z.object({
   username: requiredString('用户名和密码不能为空'),
   password: requiredString('用户名和密码不能为空'),
-  otp_code: z.string({ error: 'OTP 验证码格式错误' }).optional(),
-})
+  otp_code: otpCodeSchema.optional(),
+  recovery_code: recoveryCodeSchema.optional(),
+}).refine(
+  (value) => !(value.otp_code && value.recovery_code),
+  { message: 'OTP 验证码和恢复码只能选择一种' },
+)
 
 export const registerBodySchema = z.object({
   username: requiredString('用户名和密码不能为空')
@@ -42,12 +56,22 @@ export const setupOtpBodySchema = z.object({
 })
 
 export const verifyOtpBodySchema = z.object({
-  code: requiredString('请输入 OTP 验证码')
-    .regex(/^\d{6}$/, 'OTP 验证码错误'),
+  code: otpCodeSchema,
+})
+
+const secondFactorCodeSchema = z.union([
+  otpCodeSchema,
+  recoveryCodeSchema,
+], {
+  error: '请输入有效的 OTP 验证码或恢复码',
 })
 
 export const disableOtpBodySchema = z.object({
   password: requiredString('请输入密码和 OTP 验证码'),
-  code: requiredString('请输入密码和 OTP 验证码')
-    .regex(/^\d{6}$/, 'OTP 验证码错误'),
+  code: secondFactorCodeSchema,
+})
+
+export const recoveryCodesBodySchema = z.object({
+  password: requiredString('请输入密码和 OTP 验证码'),
+  code: secondFactorCodeSchema,
 })

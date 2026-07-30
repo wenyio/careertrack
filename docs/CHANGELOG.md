@@ -15,6 +15,9 @@
 - 浏览器登录态迁移到 `HttpOnly + Secure（生产）+ SameSite=Lax` 会话 Cookie；登录、注册和 OAuth 回调不再向前端返回 JWT，新增服务端登出接口
 - 新增 `auth_sessions` 服务端会话登记与迁移：仅保存 JWT SHA-256 摘要，登出、改密、改名和账号禁用可立即撤销旧凭证
 - 生产环境强制校验 `JWT_SECRET`，拒绝缺失、少于 32 字符或已知弱默认值；临时预览签名同步收紧
+- TOTP 密钥改为用户绑定的 AES-256-GCM 密文，生产环境新增独立且必须稳定保存的 `TOTP_ENCRYPTION_KEY`；历史明文由迁移 003 原位加密
+- 启用 OTP 时生成 10 个一次性恢复码，服务端仅保存用户绑定的 HMAC 摘要；登录原子消费，支持重新生成和用于禁用 OTP
+- 启用或禁用 OTP 会撤销该用户全部旧会话并为当前客户端轮换 Cookie；登录页与安全设置页补齐恢复码交互
 - 修复公开简历 JSON-LD 的 `</script>` 存储型 XSS，新增专用安全序列化器和回归测试
 - 公开简历 API 改为最小 DTO，不再暴露内部简历 ID
 - 增加 CSP、HSTS、`nosniff`、Referrer Policy、Permissions Policy 和点击劫持防护响应头
@@ -57,8 +60,9 @@
 - 补齐简历卡片和富文本工具栏的可访问名称、键盘编辑入口
 - Playwright 默认使用隔离 SQLite 测试库和专用测试密钥，避免本机环境变量与安全限流污染回归
 - 安全冒烟脚本可自动启动并清理独立测试服务；会话撤销加入单元、E2E 与真实接口冒烟覆盖
-- 新增 `test:security-smoke`，覆盖 HttpOnly 会话、并发注册码、revision 冲突、公开 DTO、JSON-LD XSS、MCP 禁用用户和服务端会话撤销
-- 最终验收通过 ESLint、生产构建、20 个文件共 173 项单元测试、7 项安全冒烟及 Chromium 108/108 全量 E2E
+- 新增 `test:security-smoke`，覆盖 HttpOnly 会话、TOTP 恢复码、并发注册码、revision 冲突、公开 DTO、JSON-LD XSS、MCP 禁用用户和服务端会话撤销
+- 新增 TOTP 密文用户绑定、恢复码摘要、并发单次消费和浏览器登录切换专项回归
+- 最终验收通过 ESLint、生产构建、23 个文件共 180 项单元测试、8 项安全冒烟及 Chromium 109/109 全量 E2E
 
 ### 性能与规模
 
@@ -71,7 +75,7 @@
 ### 已知限制
 
 - 当前限流器为单进程内存实现；多实例生产部署必须在反向代理或 Redis 等共享存储层增加全局限流
-- TOTP 密钥加密/恢复码、PostgreSQL 集成测试和超大数据集所需的 cursor pagination 仍在后续路线中
+- PostgreSQL 集成测试、`TOTP_ENCRYPTION_KEY` 在线轮换和超大数据集所需的 cursor pagination 仍在后续路线中
 
 ## [1.0.0] - 2026-06-05
 

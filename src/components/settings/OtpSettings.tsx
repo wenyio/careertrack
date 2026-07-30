@@ -10,11 +10,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Form, Input, Button, Space, Typography, App } from 'antd'
-import { LockOutlined, SafetyOutlined, SecurityScanOutlined, CheckCircleOutlined, CloseCircleOutlined, GithubOutlined } from '@ant-design/icons'
+import { Alert, Form, Input, Button, Space, Typography, App } from 'antd'
+import {
+  LockOutlined,
+  SafetyOutlined,
+  SecurityScanOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  GithubOutlined,
+  KeyOutlined,
+} from '@ant-design/icons'
 import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useSetupOtp, useVerifyOtp, useDisableOtp } from '@/hooks/useAuth'
+import {
+  useSetupOtp,
+  useVerifyOtp,
+  useDisableOtp,
+  useRegenerateRecoveryCodes,
+} from '@/hooks/useAuth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 
 const { Text } = Typography
@@ -25,10 +38,15 @@ export default function OtpSettings() {
   const { mutate: setupOtp, isPending: isSettingUpOtp } = useSetupOtp()
   const { mutate: verifyOtp, isPending: isVerifyingOtp } = useVerifyOtp()
   const { mutate: disableOtp, isPending: isDisablingOtp } = useDisableOtp()
+  const {
+    mutate: regenerateRecoveryCodes,
+    isPending: isRegeneratingRecoveryCodes,
+  } = useRegenerateRecoveryCodes()
 
   const [form] = Form.useForm()
   const [otpData, setOtpData] = useState<{ secret: string; qr_code_url: string } | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
 
   // 判断是否为账号密码用户
   const hasPassword = user ? (user.auth_provider & AUTH_PROVIDER.PASSWORD) !== 0 : false
@@ -71,7 +89,8 @@ export default function OtpSettings() {
       return
     }
     verifyOtp(code, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        setRecoveryCodes(data.recovery_codes)
         setOtpData(null)
         setQrDataUrl(null)
         form.resetFields()
@@ -88,6 +107,21 @@ export default function OtpSettings() {
     }
     disableOtp({ password, code }, {
       onSuccess: () => form.resetFields(),
+    })
+  }
+
+  const handleRegenerateRecoveryCodes = () => {
+    const password = form.getFieldValue('password')
+    const code = form.getFieldValue('otp_code')
+    if (!password || !code) {
+      message.error('请输入密码和当前验证码或恢复码')
+      return
+    }
+    regenerateRecoveryCodes({ password, code }, {
+      onSuccess: (data) => {
+        setRecoveryCodes(data.recovery_codes)
+        form.resetFields()
+      },
     })
   }
 
@@ -157,7 +191,49 @@ export default function OtpSettings() {
       </div>
 
       {/* 操作区域 */}
-      {otpData ? (
+      {recoveryCodes.length > 0 ? (
+        /* 恢复码明文不会持久化，用户离开此区域后无法再次查看。 */
+        <div>
+          <Alert
+            type="warning"
+            showIcon
+            message="立即保存恢复码"
+            description="每个恢复码只能使用一次。请保存到密码管理器或其他安全位置；关闭后无法再次查看。"
+            style={{ marginBottom: 16 }}
+          />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 8,
+              padding: 16,
+              marginBottom: 16,
+              background: '#fafafa',
+              border: '1px solid #f0f0f0',
+              borderRadius: 10,
+            }}
+          >
+            {recoveryCodes.map((code) => (
+              <Text code key={code} style={{ textAlign: 'center' }}>
+                {code}
+              </Text>
+            ))}
+          </div>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Text copyable={{ text: recoveryCodes.join('\n') }}>
+              复制全部恢复码
+            </Text>
+            <Button
+              type="primary"
+              block
+              onClick={() => setRecoveryCodes([])}
+              style={{ height: 42, borderRadius: 8 }}
+            >
+              我已安全保存
+            </Button>
+          </Space>
+        </div>
+      ) : otpData ? (
         /* 扫码验证流程 */
         <div>
           <div style={{ marginBottom: 24 }}>
@@ -266,30 +342,44 @@ export default function OtpSettings() {
           {isEnabled && (
             <Form.Item
               name="otp_code"
-              label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>当前验证码</Text>}
-              rules={[{ required: true, message: '请输入验证码' }]}
+              label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>当前验证码或恢复码</Text>}
+              rules={[{ required: true, message: '请输入验证码或恢复码' }]}
               style={{ marginBottom: 20 }}
             >
               <Input
                 prefix={<SafetyOutlined style={{ color: '#bfbfbf' }} />}
-                placeholder="输入 6 位验证码"
-                maxLength={6}
-                style={{ height: 42, borderRadius: 8, fontSize: 16, letterSpacing: 4 }}
+                placeholder="6 位验证码或恢复码"
+                maxLength={19}
+                style={{ height: 42, borderRadius: 8, fontSize: 16 }}
               />
             </Form.Item>
           )}
 
           <Form.Item style={{ marginBottom: 0 }}>
             {isEnabled ? (
-              <Button
-                type="primary"
-                danger
-                onClick={handleDisableOtp}
-                loading={isDisablingOtp}
-                style={{ height: 42, borderRadius: 8, width: '100%', fontSize: 15 }}
-              >
-                禁用 OTP 二次验证
-              </Button>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button
+                  block
+                  icon={<KeyOutlined />}
+                  onClick={handleRegenerateRecoveryCodes}
+                  loading={isRegeneratingRecoveryCodes}
+                  disabled={isDisablingOtp}
+                  style={{ height: 42, borderRadius: 8, fontSize: 15 }}
+                >
+                  重新生成恢复码
+                </Button>
+                <Button
+                  type="primary"
+                  danger
+                  block
+                  onClick={handleDisableOtp}
+                  loading={isDisablingOtp}
+                  disabled={isRegeneratingRecoveryCodes}
+                  style={{ height: 42, borderRadius: 8, fontSize: 15 }}
+                >
+                  禁用 OTP 二次验证
+                </Button>
+              </Space>
             ) : (
               <Button
                 type="primary"

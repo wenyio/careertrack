@@ -15,6 +15,8 @@ import { setAuthSessionCookie } from '@/lib/security/session'
 import { issueAuthSession } from '@/lib/security/auth-session'
 import { parseJsonBody } from '@/lib/api-validation'
 import { loginBodySchema } from '@/lib/validation/auth'
+import { decryptTotpSecret } from '@/lib/security/totp-credentials'
+import { consumeRecoveryCode } from '@/lib/services/otp'
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
 
     const parsedBody = await parseJsonBody(request, loginBodySchema)
     if (!parsedBody.success) return parsedBody.response
-    const { username, password, otp_code } = parsedBody.data
+    const { username, password, otp_code, recovery_code } = parsedBody.data
 
     const accountLimit = enforceRateLimit(request, {
       namespace: 'auth-login-account',
@@ -78,9 +80,9 @@ export async function POST(request: Request) {
 
     // 验证 OTP（如果启用）
     if (user.otp_enabled) {
-      if (!otp_code) {
+      if (!otp_code && !recovery_code) {
         return NextResponse.json(
-          { code: 'OTP_REQUIRED', message: '请输入 OTP 验证码' },
+          { code: 'OTP_REQUIRED', message: '请输入 OTP 验证码或恢复码' },
           { status: 400 }
         )
       }
@@ -92,17 +94,53 @@ export async function POST(request: Request) {
         )
       }
 
-      const isValidOtp = verifyTotp(otp_code, user.otp_secret)
-      if (!isValidOtp) {
+      let recoveryCodesRemaining: number | undefined
+      if (recovery_code) {
+        const result = await consumeRecoveryCode(
+          user.id,
+          recovery_code,
+          user.otp_recovery_codes,
+        )
+        if (!result.consumed) {
+          return NextResponse.json(
+            { code: 'TOTP_ERROR', message: 'OTP 验证码或恢复码错误' },
+            { status: 400 },
+          )
+        }
+        recoveryCodesRemaining = result.remaining
+      } else if (
+        !otp_code
+        || !verifyTotp(
+          otp_code,
+          decryptTotpSecret(user.otp_secret, user.id),
+        )
+      ) {
         return NextResponse.json(
-          { code: 'TOTP_ERROR', message: 'OTP 验证码错误' },
-          { status: 400 }
+          { code: 'TOTP_ERROR', message: 'OTP 验证码或恢复码错误' },
+          { status: 400 },
         )
       }
+
+      const token = await issueAuthSession(user)
+
+      const response = NextResponse.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          otp_enabled: user.otp_enabled,
+          role: user.role || 'user',
+          auth_provider: user.auth_provider,
+        },
+        ...(recoveryCodesRemaining === undefined ? {} : {
+          recovery_code_used: true,
+          recovery_codes_remaining: recoveryCodesRemaining,
+        }),
+      })
+      setAuthSessionCookie(response, token, request)
+      return response
     }
 
     const token = await issueAuthSession(user)
-
     const response = NextResponse.json({
       user: {
         id: user.id,

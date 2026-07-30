@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || ...),  -- UUID v4
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255),            -- GitHub-only 用户可为 NULL
-    otp_secret VARCHAR(100),
+    otp_secret VARCHAR(512),                -- AES-256-GCM 密文，绑定用户 ID
+    otp_recovery_codes TEXT NOT NULL DEFAULT '[]', -- 恢复码 HMAC 摘要数组
     otp_enabled INTEGER DEFAULT 0,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
     auth_provider INTEGER NOT NULL DEFAULT 1,  -- 登录方式位掩码：PASSWORD=1, GITHUB=2
@@ -159,8 +160,16 @@ CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabl
 - 每个版本在事务中执行，成功后才写入 `schema_migrations`
 - `001_resume_revision_and_unique_codes` 为旧安装补充 `resumes.revision`，检查重复注册码哈希后建立唯一索引
 - `002_revocable_auth_sessions` 创建服务端登录会话表及用户、过期时间索引；升级前签发且没有会话记录的 JWT 将失效
+- `003_encrypt_totp_and_recovery_codes` 增加恢复码摘要列、扩展 PostgreSQL
+  `otp_secret` 容量，并使用 AES-256-GCM 将历史明文 TOTP 密钥原位迁移为绑定
+  用户 ID 的 `v1` 密文
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
+
+> 迁移 003 依赖生产环境中的 `TOTP_ENCRYPTION_KEY`。该密钥独立于
+> `JWT_SECRET`，必须在备份恢复和所有副本间保持一致；直接更换会使已有 TOTP
+> 密文无法解密。运行时仍可读取历史明文以支持滚动升级，但所有新写入和迁移后
+> 数据均为密文。
 
 ## 表结构设计（PostgreSQL）
 
@@ -173,7 +182,8 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255),            -- GitHub-only 用户可为 NULL
-    otp_secret VARCHAR(100),           -- TOTP 密钥，NULL 表示未启用 OTP
+    otp_secret VARCHAR(512),           -- AES-256-GCM 密文，NULL 表示未配置 OTP
+    otp_recovery_codes JSONB NOT NULL DEFAULT '[]', -- 一次性恢复码 HMAC 摘要
     otp_enabled BOOLEAN DEFAULT FALSE,
     role VARCHAR(20) NOT NULL DEFAULT 'user',  -- 用户角色：user / admin
     auth_provider INTEGER NOT NULL DEFAULT 1,  -- 登录方式位掩码：PASSWORD=1, GITHUB=2, OTHER=4
@@ -191,7 +201,10 @@ CREATE INDEX idx_users_created_at ON users(created_at DESC, id DESC);
 - `id`: 用户唯一标识，使用 UUID 避免 ID 猜测
 - `username`: 登录用户名，唯一
 - `password_hash`: bcrypt 加密后的密码，GitHub-only 用户可为 NULL
-- `otp_secret`: TOTP 密钥，启用 OTP 时生成
+- `otp_secret`: TOTP 密钥的 `v1` AES-256-GCM 密文；AAD 包含用户 ID，密文不能
+  在用户间交换复用
+- `otp_recovery_codes`: 最多 10 个未消费恢复码的 HMAC-SHA256 摘要；登录消费
+  使用旧 JSON 值作为条件更新，避免同一码被并发使用两次
 - `otp_enabled`: 是否启用 OTP 二次验证
 - `role`: 用户角色，`user`（普通用户）或 `admin`（管理员），新注册默认 `user`
 - `auth_provider`: 登录方式位掩码，`1`=密码, `2`=GitHub, `4`=其他

@@ -28,7 +28,7 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，设置 JWT_SECRET
+# 编辑 .env.local，设置 JWT_SECRET 和 TOTP_ENCRYPTION_KEY
 
 # 启动开发服务器（首次启动自动创建 .careertrack/careertrack.db）
 npm run dev
@@ -86,6 +86,7 @@ docker run -d \
   -p 3000:3000 \
   -v careertrack-data:/data \
   -e JWT_SECRET=replace-with-at-least-32-random-characters \
+  -e TOTP_ENCRYPTION_KEY=replace-with-a-different-stable-random-key \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   careertrack
@@ -95,6 +96,7 @@ docker run -d \
   --name careertrack \
   -p 3000:3000 \
   -e JWT_SECRET=replace-with-at-least-32-random-characters \
+  -e TOTP_ENCRYPTION_KEY=replace-with-a-different-stable-random-key \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   -e STORAGE_DRIVER=postgres \
@@ -129,16 +131,21 @@ bash deploy.sh
 # 传输到服务器后解压并启动
 tar -xzf deploy-v1.0.3.tar.gz
 cd deploy
-JWT_SECRET="$(openssl rand -base64 48)" bash start.sh
+export JWT_SECRET='从密钥管理服务读取的稳定随机值'
+export TOTP_ENCRYPTION_KEY='另一条独立且稳定的随机值'
+bash start.sh
 ```
 
-`start.sh` 不提供任何生产密钥或数据库默认值。它只设置监听参数，并在 `JWT_SECRET` 缺失、少于 32 字符或使用已知示例值时拒绝启动：
+`start.sh` 不提供任何生产密钥或数据库默认值。它只设置监听参数，并在
+`JWT_SECRET` 或 `TOTP_ENCRYPTION_KEY` 缺失、少于 32 字符或使用已知示例值时
+拒绝启动：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `PORT` | `3000` | 监听端口 |
 | `HOSTNAME` | `0.0.0.0` | 监听地址 |
 | `JWT_SECRET` | 无 | **必须显式设置，至少 32 字符** |
+| `TOTP_ENCRYPTION_KEY` | 无 | **必须显式设置，至少 32 字符并长期保持不变** |
 
 数据库仍遵循自动选择规则：有 `DATABASE_URL` 时使用 PostgreSQL，否则使用 SQLite。
 
@@ -163,6 +170,7 @@ node .next/standalone/server.js
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | - | JWT 签名密钥，生产环境必须设置强随机值 |
+| `TOTP_ENCRYPTION_KEY` | ✅ | - | TOTP 密钥加密主密钥，必须独立生成并稳定保存 |
 | `ADMIN_USERNAME` | ❌ | - | 首次启动自动创建的管理员用户名 |
 | `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥10 位） |
 | `STORAGE_DRIVER` | ❌ | 自动检测 | `sqlite` 或 `postgres` |
@@ -205,6 +213,7 @@ docker run -d \
   -p 3000:3000 \
   -v careertrack-data:/data \
   -e JWT_SECRET=replace-with-at-least-32-random-characters \
+  -e TOTP_ENCRYPTION_KEY=replace-with-a-different-stable-random-key \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=your-strong-password \
   careertrack
@@ -217,9 +226,16 @@ docker run -d \
 ### 生成密钥
 
 ```bash
-# 生成 JWT 密钥
+# 分别生成两条独立密钥；应写入密钥管理服务，而不是每次启动时重新生成
+openssl rand -base64 64
 openssl rand -base64 64
 ```
+
+`JWT_SECRET` 可通过撤销全部会话后轮换；`TOTP_ENCRYPTION_KEY` 用于解密数据库中
+已有的 TOTP 凭证，不能跟随 JWT 密钥轮换。当前版本尚未提供在线主密钥轮换，
+更换它之前必须先实现带旧密钥的重加密流程，否则所有已启用 OTP 的账号都将
+无法完成二次验证。备份数据库时应同时确认该密钥已由独立的密钥管理/备份策略
+保护，但不要把密钥写入数据库备份。
 
 ### 配置 HTTPS（Nginx 反向代理）
 
@@ -297,6 +313,7 @@ lsof -i :3000
 
 # 检查环境变量
 echo $JWT_SECRET
+echo $TOTP_ENCRYPTION_KEY
 echo $DATABASE_URL
 ```
 
@@ -328,6 +345,11 @@ fuser .careertrack/careertrack.db
 
 `002_revocable_auth_sessions` 会创建服务端会话表。升级前签发的 JWT 没有对应会话记录，部署后会失效，所有已登录用户需要重新登录；这是收紧撤销语义的预期安全行为。
 
+`003_encrypt_totp_and_recovery_codes` 会增加恢复码列，并使用
+`TOTP_ENCRYPTION_KEY` 加密历史明文 TOTP 密钥。升级前必须先备份数据库并配置
+一条长期稳定的密钥；所有应用副本必须使用同一值。迁移在事务中运行，失败不会
+被标记为已应用。
+
 ```bash
 # 拉取最新代码
 git pull
@@ -346,6 +368,7 @@ bash deploy.sh
 ## 生产环境检查清单
 
 - [ ] `JWT_SECRET` 已设置为强随机值
+- [ ] `TOTP_ENCRYPTION_KEY` 已独立生成、稳定保存，且所有副本使用同一值
 - [ ] `ADMIN_USERNAME` 和不少于 10 字符的 `ADMIN_PASSWORD` 已配置（首次启动）
 - [ ] `NEXT_PUBLIC_SITE_URL` 设置为实际域名
 - [ ] 已配置 HTTPS

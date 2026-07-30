@@ -12,7 +12,10 @@ import type {
   ChangeUsernameRequest,
   SetupOtpResponse,
   VerifyOtpRequest,
+  VerifyOtpResponse,
   DisableOtpRequest,
+  RecoveryCodesRequest,
+  RecoveryCodesResponse,
   OAuthAccount,
 } from '@/types/auth'
 
@@ -87,8 +90,11 @@ export async function setupOtp(password: string): Promise<SetupOtpResponse> {
  *
  * @param data 包含 6 位 OTP 验证码
  */
-export async function verifyOtp(data: VerifyOtpRequest): Promise<void> {
-  await api.post('/auth/verify-otp', data)
+export async function verifyOtp(
+  data: VerifyOtpRequest,
+): Promise<VerifyOtpResponse> {
+  const response = await api.post<VerifyOtpResponse>('/auth/verify-otp', data)
+  return response.data
 }
 
 /**
@@ -98,6 +104,19 @@ export async function verifyOtp(data: VerifyOtpRequest): Promise<void> {
  */
 export async function disableOtp(data: DisableOtpRequest): Promise<void> {
   await api.delete('/auth/disable-otp', { data })
+}
+
+/**
+ * 使旧恢复码全部失效并生成一组新恢复码。
+ */
+export async function regenerateRecoveryCodes(
+  data: RecoveryCodesRequest,
+): Promise<RecoveryCodesResponse> {
+  const response = await api.post<RecoveryCodesResponse>(
+    '/auth/recovery-codes',
+    data,
+  )
+  return response.data
 }
 
 /**

@@ -100,9 +100,13 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 {
   "username": "string",
   "password": "string",
-  "otp_code": "string | null"
+  "otp_code": "6 位数字，可选",
+  "recovery_code": "16 位十六进制恢复码，可选"
 }
 ```
+
+`otp_code` 与 `recovery_code` 只能提供一个。恢复码可使用
+`XXXX-XXXX-XXXX-XXXX` 或不带连字符的格式，不区分大小写。
 
 **响应:**
 ```json
@@ -116,8 +120,18 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 }
 ```
 
+使用恢复码时，响应额外返回：
+
+```json
+{
+  "recovery_code_used": true,
+  "recovery_codes_remaining": 9
+}
+```
+
 **错误码:**
-- `OTP_REQUIRED` — 用户启用了 OTP，需要提供 `otp_code`
+- `OTP_REQUIRED` — 用户启用了 OTP，需要提供 `otp_code` 或 `recovery_code`
+- `TOTP_ERROR` — OTP 验证码或恢复码无效
 - `ACCOUNT_DISABLED` — 账号已被禁用
 
 成功响应同时设置 HttpOnly 会话 Cookie，不在 JSON 中返回 JWT。
@@ -160,6 +174,10 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 }
 ```
 
+服务端只在本次设置响应中返回明文密钥；数据库保存的是通过
+`TOTP_ENCRYPTION_KEY` 加密且绑定当前用户 ID 的密文。再次设置会覆盖尚未确认的
+设置，但已启用 OTP 时必须先禁用。
+
 ### POST /api/auth/verify-otp
 
 验证 OTP 并完成启用（需认证）
@@ -171,6 +189,43 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 }
 ```
 
+**响应:**
+```json
+{
+  "success": true,
+  "recovery_codes": [
+    "ABCD-EF01-2345-6789"
+  ]
+}
+```
+
+成功时生成 10 个一次性恢复码，只在本次响应中返回明文。服务端仅保存摘要；
+客户端必须立即保存。启用 OTP 会撤销该用户的全部旧会话，并为当前客户端轮换
+会话 Cookie。
+
+### POST /api/auth/recovery-codes
+
+重新生成 OTP 恢复码（需认证、已启用 OTP）
+
+**请求体:**
+```json
+{
+  "password": "string",
+  "code": "6 位 OTP 验证码或恢复码"
+}
+```
+
+**响应:**
+```json
+{
+  "recovery_codes": [
+    "ABCD-EF01-2345-6789"
+  ]
+}
+```
+
+成功后全部旧恢复码立即失效，新码同样只显示一次。
+
 ### DELETE /api/auth/disable-otp
 
 禁用 OTP 二次验证（需认证）
@@ -179,9 +234,12 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 ```json
 {
   "password": "string",
-  "code": "6 位数字"
+  "code": "6 位 OTP 验证码或恢复码"
 }
 ```
+
+成功后清除加密 TOTP 密钥和全部恢复码，撤销该用户的全部旧会话，并为当前
+客户端轮换会话 Cookie。
 
 ### PUT /api/auth/username
 

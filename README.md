@@ -16,7 +16,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **实时预览** - 编辑简历时实时查看效果，支持 4 套简历模板（classic、modern、minimal、black-white）
 - **PDF 导出** - 一键导出高质量 PDF 简历（浏览器原生打印方案）
 - **简历公开** - 生成公开链接，可作为个人主页访问，支持 SEO 优化和分享预览图
-- **安全认证** - HttpOnly Cookie + 服务端可撤销会话 + 可选 TOTP + GitHub OAuth
+- **安全认证** - HttpOnly Cookie + 服务端可撤销会话 + 加密 TOTP/一次性恢复码 + GitHub OAuth
 - **游客模式** - 无需注册即可本地离线创建和编辑简历，注册后可一键导入
 - **MCP 服务** - 通过 MCP 协议供 AI Agent 访问和编辑简历数据
 - **Gravatar 头像** - 通过邮箱自动获取头像，内置证件照处理工具
@@ -28,7 +28,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **UI 组件库**: Ant Design 6
 - **状态管理**: Zustand (客户端) + TanStack Query (服务端)
 - **数据库**: SQLite (默认) / PostgreSQL 15 (可选)
-- **认证**: HttpOnly JWT + 服务端会话登记/撤销 + TOTP + GitHub OAuth
+- **认证**: HttpOnly JWT + 服务端会话登记/撤销 + 加密 TOTP/恢复码 + GitHub OAuth
 - **语言**: TypeScript
 
 ## 📁 项目结构
@@ -92,7 +92,7 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，至少设置 JWT_SECRET 和管理员账号
+# 编辑 .env.local，至少设置 JWT_SECRET、TOTP_ENCRYPTION_KEY 和管理员账号
 
 # 启动开发服务器（首次启动自动创建数据库和管理员账号）
 npm run dev
@@ -105,6 +105,7 @@ npm run dev
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `JWT_SECRET` | ✅ | - | JWT 签名密钥 |
+| `TOTP_ENCRYPTION_KEY` | ✅ | - | TOTP 密钥加密主密钥，至少 32 字符且必须长期稳定保存 |
 | `ADMIN_USERNAME` | ❌ | - | 首次启动自动创建的管理员用户名 |
 | `ADMIN_PASSWORD` | ❌ | - | 首次启动自动创建的管理员密码（≥10 位） |
 | `STORAGE_DRIVER` | ❌ | 自动检测 | `sqlite` 或 `postgres` |
@@ -139,7 +140,7 @@ npm run lint
 npm run test:unit
 npm run build
 
-# 自动启动隔离测试服务，验证会话、注册码并发、revision、公开页 XSS 与 MCP 权限
+# 自动启动隔离测试服务，验证会话、TOTP 恢复码、并发写入、公开页 XSS 与 MCP 权限
 npm run test:security-smoke
 ```
 

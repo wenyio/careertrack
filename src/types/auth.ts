@@ -6,7 +6,8 @@
 export interface LoginRequest {
   username: string
   password: string
-  otp_code?: string  // 可选，如果启用了 OTP 则必填
+  otp_code?: string
+  recovery_code?: string
 }
 
 /** 注册请求 */
@@ -19,6 +20,8 @@ export interface RegisterRequest {
 /** 登录响应 */
 export interface LoginResponse {
   user: User
+  recovery_code_used?: boolean
+  recovery_codes_remaining?: number
 }
 
 /** 用户角色 */
@@ -51,10 +54,27 @@ export interface VerifyOtpRequest {
   code: string
 }
 
+/** OTP 启用成功后仅返回一次的恢复码 */
+export interface VerifyOtpResponse {
+  success: boolean
+  recovery_codes: string[]
+}
+
 /** 禁用 OTP 请求 */
 export interface DisableOtpRequest {
   password: string
   code: string
+}
+
+/** 重新生成 OTP 恢复码请求 */
+export interface RecoveryCodesRequest {
+  password: string
+  code: string
+}
+
+/** 新恢复码仅在生成时返回一次 */
+export interface RecoveryCodesResponse {
+  recovery_codes: string[]
 }
 
 /** OAuth 绑定账号 */

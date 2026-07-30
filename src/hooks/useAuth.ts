@@ -5,7 +5,17 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { App } from 'antd'
-import { login as loginApi, logout as logoutApi, setupOtp as setupOtpApi, verifyOtp as verifyOtpApi, disableOtp as disableOtpApi, changeUsername as changeUsernameApi, getOAuthAccounts as getOAuthAccountsApi, unbindOAuthAccount as unbindOAuthAccountApi } from '@/services/auth'
+import {
+  login as loginApi,
+  logout as logoutApi,
+  setupOtp as setupOtpApi,
+  verifyOtp as verifyOtpApi,
+  disableOtp as disableOtpApi,
+  regenerateRecoveryCodes as regenerateRecoveryCodesApi,
+  changeUsername as changeUsernameApi,
+  getOAuthAccounts as getOAuthAccountsApi,
+  unbindOAuthAccount as unbindOAuthAccountApi,
+} from '@/services/auth'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
 import { AUTH_PROVIDER } from '@/constants/auth'
@@ -99,6 +109,25 @@ export function useDisableOtp() {
     },
     onError: (error: Error) => {
       message.error(error.message || '禁用 OTP 失败')
+    },
+  })
+}
+
+/**
+ * 重新生成 OTP 恢复码。新码只存在于本次 mutation 返回值中。
+ */
+export function useRegenerateRecoveryCodes() {
+  const { message } = App.useApp()
+
+  return useMutation({
+    mutationFn: (data: { password: string; code: string }) => (
+      regenerateRecoveryCodesApi(data)
+    ),
+    onSuccess: () => {
+      message.success('恢复码已重新生成，旧恢复码已失效')
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '重新生成恢复码失败')
     },
   })
 }
