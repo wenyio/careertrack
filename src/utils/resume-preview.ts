@@ -7,6 +7,11 @@
 
 import type { ResumeContent, ResumeModuleType, DescriptionField, ResumePreviewConfig, BasicInfoDisplayItem, BasicInfoDisplayConfig, ModulesConfig, ResumeTemplateId } from '@/types/resume'
 import type { BasicInfo, Profile } from '@/types/profile'
+import {
+  DEFAULT_RESUME_PREVIEW_CONFIG,
+  isResumePreviewFontSize,
+  isResumePreviewLineHeight,
+} from '@/config/resume-preview'
 import { richTextToPlainText } from '@/utils/rich-text'
 import { richTextToHtml } from '@/utils/rich-text'
 import { formatDateRange } from '@/utils/format'
@@ -38,16 +43,17 @@ export function hasContent(content: ResumeContent): boolean {
   )
 }
 
-export const DEFAULT_PREVIEW_CONFIG: ResumePreviewConfig = {
-  fontSize: 14,
-  lineHeight: 1.5,
-}
+export const DEFAULT_PREVIEW_CONFIG = DEFAULT_RESUME_PREVIEW_CONFIG
 
 /** 归一化预览显示配置，避免旧数据或异常值影响渲染 */
 export function getPreviewConfig(config?: Partial<ResumePreviewConfig>): ResumePreviewConfig {
   return {
-    fontSize: typeof config?.fontSize === 'number' ? config.fontSize : DEFAULT_PREVIEW_CONFIG.fontSize,
-    lineHeight: typeof config?.lineHeight === 'number' ? config.lineHeight : DEFAULT_PREVIEW_CONFIG.lineHeight,
+    fontSize: isResumePreviewFontSize(config?.fontSize)
+      ? config.fontSize
+      : DEFAULT_PREVIEW_CONFIG.fontSize,
+    lineHeight: isResumePreviewLineHeight(config?.lineHeight)
+      ? config.lineHeight
+      : DEFAULT_PREVIEW_CONFIG.lineHeight,
   }
 }
 

@@ -69,8 +69,47 @@ test.describe('简历编辑器', () => {
     await page.getByText('黑白整齐', { exact: true }).click()
     await screenshot(page, '模板选择', '选择黑白整齐模板')
 
-    // 验证预览区域
-    await expect(page.locator('.resume-a4-preview')).toBeVisible()
+    // 预览配置支持连续行距，并与字号一同持久化。
+    const preview = page.locator('.resume-a4-preview')
+    const fontSize = page.getByLabel('预览字号')
+    const lineHeight = page.getByLabel('预览行距')
+    await fontSize.selectOption('18')
+    await lineHeight.fill('1.7')
+
+    const saveBtn = page.locator('button').filter({
+      has: page.locator('[aria-label="save"]'),
+    })
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/resumes/${resume.id}`)
+        && response.request().method() === 'PUT',
+    )
+    await saveBtn.click()
+    expect((await saveResponse).ok()).toBeTruthy()
+
+    await expect.poll(async () => {
+      const savedResponse = await request.get(`/api/resumes/${resume.id}`, {
+        headers: { Cookie: account.token },
+      })
+      if (!savedResponse.ok()) return null
+      const saved = await savedResponse.json()
+      return saved.content.preview_config
+    }).toEqual({
+      fontSize: 18,
+      lineHeight: 1.7,
+    })
+
+    await page.reload()
+    await expect(fontSize).toHaveValue('18')
+    await expect(lineHeight).toHaveValue('1.7')
+
+    // 缩放是预览面板自身的局部状态，不触发简历保存。
+    await page.getByRole('button', { name: '放大预览' }).click()
+    await expect(preview).toHaveAttribute('style', /scale\(0\.9\)/)
+    await page.getByRole('button', { name: '重置预览缩放' }).click()
+    await expect(preview).toHaveAttribute('style', /scale\(0\.8\)/)
+
+    await expect(preview).toBeVisible()
     await screenshot(page, '预览控制', '预览区域可见')
   })
 

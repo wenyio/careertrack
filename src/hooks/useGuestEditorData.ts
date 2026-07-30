@@ -6,7 +6,7 @@
  * - 用 updateGuestResume 替代 useUpdateResume（API mutation）
  * - 用 getGuestProfile 替代 useProfile（React Query）
  *
- * 复用：useAutoSave、usePrint、buildResumeSavePayload、resume-editor store
+ * 复用：编辑器初始化、展示偏好、自动保存、打印、保存 payload 和 Zustand store
  */
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
@@ -16,11 +16,11 @@ import type { GuestProfile } from '@/services/guest-profile'
 import type { GuestResume } from '@/types/guest'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { usePrint } from '@/hooks/usePrint'
+import { useResumeEditorPreferences } from '@/hooks/useResumeEditorPreferences'
 import { useResumeEditorStore } from '@/stores/resume-editor'
-import type { ResumeTemplateId, UpdateResumeRequest } from '@/types/resume'
-import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
-import { buildResumeSavePayload, getPreviewConfig } from '@/utils/resume-preview'
-import { getTemplateConfig } from '@/components/resume/templates/registry'
+import type { UpdateResumeRequest } from '@/types/resume'
+import { buildResumeSavePayload } from '@/utils/resume-preview'
+import { buildResumeEditorInitialData } from '@/utils/resume-editor'
 
 export function useGuestEditorData(id: string) {
   const [resume, setResume] = useState<GuestResume | null>(null)
@@ -46,17 +46,7 @@ export function useGuestEditorData(id: string) {
   // 初始化数据（useLayoutEffect 确保在浏览器绘制前完成）
   useLayoutEffect(() => {
     if (resume && store.resumeId !== resume.id) {
-      store.initResume({
-        id: resume.id,
-        name: resume.name || '未命名简历',
-        modulesConfig: { ...(resume.modules_config || DEFAULT_MODULES_CONFIG), basic_info: true },
-        modulesOrder: resume.modules_order || [...DEFAULT_MODULES_ORDER],
-        content: {
-          ...(resume.content || {}),
-          basic_info: resume.content?.basic_info || {},
-        },
-        template: resume.template || 'classic',
-      })
+      store.initResume(buildResumeEditorInitialData(resume))
       isInitializedRef.current = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand store 引用稳定
@@ -79,14 +69,10 @@ export function useGuestEditorData(id: string) {
   // 封装 update 函数，匹配 useAutoSave 期望的签名
   const updateGuestResumeSilent = useCallback(
     async (data: Record<string, unknown>) => {
-      try {
-        updateGuestResume(id, data as UpdateResumeRequest)
-        // 同步更新本地 resume 状态
-        const updated = getGuestResume(id)
-        if (updated) setResume(updated)
-      } catch (e) {
-        throw e
-      }
+      updateGuestResume(id, data as UpdateResumeRequest)
+      // 同步更新本地 resume 状态
+      const updated = getGuestResume(id)
+      if (updated) setResume(updated)
     },
     [id],
   )
@@ -112,35 +98,7 @@ export function useGuestEditorData(id: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在组件卸载时执行一次
   }, [])
 
-  // 模板切换
-  const handleTemplateChange = useCallback(
-    (tpl: ResumeTemplateId) => {
-      store.setTemplate(tpl)
-      const { defaultPreviewConfig } = getTemplateConfig(tpl)
-      if (defaultPreviewConfig) {
-        store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), ...defaultPreviewConfig })
-      }
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
-
-  // 预览配置变更
-  const handlePreviewFontSizeChange = useCallback(
-    (fontSize: number) => {
-      store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), fontSize })
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
-
-  const handlePreviewLineHeightChange = useCallback(
-    (lineHeight: number) => {
-      store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), lineHeight })
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
+  const preferences = useResumeEditorPreferences(store, triggerAutoSave)
 
   return {
     resume,
@@ -150,9 +108,6 @@ export function useGuestEditorData(id: string) {
     triggerAutoSave,
     handleManualSave,
     handlePrint,
-    handleTemplateChange,
-    handlePreviewFontSizeChange,
-    handlePreviewLineHeightChange,
-    previewConfig: getPreviewConfig(store.content.preview_config),
+    ...preferences,
   }
 }

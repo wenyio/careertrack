@@ -34,6 +34,12 @@ import {
   resumeContentSchema,
   safeWebUrlSchema,
 } from '@/lib/validation/business'
+import {
+  isResumePreviewFontSize,
+  RESUME_PREVIEW_FONT_SIZES,
+  RESUME_PREVIEW_LINE_HEIGHT_MAX,
+  RESUME_PREVIEW_LINE_HEIGHT_MIN,
+} from '@/config/resume-preview'
 
 export interface McpAuthContext {
   userId: string
@@ -50,9 +56,6 @@ const VALID_MODULES: ResumeModuleType[] = [
 
 /** 合法的模板 ID */
 const VALID_TEMPLATES: ResumeTemplateId[] = ['classic', 'modern', 'minimal', 'black-white']
-
-/** 合法的预览字号 */
-const VALID_FONT_SIZES = [12, 14, 16, 18, 20]
 
 /** 创建 MCP Server 实例（每个请求独立） */
 export function createMcpServerForUser(auth: McpAuthContext): McpServer {
@@ -80,8 +83,11 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
             text: JSON.stringify({
               modules,
               templates: VALID_TEMPLATES,
-              font_sizes: VALID_FONT_SIZES,
-              line_height_range: [1, 3],
+              font_sizes: RESUME_PREVIEW_FONT_SIZES,
+              line_height_range: [
+                RESUME_PREVIEW_LINE_HEIGHT_MIN,
+                RESUME_PREVIEW_LINE_HEIGHT_MAX,
+              ],
               module_types: VALID_MODULES,
               note: 'basic_info 模块不能被禁用。modules_order 必须包含所有合法模块且不能重复。',
             }, null, 2),
@@ -653,10 +659,14 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
     '更新简历预览的字号和行距配置。不传的字段保持不变。',
     {
       resumeId: z.string().describe('简历 ID'),
-      fontSize: z.number().refine((v) => VALID_FONT_SIZES.includes(v), {
-        message: `fontSize 必须是 ${VALID_FONT_SIZES.join(', ')} 之一`,
+      fontSize: z.number().refine(isResumePreviewFontSize, {
+        message: `fontSize 必须是 ${RESUME_PREVIEW_FONT_SIZES.join(', ')} 之一`,
       }).optional().describe('字号，可选值：12, 14, 16, 18, 20'),
-      lineHeight: z.number().min(1).max(3).optional().describe('行距，范围 1-3'),
+      lineHeight: z.number()
+        .min(RESUME_PREVIEW_LINE_HEIGHT_MIN)
+        .max(RESUME_PREVIEW_LINE_HEIGHT_MAX)
+        .optional()
+        .describe('行距，范围 1-3'),
     },
     async (args) => {
       const config: Record<string, number> = {}

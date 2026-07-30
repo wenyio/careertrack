@@ -141,6 +141,25 @@ describe('business request validation', () => {
     }).success).toBe(false)
   })
 
+  it('validates resume preview configuration consistently with editor controls', () => {
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        preview_config: { fontSize: 18, lineHeight: 1.7 },
+      },
+    }).success).toBe(true)
+
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        preview_config: { fontSize: 13, lineHeight: 1.7 },
+      },
+    }).success).toBe(false)
+    expect(updateResumeBodySchema.safeParse({
+      content: {
+        preview_config: { fontSize: 18, lineHeight: 3.1 },
+      },
+    }).success).toBe(false)
+  })
+
   it('accepts relative and web URLs while rejecting unsafe protocols', () => {
     expect(profileUpdateBodySchema.safeParse({
       basic_info: {

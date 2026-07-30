@@ -9,6 +9,13 @@
 
 'use client'
 
+import {
+  isResumePreviewLineHeight,
+  RESUME_PREVIEW_FONT_SIZES,
+  RESUME_PREVIEW_LINE_HEIGHT_MAX,
+  RESUME_PREVIEW_LINE_HEIGHT_MIN,
+} from '@/config/resume-preview'
+
 interface PreviewControlBarProps {
   /** 字体大小 */
   fontSize: number
@@ -47,38 +54,54 @@ export default function PreviewControlBar({
       <div style={{ flex: 1 }} />
 
       {/* 字体大小 */}
-      <span style={{ fontSize: 10, color: '#999' }}>字号</span>
+      <label
+        htmlFor="resume-preview-font-size"
+        style={{ fontSize: 10, color: '#999' }}
+      >
+        字号
+      </label>
       <select
+        id="resume-preview-font-size"
+        aria-label="预览字号"
         value={fontSize}
         onChange={(e) => onFontSizeChange(Number(e.target.value))}
         style={{ fontSize: 11, border: '1px solid #d9d9d9', borderRadius: 4, padding: '1px 4px', color: '#555', backgroundColor: '#fff', cursor: 'pointer' }}
       >
-        <option value={12}>12px</option>
-        <option value={14}>14px</option>
-        <option value={16}>16px</option>
-        <option value={18}>18px</option>
-        <option value={20}>20px</option>
+        {RESUME_PREVIEW_FONT_SIZES.map((size) => (
+          <option key={size} value={size}>{size}px</option>
+        ))}
       </select>
 
       {/* 行间距 */}
-      <span style={{ fontSize: 10, color: '#999', marginLeft: 4 }}>行距</span>
-      <select
-        value={lineHeight}
-        onChange={(e) => onLineHeightChange(Number(e.target.value))}
-        style={{ fontSize: 11, border: '1px solid #d9d9d9', borderRadius: 4, padding: '1px 4px', color: '#555', backgroundColor: '#fff', cursor: 'pointer' }}
+      <label
+        htmlFor="resume-preview-line-height"
+        style={{ fontSize: 10, color: '#999', marginLeft: 4 }}
       >
-        <option value={1.2}>1.2</option>
-        <option value={1.4}>1.4</option>
-        <option value={1.5}>1.5</option>
-        <option value={1.6}>1.6</option>
-        <option value={1.8}>1.8</option>
-        <option value={1.9}>1.9</option>
-        <option value={2.0}>2.0</option>
-      </select>
+        行距
+      </label>
+      <input
+        id="resume-preview-line-height"
+        aria-label="预览行距"
+        type="number"
+        min={RESUME_PREVIEW_LINE_HEIGHT_MIN}
+        max={RESUME_PREVIEW_LINE_HEIGHT_MAX}
+        step={0.1}
+        value={lineHeight}
+        onChange={(event) => {
+          const nextLineHeight = event.currentTarget.valueAsNumber
+          // 输入中的空值或越界值只留在控件草稿中，不污染编辑器 store。
+          if (isResumePreviewLineHeight(nextLineHeight)) {
+            onLineHeightChange(nextLineHeight)
+          }
+        }}
+        style={{ width: 48, fontSize: 11, border: '1px solid #d9d9d9', borderRadius: 4, padding: '1px 4px', color: '#555', backgroundColor: '#fff' }}
+      />
 
       {/* 缩放 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
         <button
+          type="button"
+          aria-label="缩小预览"
           onClick={() => onZoomChange(Math.max(0.5, +(zoom - 0.1).toFixed(1)))}
           style={{
             width: 22, height: 22, border: '1px solid #d9d9d9', borderRadius: 4,
@@ -90,6 +113,8 @@ export default function PreviewControlBar({
           {Math.round(zoom * 100)}%
         </span>
         <button
+          type="button"
+          aria-label="放大预览"
           onClick={() => onZoomChange(Math.min(1.5, +(zoom + 0.1).toFixed(1)))}
           style={{
             width: 22, height: 22, border: '1px solid #d9d9d9', borderRadius: 4,
@@ -98,6 +123,8 @@ export default function PreviewControlBar({
           }}
         >+</button>
         <button
+          type="button"
+          aria-label="重置预览缩放"
           onClick={() => onZoomChange(0.8)}
           style={{
             height: 20, border: '1px solid #d9d9d9', borderRadius: 4, padding: '0 6px',

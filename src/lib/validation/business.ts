@@ -13,6 +13,12 @@ import {
   MAX_RICH_TEXT_URL_LENGTH,
   validateRichTextDoc,
 } from '@/utils/rich-text'
+import {
+  isResumePreviewFontSize,
+  RESUME_PREVIEW_FONT_SIZES,
+  RESUME_PREVIEW_LINE_HEIGHT_MAX,
+  RESUME_PREVIEW_LINE_HEIGHT_MIN,
+} from '@/config/resume-preview'
 
 const jsonObjectSchema = z.record(z.string(), z.unknown())
 
@@ -91,6 +97,25 @@ export const basicInfoSchema = z.object({
   }).loose().optional(),
 }).loose()
 
+export const resumePreviewConfigSchema = z.object({
+  fontSize: z.number()
+    .refine(
+      isResumePreviewFontSize,
+      `字号必须是 ${RESUME_PREVIEW_FONT_SIZES.join(', ')} 之一`,
+    )
+    .optional(),
+  lineHeight: z.number()
+    .min(
+      RESUME_PREVIEW_LINE_HEIGHT_MIN,
+      `行距不能小于 ${RESUME_PREVIEW_LINE_HEIGHT_MIN}`,
+    )
+    .max(
+      RESUME_PREVIEW_LINE_HEIGHT_MAX,
+      `行距不能大于 ${RESUME_PREVIEW_LINE_HEIGHT_MAX}`,
+    )
+    .optional(),
+}).loose()
+
 export const resumeContentSchema = z.object({
   basic_info: basicInfoSchema.optional(),
   education: z.array(profileEntrySchema).max(200, '教育经历数量过多').optional(),
@@ -102,6 +127,7 @@ export const resumeContentSchema = z.object({
   other_experience: z.array(profileEntrySchema).max(200, '其他经历数量过多').optional(),
   research: z.array(profileEntrySchema).max(200, '研究经历数量过多').optional(),
   summary: descriptionFieldSchema.optional(),
+  preview_config: resumePreviewConfigSchema.optional(),
   basic_info_display: jsonObjectSchema.optional(),
   module_titles: z.record(z.string(), z.string()).optional(),
 }).loose()

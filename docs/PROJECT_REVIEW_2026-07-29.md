@@ -69,10 +69,10 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 25 个测试文件、193 项测试通过；含基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
+| `npm run test:unit` | 通过 | 26 个测试文件、197 项测试通过；含编辑器初始化/预览配置、基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 113/113；含 OTP 设置键盘流程、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 113/113；含编辑器预览配置保存/重载、OTP 设置键盘流程、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
 | `npm run test:postgres` | 待 CI 实跑 | 隔离脚本和 PostgreSQL 15 service 门禁已实现；当前开发机没有 PostgreSQL/Docker 运行时，不能把静态检查冒充真实通过 |
 | `.github/workflows/ci.yml` | 静态通过 | YAML 解析通过；quality、postgres、browser 三作业将在 push/PR 首次执行 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
@@ -501,7 +501,11 @@ OTP 设置则按敏感信息生命周期拆出二维码 enrollment 和一次性�
 生成支持键盘提交，二维码生成失败保留本地手动密钥回退。状态卡片和账号管理
 操作仍留在父组件，避免把同一状态机拆散到更多层。
 登录/游客编辑 hook 因 revision 与 localStorage 语义不同，暂不强行抽象为带
-大量模式参数的共享 hook。
+大量模式参数的共享 hook；二者完全一致的旧数据初始化规则和模板/预览偏好操作
+则分别收敛为纯 util 与窄职责 hook。编辑器右侧 A4 预览拥有独立的缩放状态和
+分页测量引用，因此从 Shell 提取为预览面板；工具栏、模块侧栏和表单编排仍留在
+Shell，避免制造只转发 props 的碎片组件。预览字号、行距边界和默认值现由
+编辑器、REST 校验与 MCP 共用，连续行距可在编辑器中忠实显示和修改。
 
 ## 8. 新功能优先级
 

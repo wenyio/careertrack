@@ -19,7 +19,6 @@ interface ResumeHtmlPreviewProps {
   modulesOrder: ResumeModuleType[]
   template: ResumeTemplateId
   profile?: Profile
-  activeModule?: ResumeModuleType
   fontSize?: number
   lineHeight?: number
   onModuleClick?: (module: ResumeModuleType) => void

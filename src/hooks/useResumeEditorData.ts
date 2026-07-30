@@ -13,11 +13,10 @@ import { useResume, useUpdateResume } from '@/hooks/useResume'
 import { useProfile } from '@/hooks/useProfile'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { usePrint } from '@/hooks/usePrint'
+import { useResumeEditorPreferences } from '@/hooks/useResumeEditorPreferences'
 import { useResumeEditorStore } from '@/stores/resume-editor'
-import type { ResumeTemplateId } from '@/types/resume'
-import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
-import { buildResumeSavePayload, getPreviewConfig } from '@/utils/resume-preview'
-import { getTemplateConfig } from '@/components/resume/templates/registry'
+import { buildResumeSavePayload } from '@/utils/resume-preview'
+import { buildResumeEditorInitialData } from '@/utils/resume-editor'
 
 export function useResumeEditorData(id: string) {
   const { data: resume, isLoading } = useResume(id)
@@ -35,17 +34,7 @@ export function useResumeEditorData(id: string) {
   // 初始化数据（useLayoutEffect 确保在浏览器绘制前完成）
   useLayoutEffect(() => {
     if (resume && store.resumeId !== resume.id) {
-      store.initResume({
-        id: resume.id,
-        name: resume.name || '未命名简历',
-        modulesConfig: { ...(resume.modules_config || DEFAULT_MODULES_CONFIG), basic_info: true },
-        modulesOrder: resume.modules_order || [...DEFAULT_MODULES_ORDER],
-        content: {
-          ...(resume.content || {}),
-          basic_info: resume.content?.basic_info || {},
-        },
-        template: resume.template || 'classic',
-      })
+      store.initResume(buildResumeEditorInitialData(resume))
       revisionRef.current = resume.revision
       isInitializedRef.current = true
     }
@@ -95,35 +84,7 @@ export function useResumeEditorData(id: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在组件卸载时执行一次
   }, [])
 
-  // 模板切换
-  const handleTemplateChange = useCallback(
-    (tpl: ResumeTemplateId) => {
-      store.setTemplate(tpl)
-      const { defaultPreviewConfig } = getTemplateConfig(tpl)
-      if (defaultPreviewConfig) {
-        store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), ...defaultPreviewConfig })
-      }
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
-
-  // 预览配置变更
-  const handlePreviewFontSizeChange = useCallback(
-    (fontSize: number) => {
-      store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), fontSize })
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
-
-  const handlePreviewLineHeightChange = useCallback(
-    (lineHeight: number) => {
-      store.setContent('preview_config', { ...getPreviewConfig(store.content.preview_config), lineHeight })
-      triggerAutoSave()
-    },
-    [triggerAutoSave, store],
-  )
+  const preferences = useResumeEditorPreferences(store, triggerAutoSave)
 
   return {
     resume,
@@ -133,9 +94,6 @@ export function useResumeEditorData(id: string) {
     triggerAutoSave,
     handleManualSave,
     handlePrint,
-    handleTemplateChange,
-    handlePreviewFontSizeChange,
-    handlePreviewLineHeightChange,
-    previewConfig: getPreviewConfig(store.content.preview_config),
+    ...preferences,
   }
 }

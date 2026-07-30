@@ -8,7 +8,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildResumeSavePayload, mergeResumeContentWithProfile } from '../resume-preview'
+import {
+  buildResumeSavePayload,
+  getPreviewConfig,
+  mergeResumeContentWithProfile,
+} from '../resume-preview'
 import type { ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import type { Profile } from '@/types/profile'
 
@@ -106,6 +110,23 @@ describe('buildResumeSavePayload', () => {
     const payload = buildResumeSavePayload(makeStore(content))
 
     expect(payload.content.preview_config).toEqual({ fontSize: 14, lineHeight: 1.5 })
+  })
+
+  it('preview_config 异常值回退且不影响另一合法字段', () => {
+    expect(getPreviewConfig({
+      fontSize: 13,
+      lineHeight: 1.8,
+    })).toEqual({
+      fontSize: 14,
+      lineHeight: 1.8,
+    })
+    expect(getPreviewConfig({
+      fontSize: 18,
+      lineHeight: Number.POSITIVE_INFINITY,
+    })).toEqual({
+      fontSize: 18,
+      lineHeight: 1.5,
+    })
   })
 
   it('保留 basic_info_display 和 module_titles', () => {

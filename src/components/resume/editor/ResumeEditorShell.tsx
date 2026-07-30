@@ -5,10 +5,8 @@
  * - EditorToolbar
  * - SortableModuleList
  * - ModuleForm
- * - ResumeHtmlPreview
+ * - ResumePreviewPane
  * - TemplateSelector
- * - PreviewControlBar
- * - PageBreakHints
  * - 移动端响应式样式
  *
  * 不直接调用 useResumeEditorData 或 useGuestEditorData，
@@ -18,7 +16,7 @@
 
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Spin } from 'antd'
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
@@ -27,14 +25,11 @@ import { useResumeItemActions } from '@/hooks/useResumeItemActions'
 import SortableModuleList from './SortableModuleList'
 import EditorToolbar from './EditorToolbar'
 import ModuleForm from '@/components/resume/ModuleForm'
-import ResumeHtmlPreview from './ResumeHtmlPreview'
+import ResumePreviewPane from './ResumePreviewPane'
 import TemplateSelector from './TemplateSelector'
-import PreviewControlBar from './PreviewControlBar'
-import PageBreakHints from './PageBreakHints'
 import type { Profile } from '@/types/profile'
 import type { ResumeTemplateId } from '@/types/resume'
 import type { ResumeEditorState } from '@/stores/resume-editor'
-import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 
 interface ResumeEditorShellProps {
   store: ResumeEditorState
@@ -109,10 +104,6 @@ export default function ResumeEditorShell({
 
   // 设置面板
   const [showSettings, setShowSettings] = useState(false)
-
-  // 预览缩放
-  const [previewZoom, setPreviewZoom] = useState(0.8)
-  const previewRef = useRef<HTMLDivElement>(null)
 
   // 公开/取消公开（薄包装，处理 optional 回调）
   const handleTogglePublic = useCallback(
@@ -264,65 +255,19 @@ export default function ResumeEditorShell({
 
           {/* 右侧：HTML 实时预览 */}
           {store.showPreview && (
-            <div
-              style={{
-                flex: 1,
-                borderLeft: '1px solid #f0f0f0',
-                overflow: 'auto',
-                backgroundColor: '#eee',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-              className="resume-preview"
-            >
-              {/* 预览控制条 */}
-              <PreviewControlBar
-                fontSize={previewConfig.fontSize}
-                onFontSizeChange={onPreviewFontSizeChange}
-                lineHeight={previewConfig.lineHeight}
-                onLineHeightChange={onPreviewLineHeightChange}
-                zoom={previewZoom}
-                onZoomChange={setPreviewZoom}
-              />
-
-              {/* 预览内容 */}
-              <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-                <div style={{ width: A4_PAGE_WIDTH_PX * previewZoom, margin: '0 auto' }}>
-                  <div
-                    ref={previewRef}
-                    className="resume-a4-preview"
-                    style={{
-                      position: 'relative',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-                      borderRadius: 4,
-                      backgroundColor: '#fff',
-                      width: A4_PAGE_WIDTH_PX,
-                      minHeight: A4_PAGE_HEIGHT_PX,
-                      transform: `scale(${previewZoom})`,
-                      transformOrigin: 'top left',
-                    }}
-                  >
-                    <ResumeHtmlPreview
-                      content={store.content}
-                      modulesConfig={store.modulesConfig}
-                      modulesOrder={store.modulesOrder}
-                      template={store.template}
-                      profile={profile ?? undefined}
-                      activeModule={store.activeModule}
-                      fontSize={previewConfig.fontSize}
-                      lineHeight={previewConfig.lineHeight}
-                      onModuleClick={handleFocusModule}
-                      onAddItem={handleAddItem}
-                      onDeleteItem={handleDeleteItem}
-                      onDeleteModule={handleDeleteModule}
-                      onMoveModule={handleMoveModule}
-                      onMoveItem={handleMoveItem}
-                    />
-                    <PageBreakHints previewRef={previewRef} />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ResumePreviewPane
+              store={store}
+              profile={profile ?? undefined}
+              previewConfig={previewConfig}
+              onFontSizeChange={onPreviewFontSizeChange}
+              onLineHeightChange={onPreviewLineHeightChange}
+              onFocusModule={handleFocusModule}
+              onAddItem={handleAddItem}
+              onDeleteItem={handleDeleteItem}
+              onDeleteModule={handleDeleteModule}
+              onMoveModule={handleMoveModule}
+              onMoveItem={handleMoveItem}
+            />
           )}
         </div>
       </div>
