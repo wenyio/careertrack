@@ -152,6 +152,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             type="text"
             icon={<MenuOutlined />}
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="打开导航菜单"
             style={{ display: 'none' }}
             className="mobile-menu-btn"
           />
@@ -167,9 +168,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {(isSettingsPage ? SETTINGS_NAV_ITEMS : filterByRole(MAIN_NAV_ITEMS)).map((item) => {
             const isActive = item.match ? item.match(pathname) : pathname === item.key
             return (
-              <div
+              <button
+                type="button"
                 key={item.key}
                 onClick={() => router.push(item.key)}
+                aria-current={isActive ? 'page' : undefined}
                 style={{
                   padding: '6px 16px',
                   cursor: 'pointer',
@@ -180,6 +183,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap',
                   position: 'relative',
+                  border: 0,
+                  font: 'inherit',
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) e.currentTarget.style.color = '#333'
@@ -203,7 +208,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     }}
                   />
                 )}
-              </div>
+              </button>
             )
           })}
         </div>
@@ -212,9 +217,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <Dropdown
           menu={{ items: userMenuItems }}
           placement="bottomRight"
-          trigger={['hover']}
+          trigger={['hover', 'click']}
         >
-          <div
+          <button
+            type="button"
+            aria-label={`${user?.username || '用户'}的用户菜单`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -224,6 +231,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
               borderRadius: 8,
               transition: 'background 0.2s',
               height: 40,
+              border: 0,
+              background: 'transparent',
+              font: 'inherit',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#f5f5f5'
@@ -241,7 +251,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <span className="user-name" style={{ fontSize: 14, lineHeight: 1 }}>
               {user?.username || '用户'}
             </span>
-          </div>
+          </button>
         </Dropdown>
       </Header>
 

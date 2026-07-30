@@ -211,9 +211,16 @@ export default function ArrayModuleForm<T extends { id?: string }>({
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         {field.label}
         <Tooltip title={hidden ? '显示此字段' : '隐藏此字段（不删除值）'}>
-          {hidden
-            ? <EyeInvisibleOutlined style={{ color: '#999', cursor: 'pointer', fontSize: 12 }} onClick={() => handleToggleHidden(index, field.field)} />
-            : <EyeOutlined style={{ color: '#1677ff', cursor: 'pointer', fontSize: 12 }} onClick={() => handleToggleHidden(index, field.field)} />}
+          <Button
+            type="text"
+            size="small"
+            aria-label={`${hidden ? '显示' : '隐藏'}第 ${index + 1} 项${field.label}`}
+            icon={hidden
+              ? <EyeInvisibleOutlined style={{ color: '#999', fontSize: 12 }} />
+              : <EyeOutlined style={{ color: '#1677ff', fontSize: 12 }} />}
+            onClick={() => handleToggleHidden(index, field.field)}
+            style={{ width: 20, height: 20, padding: 0 }}
+          />
         </Tooltip>
       </span>
     ) : field.label

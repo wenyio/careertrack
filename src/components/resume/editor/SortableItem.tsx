@@ -12,6 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 
 interface SortableItemProps {
   id: string
+  label?: string
   children: React.ReactNode
   disabled?: boolean
   dragHandle?: boolean
@@ -19,6 +20,7 @@ interface SortableItemProps {
 
 export default function SortableItem({
   id,
+  label = id,
   children,
   disabled = false,
   dragHandle = true,
@@ -27,6 +29,7 @@ export default function SortableItem({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -42,10 +45,14 @@ export default function SortableItem({
 
   if (dragHandle) {
     return (
-      <div ref={setNodeRef} style={style} {...attributes}>
+      <div ref={setNodeRef} style={style}>
         <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <div
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
             {...listeners}
+            aria-label={`拖动${label}排序`}
             style={{
               cursor: disabled ? 'default' : 'grab',
               padding: '8px 4px',
@@ -54,10 +61,12 @@ export default function SortableItem({
               userSelect: 'none',
               flexShrink: 0,
               marginTop: 4,
+              border: 0,
+              background: 'transparent',
             }}
           >
             ⠿
-          </div>
+          </button>
           <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
         </div>
       </div>

@@ -9,7 +9,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Collapse, Tooltip, Input, Modal } from 'antd'
+import { Button, Collapse, Tooltip, Input, Modal } from 'antd'
 import {
   EditOutlined,
   ArrowUpOutlined,
@@ -191,10 +191,6 @@ function ModuleTitleLabel({
   const iconStyle: React.CSSProperties = {
     fontSize: 12,
     color: '#999',
-    cursor: 'pointer',
-    padding: '2px 4px',
-    borderRadius: 2,
-    transition: 'color 0.15s',
   }
 
   return (
@@ -202,26 +198,71 @@ function ModuleTitleLabel({
       <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseLeave={(event) => {
+          // 键盘焦点仍在操作按钮内时，鼠标移出不能把当前控件重新隐藏。
+          if (!event.currentTarget.contains(document.activeElement)) {
+            setHovered(false)
+          }
+        }}
+        onFocusCapture={() => setHovered(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setHovered(false)
+          }
+        }}
       >
         <span>{title}</span>
-        {hovered && module !== 'basic_info' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+        {module !== 'basic_info' && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              opacity: hovered ? 1 : 0,
+              pointerEvents: hovered ? 'auto' : 'none',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
             <Tooltip title="编辑名称">
-              <EditOutlined style={iconStyle} onClick={handleOpenRename} />
+              <Button
+                type="text"
+                size="small"
+                aria-label={`重命名${title}`}
+                icon={<EditOutlined style={iconStyle} />}
+                onClick={handleOpenRename}
+              />
             </Tooltip>
             {canMoveUp && (
               <Tooltip title="上移">
-                <ArrowUpOutlined style={iconStyle} onClick={onMoveUp} />
+                <Button
+                  type="text"
+                  size="small"
+                  aria-label={`上移${title}`}
+                  icon={<ArrowUpOutlined style={iconStyle} />}
+                  onClick={onMoveUp}
+                />
               </Tooltip>
             )}
             {canMoveDown && (
               <Tooltip title="下移">
-                <ArrowDownOutlined style={iconStyle} onClick={onMoveDown} />
+                <Button
+                  type="text"
+                  size="small"
+                  aria-label={`下移${title}`}
+                  icon={<ArrowDownOutlined style={iconStyle} />}
+                  onClick={onMoveDown}
+                />
               </Tooltip>
             )}
             <Tooltip title="删除模块">
-              <DeleteOutlined style={{ ...iconStyle, color: '#ff4d4f' }} onClick={onDelete} />
+              <Button
+                type="text"
+                size="small"
+                danger
+                aria-label={`删除${title}模块`}
+                icon={<DeleteOutlined style={iconStyle} />}
+                onClick={onDelete}
+              />
             </Tooltip>
           </div>
         )}

@@ -39,6 +39,8 @@ export const toolbarBtnStyle = (enabled = true, color = '#555'): React.CSSProper
   justifyContent: 'center',
   borderRadius: 3,
   transition: 'background-color 0.1s',
+  border: 0,
+  background: 'transparent',
 })
 
 /** 子条目操作栏（上移/下移/删除） */
@@ -51,16 +53,16 @@ export function SubItemActions({
 }: {
   canMoveUp: boolean
   canMoveDown: boolean
-  onMoveUp: (e: React.MouseEvent) => void
-  onMoveDown: (e: React.MouseEvent) => void
-  onDelete: (e: React.MouseEvent) => void
+  onMoveUp: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onMoveDown: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onDelete: (e: React.MouseEvent<HTMLButtonElement>) => void
 }) {
   return (
     <div className="preview-subitem-actions" style={{
       position: 'absolute',
       top: -1,
       right: 0,
-      display: 'none',
+      display: 'flex',
       gap: 1,
       zIndex: 10,
       backgroundColor: '#fff',
@@ -68,10 +70,12 @@ export function SubItemActions({
       borderRadius: 6,
       padding: '2px 3px',
       alignItems: 'center',
+      opacity: 0,
+      pointerEvents: 'none',
     }}>
-      <span onClick={onMoveUp} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></span>
-      <span onClick={onMoveDown} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></span>
-      <span onClick={onDelete} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></span>
+      <button type="button" aria-label="上移条目" disabled={!canMoveUp} onClick={onMoveUp} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
+      <button type="button" aria-label="下移条目" disabled={!canMoveDown} onClick={onMoveDown} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
+      <button type="button" aria-label="删除条目" onClick={onDelete} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
     </div>
   )
 }
@@ -129,7 +133,7 @@ export function ModuleToolbar({
       position: 'absolute',
       top: -2,
       right: 0,
-      display: 'none',
+      display: 'flex',
       gap: 1,
       zIndex: 10,
       backgroundColor: '#fff',
@@ -137,11 +141,13 @@ export function ModuleToolbar({
       borderRadius: 6,
       padding: '2px 3px',
       alignItems: 'center',
+      opacity: 0,
+      pointerEvents: 'none',
     }}>
-      {showAdd && <span onClick={(e) => { e.stopPropagation(); onAdd() }} style={toolbarBtnStyle(true, '#52c41a')}><PlusIcon /></span>}
-      <span onClick={(e) => { e.stopPropagation(); onMoveUp() }} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></span>
-      <span onClick={(e) => { e.stopPropagation(); onMoveDown() }} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></span>
-      <span onClick={(e) => { e.stopPropagation(); onDelete() }} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></span>
+      {showAdd && <button type="button" aria-label="添加模块条目" onClick={(e) => { e.stopPropagation(); onAdd() }} style={toolbarBtnStyle(true, '#52c41a')}><PlusIcon /></button>}
+      <button type="button" aria-label="上移模块" disabled={!canMoveUp} onClick={(e) => { e.stopPropagation(); onMoveUp() }} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
+      <button type="button" aria-label="下移模块" disabled={!canMoveDown} onClick={(e) => { e.stopPropagation(); onMoveDown() }} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
+      <button type="button" aria-label="删除模块" onClick={(e) => { e.stopPropagation(); onDelete() }} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
     </div>
   )
 }
@@ -151,11 +157,15 @@ export const previewHoverCSS = `
   section:hover {
     background-color: rgba(0,0,0,0.015) !important;
   }
-  section:hover > .preview-module-toolbar {
-    display: flex !important;
+  section:hover > .preview-module-toolbar,
+  section:focus-within > .preview-module-toolbar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
-  .preview-subitem:hover > .preview-subitem-actions {
-    display: flex !important;
+  .preview-subitem:hover > .preview-subitem-actions,
+  .preview-subitem:focus-within > .preview-subitem-actions {
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
   .preview-subitem:hover {
     background-color: rgba(0,0,0,0.01);

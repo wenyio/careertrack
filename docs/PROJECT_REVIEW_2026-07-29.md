@@ -69,10 +69,10 @@ CareerTrack 已经不是原型，而是一个功能覆盖较完整的 1.0 全栈
 | 检查 | 最终结果 | 说明 |
 | --- | --- | --- |
 | `npm run lint` | 通过 | ESLint 无 error、无 warning |
-| `npm run test:unit` | 通过 | 27 个测试文件、199 项测试通过；含编辑器 selector 隔离、初始化/预览配置、基本信息配置更新、年龄计算、Canvas contain/编码、JSON 双形态容错、密钥加解密、恢复码、原子消费和旧库迁移 |
+| `npm run test:unit` | 通过 | 28 个测试文件、204 项测试通过；含 Profile 并发条件更新/SQLite 方言、MCP 工具清单、编辑器 selector 隔离、初始化/预览配置、Canvas 编码、密钥加解密、恢复码、原子消费和旧库迁移 |
 | `npm run build` | 通过 | Next.js 生产编译、类型检查和 43 个静态页面生成通过；构建阶段未访问数据库 |
 | `npm run test:security-smoke` | 通过 | 8 项：HttpOnly 会话、TOTP 恢复码、注册码并发、revision 冲突、公开 DTO、JSON-LD XSS、禁用用户 MCP、服务端会话撤销 |
-| `npx playwright test --workers=1` | 通过 | Chromium 全量 113/113；含编辑器预览配置保存/重载、OTP 设置键盘流程、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和基本信息配置保留专项回归 |
+| `npx playwright test --workers=1` | 通过 | Chromium 全量 116/116；含关键键盘交互、编辑器性能预算、预览配置保存/重载、OTP 设置、列表分页/轻量 DTO、公开 A4 分页、证件照格式切换和 Profile/Resume 隔离 |
 | `npm run test:postgres` | 待 CI 实跑 | 隔离脚本和 PostgreSQL 15 service 门禁已实现；当前开发机没有 PostgreSQL/Docker 运行时，不能把静态检查冒充真实通过 |
 | `.github/workflows/ci.yml` | 静态通过 | YAML 解析通过；quality、postgres、browser 三作业将在 push/PR 首次执行 |
 | `git diff --check` | 通过 | 无尾随空格或补丁格式错误 |
@@ -405,7 +405,9 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 ### 6.1 前端与状态管理
 
-- `RichTextToolbar`、MCP Server、公开简历 Client 等文件已达到 480～845 行，建议按领域和交互单元拆分；
+- 公开简历 Client 已按数据加载、A4 测量/分页和滑动职责拆分；MCP 入口已按
+  schema/profile/resume 领域拆分；`RichTextToolbar` 已将自带状态的字号、行高、
+  颜色、链接和对齐控件与命令布局分离；
 - 多处直接订阅整个 Zustand store，编辑时容易扩大重渲染范围；改用 selector 与 shallow compare；
 - 默认模块配置在 config 与 type 文件中重复，建立唯一来源；
 - 表单、模块标题和模板设置可以继续配置驱动，减少同类字段逻辑复制；
@@ -417,12 +419,18 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 - `better-sqlite3` 是同步调用，高并发时会阻塞 Node event loop；至少开启 WAL、busy timeout，并明确单实例边界；
 - PostgreSQL 正常初始化已收敛为单一应用 Pool；仅标准 `3D000` 缺库路径使用
   一条短生命周期 maintenance Client，仍需首次 CI 实跑确认；
-- profile 的“查不到就创建”存在并发插入窗口；
-- profile 条目和 MCP patch 采用读改写，应改为事务或结构化行模型。
+- profile 的“查不到就创建”已改为幂等冲突忽略插入；
+- MCP profile 条目和嵌套基本信息 patch 已使用旧 JSON 条件更新并有限重试，
+  SQLite/PostgreSQL 共用语义；REST 整表保存仍由调用方负责避免多窗口覆盖。
 
 ### 6.3 可访问性
 
 导航和工具栏中存在可点击的 `div`/`span`，没有完整的键盘行为、语义和焦点样式。拖拽排序也需要键盘替代路径。
+
+**v1.0.3 持续整改状态：关键链路已建立基线。** 主导航、用户菜单、编辑器模块
+选择/开关/拖拽、模板选择、预览操作和富文本工具栏已使用语义按钮并提供名称；
+新增真实键盘激活 E2E。颜色对比、屏幕阅读器全流程和 Axe 全页面扫描仍需独立
+审计，不能用当前两项关键链路测试替代完整 WCAG 结论。
 
 建议：
 
@@ -435,7 +443,7 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 - `package.json` 为 1.0.2，README/CHANGELOG 仍停留在 1.0.0；
 - README 提到 migrations 目录，但仓库中没有正式迁移体系；
-- `src/services/profile.ts` 存在头像上传客户端方法，但未发现匹配的 `/profile/avatar` route；
+- 无调用方且没有 `/profile/avatar` 后端路由的头像上传 service/hook 已删除；
 - 根路径只重定向到简历列表，尚无真正的公开产品落地页。
 
 建议把文档一致性、API dead code 和版本发布清单纳入 CI/发版流程。
@@ -480,12 +488,13 @@ AAD 绑定用户 ID，迁移 003 会加密旧库明文；恢复码只存 HMAC �
 
 ### 阶段 3：代码质量与体验，持续进行
 
-1. 拆分超大组件和 MCP tool modules；公开简历已将数据加载边界与 A4
-   测量/分页/滑动组件分离，MCP tool modules 仍待后续按业务域拆分；
+1. 拆分超大组件和 MCP tool modules；公开简历、MCP 域注册器和富文本独立
+   控件已按稳定职责拆分，后续只在新增业务造成明确变化压力时继续；
 2. Zustand selector 优化；简历编辑器高频输入链路已完成，其他 store 按实际测量继续；
-3. 可访问性基线；
-4. 删除重复配置、死代码和 schema 漂移；
-5. 建立性能预算和关键页面 Web Vitals 观测。
+3. 可访问性基线；关键键盘链路已完成，完整 Axe/WCAG 审计仍待后续；
+4. 删除重复配置、死代码和 schema 漂移；已清理失配头像上传链路；
+5. 建立性能预算和关键页面 Web Vitals 观测；编辑器 E2E 防退化预算已完成，
+   生产 Web Vitals 等存在稳定监控接收端后再接入。
 
 本阶段遵循“按稳定职责提取、不以缩短单文件为目标”的原则。公开简历三个重复
 JSON 解析器已收敛到共享 util，编辑器、公开页、缩略图、模板和打印的 A4 尺寸
@@ -511,6 +520,16 @@ action，保存回调在执行时读取最新快照；Shell 只订阅预览显�
 侧栏、表单和 A4 预览分别使用 `useShallow` selector。普通正文更新只改变表单
 和预览切片，侧栏仅在模块结构、焦点或自定义标题变化时更新。表单和预览仍完整
 订阅正文，因为它们确实需要实时响应输入，没有继续拆成字段级 selector。
+本轮没有以总代码行数为目标继续拆分。MCP Server 因同时承载三组独立工具且
+本轮需要修改 profile 并发语义，按 schema/profile/resume 注册器拆分，入口只
+负责权限注入；精确工具清单测试锁定 5 个只读和 20 个读写工具。富文本工具栏
+原有 5 个子控件各自维护 Select/Popover/链接状态，因此迁入独立控件模块，主
+文件保留编辑命令和布局。相反，低频 Auth Store 的整 Store 订阅没有继续批量
+改 selector，因为尚无测量收益。
+性能方面新增独立 Playwright 预算，不在生产代码中加入临时计数器；首次本地
+基线为预热后 DOMContentLoaded 48 ms、Load 219 ms、开发脚本约 12.0 MiB、
+输入到预览最大 48 ms。该数据仅作为同类环境防退化对照，生产真实 Web Vitals
+仍需在明确采集目的和接收端后接入。
 
 ## 8. 新功能优先级
 

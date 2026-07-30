@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Spin } from 'antd'
+import { Button, Spin } from 'antd'
 import { useResumeModuleActions } from '@/hooks/useResumeModuleActions'
 import { useResumeItemActions } from '@/hooks/useResumeItemActions'
 import { useResumeEditorPreferences } from '@/hooks/useResumeEditorPreferences'
@@ -104,7 +104,7 @@ export default function ResumeEditorShell({
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
         <span>简历不存在</span>
-        <a onClick={handleBack}>返回列表</a>
+        <Button type="link" onClick={handleBack}>返回列表</Button>
       </div>
     )
   }

@@ -79,11 +79,12 @@ export default function SortableModuleList({
           {modulesOrder.map((moduleKey) => {
             const isActive = activeModule === moduleKey
             const isEnabled = modulesConfig[moduleKey]
+            const moduleTitle = getResolvedModuleTitle(moduleKey, content)
 
             return (
-              <SortableItem key={moduleKey} id={moduleKey}>
+              <SortableItem key={moduleKey} id={moduleKey} label={moduleTitle}>
                 <div
-                  onClick={() => onSelect(moduleKey)}
+                  data-module={moduleKey}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -103,12 +104,22 @@ export default function SortableModuleList({
                     if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
                   }}
                 >
-                  <div
+                  <button
+                    type="button"
+                    onClick={() => onSelect(moduleKey)}
+                    aria-current={isActive ? 'true' : undefined}
+                    aria-label={collapsed ? moduleTitle : undefined}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: collapsed ? 0 : 8,
                       minWidth: 0,
+                      flex: 1,
+                      border: 0,
+                      padding: 0,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
                     }}
                   >
                     <span style={{ fontSize: 16, flexShrink: 0 }}>
@@ -125,19 +136,19 @@ export default function SortableModuleList({
                           textOverflow: 'ellipsis',
                         }}
                       >
-                        {getResolvedModuleTitle(moduleKey, content)}
+                        {moduleTitle}
                       </span>
                     )}
-                  </div>
+                  </button>
                   {!collapsed && moduleKey !== 'basic_info' && (
                     <div
-                      onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       style={{ flexShrink: 0 }}
                     >
                       <Switch
                         size="small"
                         checked={isEnabled}
+                        aria-label={`显示${moduleTitle}`}
                         onChange={(checked) => onToggle(moduleKey, checked)}
                       />
                     </div>

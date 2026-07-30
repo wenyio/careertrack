@@ -44,12 +44,28 @@ describe('MCP scope registration', () => {
   })
 
   it('keeps all tools available to read_write keys', () => {
-    const names = toolNames('read_write')
-    expect(names).toHaveLength(20)
-    expect(names).toContain('profile_update')
-    expect(names).toContain('resume_create')
-    expect(names).toContain('resume_publish')
-    expect(names).toContain('resume_unpublish')
+    expect(toolNames('read_write')).toEqual([
+      'profile_add_entry',
+      'profile_delete_entry',
+      'profile_get',
+      'profile_update',
+      'profile_update_entry',
+      'profile_update_rich_text',
+      'resume_create',
+      'resume_get',
+      'resume_list',
+      'resume_patch_content',
+      'resume_preview_get',
+      'resume_publish',
+      'resume_rename_module',
+      'resume_reorder_modules',
+      'resume_toggle_module',
+      'resume_unpublish',
+      'resume_update_metadata',
+      'resume_update_preview_config',
+      'resume_update_rich_text_field',
+      'schema_get',
+    ])
   })
 
   it('shares URL and rich-text validation with REST write schemas', () => {

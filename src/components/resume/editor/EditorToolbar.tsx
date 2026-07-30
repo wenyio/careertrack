@@ -87,6 +87,7 @@ export default function EditorToolbar({
         type="text"
         icon={<ArrowLeftOutlined />}
         onClick={onBack}
+        aria-label="返回简历列表"
         style={{ flexShrink: 0 }}
       />
 
@@ -119,6 +120,7 @@ export default function EditorToolbar({
           type="text"
           icon={<SaveOutlined />}
           onClick={onSave}
+          aria-label="保存简历"
         />
       </Tooltip>
 
@@ -127,6 +129,7 @@ export default function EditorToolbar({
           type="text"
           icon={showPreview ? <EyeInvisibleOutlined /> : <EyeOutlined />}
           onClick={onTogglePreview}
+          aria-label={showPreview ? '隐藏预览' : '显示预览'}
         />
       </Tooltip>
 
@@ -136,6 +139,7 @@ export default function EditorToolbar({
             type="text"
             icon={<SettingOutlined />}
             onClick={onOpenSettings}
+            aria-label="模板与设置"
           />
         </Tooltip>
       )}

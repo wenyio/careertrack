@@ -6,6 +6,7 @@
 
 import { query } from '@/lib/db'
 import { randomBytes } from 'node:crypto'
+import type { DatabaseQuery } from '@/lib/storage/types'
 import type { Profile } from '@/types/profile'
 
 /** 个人信息中的数组字段 */
@@ -13,30 +14,45 @@ export type ProfileArrayField =
   | 'education' | 'skills' | 'work_experience' | 'projects'
   | 'portfolio' | 'awards' | 'other_experience' | 'research'
 
+type ProfileJsonField = 'basic_info' | ProfileArrayField
+
+const MAX_JSON_FIELD_UPDATE_ATTEMPTS = 3
+
 /** 获取个人信息（不存在则自动创建空 Profile） */
-export async function getProfile(userId: string): Promise<Profile> {
-  let result = await query(
+export async function getProfile(
+  userId: string,
+  database: DatabaseQuery = query,
+): Promise<Profile> {
+  let result = await database(
     'SELECT * FROM profiles WHERE user_id = $1',
     [userId]
   )
 
   if (result.rows.length === 0) {
-    await query(
-      'INSERT INTO profiles (user_id) VALUES ($1)',
+    // 注册和 OAuth normally 已创建 profile；ON CONFLICT 只处理历史数据或并发首次访问。
+    await database(
+      'INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT(user_id) DO NOTHING',
       [userId]
     )
-    result = await query(
+    result = await database(
       'SELECT * FROM profiles WHERE user_id = $1',
       [userId]
     )
+  }
+
+  if (result.rows.length === 0) {
+    throw new Error('个人信息创建失败')
   }
 
   return result.rows[0] as unknown as Profile
 }
 
 /** 获取指定用户的个人信息（不自动创建，不存在返回 null，管理员用） */
-export async function getProfileByUserId(userId: string): Promise<Profile | null> {
-  const result = await query(
+export async function getProfileByUserId(
+  userId: string,
+  database: DatabaseQuery = query,
+): Promise<Profile | null> {
+  const result = await database(
     'SELECT * FROM profiles WHERE user_id = $1',
     [userId]
   )
@@ -46,7 +62,8 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
 /** 更新个人信息（局部更新，仅覆盖传入的字段） */
 export async function updateProfile(
   userId: string,
-  updates: Record<string, unknown>
+  updates: Record<string, unknown>,
+  database: DatabaseQuery = query,
 ): Promise<Profile> {
   const fields = [
     'basic_info', 'education', 'skills', 'work_experience',
@@ -71,7 +88,7 @@ export async function updateProfile(
   }
 
   if (setClauses.length === 0) {
-    return getProfile(userId)
+    return getProfile(userId, database)
   }
 
   setClauses.push('updated_at = NOW()')
@@ -84,7 +101,7 @@ export async function updateProfile(
     RETURNING *
   `
 
-  const result = await query(sql, values)
+  const result = await database(sql, values)
 
   if (result.rows.length === 0) {
     throw new Error('个人信息不存在')
@@ -93,19 +110,63 @@ export async function updateProfile(
   return result.rows[0] as unknown as Profile
 }
 
+/** 深度合并基本信息，并在并发写入时基于最新值重试。 */
+export function patchProfileBasicInfo(
+  userId: string,
+  updates: Record<string, unknown>,
+  database: DatabaseQuery = query,
+): Promise<Profile> {
+  return mutateJsonProfileField<Record<string, unknown>>(
+    userId,
+    'basic_info',
+    {},
+    (current) => deepMergeRecords(current, updates),
+    database,
+  )
+}
+
+/** MCP 的基本信息与简介 patch 保持为一次条件写入。 */
+export function patchProfileFields(
+  userId: string,
+  updates: {
+    basic_info?: Record<string, unknown>
+    summary?: string
+  },
+  database: DatabaseQuery = query,
+): Promise<Profile> {
+  if (!updates.basic_info) {
+    return updateProfile(
+      userId,
+      updates.summary === undefined ? {} : { summary: updates.summary },
+      database,
+    )
+  }
+
+  return mutateJsonProfileField<Record<string, unknown>>(
+    userId,
+    'basic_info',
+    {},
+    (current) => deepMergeRecords(current, updates.basic_info!),
+    database,
+    updates.summary,
+  )
+}
+
 /** 向数组字段添加新条目（自动生成 id） */
 export async function addProfileEntry(
   userId: string,
   field: ProfileArrayField,
-  entry: Record<string, unknown>
+  entry: Record<string, unknown>,
+  database: DatabaseQuery = query,
 ): Promise<Profile> {
-  const profile = await getProfile(userId)
-  const entries = ((profile as unknown as Record<string, unknown>)[field] as Record<string, unknown>[]) || []
-
   const newEntry = { id: generateId(), ...entry }
-  const updated = [...entries, newEntry]
-
-  return updateProfile(userId, { [field]: updated })
+  return mutateJsonProfileField<Record<string, unknown>[]>(
+    userId,
+    field,
+    [],
+    (entries) => [...entries, newEntry],
+    database,
+  )
 }
 
 /** 更新数组字段中的某个条目（按 id 匹配，局部 merge） */
@@ -113,37 +174,114 @@ export async function updateProfileEntry(
   userId: string,
   field: ProfileArrayField,
   entryId: string,
-  updates: Record<string, unknown>
+  updates: Record<string, unknown>,
+  database: DatabaseQuery = query,
 ): Promise<Profile> {
-  const profile = await getProfile(userId)
-  const entries = ((profile as unknown as Record<string, unknown>)[field] as Record<string, unknown>[]) || []
+  return mutateJsonProfileField<Record<string, unknown>[]>(
+    userId,
+    field,
+    [],
+    (entries) => {
+      const index = entries.findIndex((item) => item.id === entryId)
+      if (index === -1) {
+        throw new Error(`未找到 ${field} 中 id 为 ${entryId} 的条目`)
+      }
 
-  const index = entries.findIndex((e) => e.id === entryId)
-  if (index === -1) {
-    throw new Error(`未找到 ${field} 中 id 为 ${entryId} 的条目`)
-  }
-
-  const updatedEntries = [...entries]
-  updatedEntries[index] = { ...updatedEntries[index], ...updates }
-
-  return updateProfile(userId, { [field]: updatedEntries })
+      const updatedEntries = [...entries]
+      updatedEntries[index] = { ...updatedEntries[index], ...updates }
+      return updatedEntries
+    },
+    database,
+  )
 }
 
 /** 删除数组字段中的某个条目（按 id 匹配） */
 export async function deleteProfileEntry(
   userId: string,
   field: ProfileArrayField,
-  entryId: string
+  entryId: string,
+  database: DatabaseQuery = query,
 ): Promise<Profile> {
-  const profile = await getProfile(userId)
-  const entries = ((profile as unknown as Record<string, unknown>)[field] as Record<string, unknown>[]) || []
+  return mutateJsonProfileField<Record<string, unknown>[]>(
+    userId,
+    field,
+    [],
+    (entries) => {
+      const filtered = entries.filter((item) => item.id !== entryId)
+      if (filtered.length === entries.length) {
+        throw new Error(`未找到 ${field} 中 id 为 ${entryId} 的条目`)
+      }
+      return filtered
+    },
+    database,
+  )
+}
 
-  const filtered = entries.filter((e) => e.id !== entryId)
-  if (filtered.length === entries.length) {
-    throw new Error(`未找到 ${field} 中 id 为 ${entryId} 的条目`)
+/**
+ * 对 JSON 字段执行乐观条件更新。
+ *
+ * REST 会整体保存表单，而 MCP 只修改单个条目。后者若直接“读取再覆盖”，并发添加
+ * 或修改会互相丢失；比较旧 JSON 后更新可以同时兼容 SQLite 和 PostgreSQL。
+ */
+async function mutateJsonProfileField<T>(
+  userId: string,
+  field: ProfileJsonField,
+  fallback: T,
+  mutate: (current: T) => T,
+  database: DatabaseQuery,
+  summary?: string,
+): Promise<Profile> {
+  for (let attempt = 0; attempt < MAX_JSON_FIELD_UPDATE_ATTEMPTS; attempt++) {
+    const profile = await getProfile(userId, database)
+    const current = (
+      (profile as unknown as Record<string, unknown>)[field] as T | undefined
+    ) ?? fallback
+    const updated = mutate(current)
+
+    const values: unknown[] = [
+      JSON.stringify(updated),
+      userId,
+      JSON.stringify(current),
+    ]
+    const summaryClause = summary === undefined ? '' : ', summary = $4'
+    if (summary !== undefined) values.push(summary)
+
+    const result = await database(
+      `UPDATE profiles
+       SET ${field} = $1${summaryClause}, updated_at = NOW()
+       WHERE user_id = $2 AND ${field} = $3
+       RETURNING *`,
+      values,
+    )
+
+    if (result.rows.length > 0) {
+      return result.rows[0] as unknown as Profile
+    }
   }
 
-  return updateProfile(userId, { [field]: filtered })
+  throw new Error('个人信息正在被并发修改，请重试')
+}
+
+function deepMergeRecords(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = { ...target }
+  for (const [key, sourceValue] of Object.entries(source)) {
+    const targetValue = result[key]
+    if (
+      sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)
+      && targetValue && typeof targetValue === 'object' && !Array.isArray(targetValue)
+    ) {
+      result[key] = deepMergeRecords(
+        targetValue as Record<string, unknown>,
+        sourceValue as Record<string, unknown>,
+      )
+    } else {
+      result[key] = sourceValue
+    }
+  }
+  return result
 }
 
 /** 生成短 ID */

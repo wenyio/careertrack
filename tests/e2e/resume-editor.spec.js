@@ -17,9 +17,8 @@ test.describe('简历编辑器', () => {
     await expect(page.locator('.resume-a4-preview')).toBeVisible()
     await screenshot(page, '简历编辑', '编辑器初始加载')
 
-    // 关闭教育经历模块 — 模块项是 button，内含 switch
-    const eduButton = page.getByRole('button', { name: /🎓.*教育经历|教育经历/ })
-    const eduSwitch = eduButton.locator('.ant-switch')
+    // 关闭教育经历模块
+    const eduSwitch = page.getByRole('switch', { name: '显示教育经历' })
     await eduSwitch.click()
     await screenshot(page, '简历编辑', '关闭教育经历模块')
 
@@ -28,7 +27,7 @@ test.describe('简历编辑器', () => {
     await screenshot(page, '简历编辑', '重新开启教育经历模块')
 
     // 编辑专业技能 — 点击侧边栏模块切换到专业技能面板
-    await page.getByRole('button', { name: /⚡.*专业技能|专业技能/ }).first().click()
+    await page.locator('[data-module="skills"] > button').click()
     await page.getByRole('button', { name: /添加专业技能/ }).click()
     const skillInput = page.getByPlaceholder(/JavaScript|React|技能/)
     await skillInput.fill('Playwright 自动化测试')

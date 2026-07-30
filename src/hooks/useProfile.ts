@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { App } from 'antd'
-import { getProfile, updateProfile, uploadAvatar } from '@/services/profile'
+import { getProfile, updateProfile } from '@/services/profile'
 import { getErrorMessage } from '@/utils/error'
 import type { Profile } from '@/types/profile'
 
@@ -45,20 +45,6 @@ export function useUpdateProfile(options?: { silent?: boolean }) {
     },
     onError: (error: Error) => {
       if (!silent) message.error(getErrorMessage(error, '保存失败'))
-    },
-  })
-}
-
-/**
- * 上传头像 Hook
- */
-export function useUploadAvatar() {
-  const { message } = App.useApp()
-
-  return useMutation({
-    mutationFn: (file: File) => uploadAvatar(file),
-    onError: (error: Error) => {
-      message.error(getErrorMessage(error, '上传失败'))
     },
   })
 }

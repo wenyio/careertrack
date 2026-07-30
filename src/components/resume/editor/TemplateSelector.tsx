@@ -20,9 +20,12 @@ export default function TemplateSelector({ value, onChange }: TemplateSelectorPr
       {TEMPLATE_LIST.map((tpl) => {
         const SkeletonPreview = TEMPLATE_SKELETONS[tpl.id]
         return (
-          <div
+          <button
+            type="button"
             key={tpl.id}
             onClick={() => onChange(tpl.id)}
+            aria-pressed={value === tpl.id}
+            aria-label={`选择${tpl.name}模板`}
             style={{
               flex: 1,
               padding: 12,
@@ -31,6 +34,7 @@ export default function TemplateSelector({ value, onChange }: TemplateSelectorPr
               cursor: 'pointer',
               transition: 'all 0.15s',
               backgroundColor: value === tpl.id ? '#f8fafc' : '#fff',
+              font: 'inherit',
             }}
           >
             {/* 模板预览骨架 */}
@@ -60,7 +64,7 @@ export default function TemplateSelector({ value, onChange }: TemplateSelectorPr
                 {tpl.description}
               </div>
             </div>
-          </div>
+          </button>
         )
       })}
     </div>

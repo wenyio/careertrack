@@ -27,21 +27,3 @@ export async function updateProfile(profile: Partial<Profile>): Promise<Profile>
   const response = await api.put<Profile>('/profile', profile)
   return response.data
 }
-
-/**
- * 上传头像
- *
- * @param file 头像文件
- * @returns 头像 URL
- */
-export async function uploadAvatar(file: File): Promise<{ url: string }> {
-  const formData = new FormData()
-  formData.append('avatar', file)
-
-  const response = await api.post<{ url: string }>('/profile/avatar', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  })
-  return response.data
-}
