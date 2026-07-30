@@ -73,4 +73,58 @@ test.describe('简历编辑器', () => {
     await expect(page.locator('.resume-a4-preview')).toBeVisible()
     await screenshot(page, '预览控制', '预览区域可见')
   })
+
+  test('额外字段隐藏时保留字段值和头像布局配置', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'basicinfo')
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_基本信息_${Date.now()}`,
+    )
+    await loginByUi(page, account.username, account.password)
+    await goto(page, `/resumes/${resume.id}/edit`)
+
+    const avatarLeft = page.getByRole('switch', { name: '头像靠左' })
+    await avatarLeft.click()
+    await expect(avatarLeft).toBeChecked()
+
+    // “更多字段”标签可通过键盘添加，不依赖鼠标。
+    const addCity = page.getByRole('button', { name: '添加现居城市字段' })
+    await addCity.focus()
+    await addCity.press('Enter')
+    const cityInput = page.getByPlaceholder('请输入现居城市')
+    await cityInput.fill('上海')
+
+    await page.getByRole('button', { name: '移除现居城市字段' }).click()
+    await expect(cityInput).toBeHidden()
+    await expect(avatarLeft).toBeChecked()
+
+    // 隐藏只改变展示配置，再次添加应恢复原值。
+    await page.getByRole('button', { name: '添加现居城市字段' }).click()
+    await expect(cityInput).toHaveValue('上海')
+    await page.getByRole('button', { name: '移除现居城市字段' }).click()
+
+    const saveButton = page.locator('button').filter({
+      has: page.locator('[aria-label="save"]'),
+    })
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/resumes/${resume.id}`)
+        && response.request().method() === 'PUT',
+    )
+    await saveButton.click()
+    expect((await saveResponse).ok()).toBeTruthy()
+
+    const savedResponse = await request.get(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+    })
+    expect(savedResponse.status()).toBe(200)
+    const saved = await savedResponse.json()
+    expect(saved.content.basic_info_display).toMatchObject({
+      avatar_left: true,
+      visible_extra_fields: [],
+    })
+    expect(saved.content.basic_info.other.city).toBe('上海')
+    await screenshot(page, '基本信息', '额外字段隐藏保留配置')
+  })
 })
