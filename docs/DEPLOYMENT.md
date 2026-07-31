@@ -119,9 +119,9 @@ docker run -d \
 项目使用多阶段构建：
 
 1. **构建阶段**（node:20-bookworm-slim）：安装原生模块编译依赖、编译 Next.js
-2. **运行阶段**（node:20-bookworm-slim）：仅安装健康检查依赖并复制构建产物，以非 root 用户运行
+2. **运行阶段**（node:20-bookworm-slim）：仅安装健康检查和权限切换依赖并复制构建产物，以非 root 用户运行
 
-最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。SQLite 固定写入 `/data/careertrack.db`，`/data` 已在镜像内创建并授权给 UID 1001；持久化由运行平台挂载该目录提供，例如本地 Docker 的 `-v careertrack-data:/data` 或 Railway Volume。容器通过 `/api/health` 检查应用与数据库状态。
+最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。SQLite 固定写入 `/data/careertrack.db`，`/data` 已在镜像内创建并授权给 UID 1001；持久化由运行平台挂载该目录提供，例如本地 Docker 的 `-v careertrack-data:/data` 或 Railway Volume。容器启动时会修正 `/data` 的运行时挂载权限，再切换到非 root 用户运行应用。容器通过 `/api/health` 检查应用与数据库状态。
 
 ### Railway 部署说明
 

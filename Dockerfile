@@ -36,7 +36,7 @@ FROM node:20-bookworm-slim AS runner
 
 # 安装健康检查依赖
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends wget ca-certificates \
+  && apt-get install -y --no-install-recommends wget ca-certificates gosu \
   && rm -rf /var/lib/apt/lists/*
 
 # 创建非 root 用户
@@ -55,8 +55,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# 设置权限
-USER nextjs
+# 启动时修正运行平台挂载的数据目录权限，再切换到非 root 用户。
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 暴露端口
 EXPOSE 3000
@@ -70,4 +71,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 # 启动命令
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
