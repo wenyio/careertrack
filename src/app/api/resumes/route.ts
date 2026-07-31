@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     const resumes = await listResumes(user.id, {
       page: parsedQuery.data.page,
       pageSize: parsedQuery.data.page_size,
+      q: parsedQuery.data.q,
     })
     return paginatedSuccess(resumes)
   })

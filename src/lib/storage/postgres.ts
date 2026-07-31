@@ -5,9 +5,14 @@
  * 首次查询时自动建库、建表
  */
 
-import { Client, Pool } from 'pg'
+import { Client, Pool, types } from 'pg'
 import { PG_SCHEMA_SQL } from './schema'
 import type { DatabaseQuery } from './types'
+
+// node-postgres normally parses DATE (OID 1082) into a JavaScript Date. That
+// silently applies the server process timezone before application code sees it.
+// Date-only fields are calendar values, so keep PostgreSQL's YYYY-MM-DD text.
+types.setTypeParser(1082, (value) => value)
 
 /**
  * 全局状态

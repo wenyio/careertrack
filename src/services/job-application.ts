@@ -1,6 +1,6 @@
 import api from './api'
 import { parsePaginatedResponse } from './pagination'
-import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 import type { PaginatedData } from '@/types/pagination'
 
 export async function getJobApplications(options: { page?: number; pageSize?: number; q?: string; status?: 'all' | JobApplicationStatus } = {}): Promise<PaginatedData<JobApplication>> {
@@ -19,6 +19,18 @@ export async function getJobApplication(id: string): Promise<JobApplication> {
 
 export async function getJobApplicationSummary(): Promise<JobApplicationSummary> {
   return (await api.get<JobApplicationSummary>('/job-applications/summary')).data
+}
+
+export async function getJobApplicationActions(): Promise<JobApplicationActionCenter> {
+  return (await api.get<JobApplicationActionCenter>('/job-applications/actions')).data
+}
+
+export async function getJobApplicationEvents(id: string): Promise<JobApplicationEvent[]> {
+  return (await api.get<JobApplicationEvent[]>(`/job-applications/${id}/events`)).data
+}
+
+export async function createJobApplicationEvent(id: string, data: CreateJobApplicationEventRequest): Promise<JobApplicationEvent> {
+  return (await api.post<JobApplicationEvent>(`/job-applications/${id}/events`, data)).data
 }
 
 export async function createJobApplication(data: CreateJobApplicationRequest): Promise<JobApplication> {

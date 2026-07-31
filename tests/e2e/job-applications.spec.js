@@ -7,10 +7,18 @@ test.describe('求职申请跟踪', () => {
   test('会话水合后直接访问和刷新 applications，提供空状态与响应式表单', async ({ page, request }) => {
     const account = await createUserByApi(request, 'applications-session')
     await loginByUi(page, account.username, account.password)
+    const resumeRequests = []
+    page.on('request', (route) => {
+      if (/\/api\/resumes(?:\/|\?)/.test(route.url())) resumeRequests.push(route.url())
+    })
+    await page.waitForTimeout(300)
+    resumeRequests.length = 0
     await goto(page, '/applications')
     await expect(page).toHaveURL(/\/applications$/)
     await expect(page.getByRole('heading', { name: '求职进展' })).toBeVisible()
-    await expect(page.getByText('还没有求职申请')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '行动中心' })).toBeVisible()
+    await expect(page.getByText('暂无事项').first()).toBeVisible()
+    expect(resumeRequests).toEqual([])
     await page.reload()
     await expect(page).toHaveURL(/\/applications$/)
     await expect(page.getByRole('heading', { name: '求职进展' })).toBeVisible()
@@ -31,11 +39,13 @@ test.describe('求职申请跟踪', () => {
     expect(created.status()).toBe(201)
     await loginByUi(page, account.username, account.password)
     await goto(page, '/applications')
-    await expect(page.getByText('UI Acme')).toBeVisible()
+    await page.getByRole('tab', { name: '全部申请' }).click()
+    await expect(page.getByText('UI Acme', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: '打开 UI Acme 的职位链接' })).toHaveAttribute('target', '_blank')
-    await page.getByRole('button', { name: '查看投递快照' }).click()
-    await expect(page.getByRole('dialog', { name: /投递快照/ })).toContainText('简历名称')
-    await page.getByRole('button', { name: '关闭投递快照' }).click()
+    await page.getByRole('button', { name: '查看详情 UI Acme' }).click()
+    await page.getByRole('tab', { name: '投递快照' }).click()
+    await expect(page.getByRole('dialog').getByText('UI Acme · 工程师')).toBeVisible()
+    await page.keyboard.press('Escape')
     const quickStatus = page.getByLabel('快速修改 UI Acme 的状态')
     await quickStatus.press('ArrowDown')
     await quickStatus.press('ArrowDown')
@@ -70,6 +80,14 @@ test.describe('求职申请跟踪', () => {
     const afterUpdate = await updated.json()
     expect(afterUpdate.status).toBe('interview')
     expect(afterUpdate.revision).toBe(application.revision + 1)
+
+    const followUp = await request.post(`/api/job-applications/${application.id}/events`, {
+      headers,
+      data: { event_type: 'follow_up', content: '已跟进', next_action_at: '2026-08-02', expected_revision: afterUpdate.revision },
+    })
+    expect(followUp.status(), await followUp.text()).toBe(201)
+    const timeline = await request.get(`/api/job-applications/${application.id}/events`, { headers })
+    expect((await timeline.json()).map((event) => event.event_type)).toEqual(expect.arrayContaining(['created', 'status_changed', 'follow_up']))
 
     const list = await request.get('/api/job-applications?q=acme&status=interview&page=1&pageSize=1', { headers })
     expect(list.status(), await list.text()).toBe(200)

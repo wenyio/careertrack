@@ -124,6 +124,20 @@ CREATE INDEX IF NOT EXISTS idx_job_applications_user_status_updated ON job_appli
 CREATE INDEX IF NOT EXISTS idx_job_applications_user_updated ON job_applications(user_id, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_job_applications_next_action ON job_applications(user_id, next_action_at, id);
 
+-- 申请表保留当前摘要；不可变事件表保存过程历史，随申请或用户删除而清理。
+CREATE TABLE IF NOT EXISTS job_application_events (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
+    application_id TEXT NOT NULL REFERENCES job_applications(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('created', 'status_changed', 'follow_up', 'interview', 'note', 'offer')),
+    content TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_time ON job_application_events(user_id, application_id, occurred_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC);
+
 -- MCP Key 表
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
@@ -293,6 +307,19 @@ CREATE TABLE IF NOT EXISTS job_applications (
 CREATE INDEX IF NOT EXISTS idx_job_applications_user_status_updated ON job_applications(user_id, status, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_job_applications_user_updated ON job_applications(user_id, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_job_applications_next_action ON job_applications(user_id, next_action_at, id);
+
+CREATE TABLE IF NOT EXISTS job_application_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    application_id UUID NOT NULL REFERENCES job_applications(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('created', 'status_changed', 'follow_up', 'interview', 'note', 'offer')),
+    content TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_time ON job_application_events(user_id, application_id, occurred_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

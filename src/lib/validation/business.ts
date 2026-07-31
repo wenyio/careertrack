@@ -335,6 +335,19 @@ export const updateJobApplicationBodySchema = applicationFieldsSchema.partial().
   }
 })
 
+export const createJobApplicationEventBodySchema = z.object({
+  event_type: z.enum(['follow_up', 'interview', 'note', 'offer']),
+  content: optionalApplicationText(5000, '活动内容'),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  occurred_at: z.string().datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional(),
+  next_action_at: applicationDateSchema,
+  expected_revision: z.number().int().positive().optional(),
+}).superRefine((body, context) => {
+  if (body.event_type === 'interview' && !body.metadata?.round) {
+    context.addIssue({ code: 'custom', path: ['metadata'], message: '面试记录需要轮次信息' })
+  }
+})
+
 export const createMcpKeyBodySchema = z.object({
   scope: z.enum(['read_write', 'read_only'], {
     error: 'scope 必须是 read_write 或 read_only',

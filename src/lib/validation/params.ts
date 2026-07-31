@@ -82,7 +82,7 @@ export const registrationCodesQuerySchema = z.object({
   ...paginationQueryShape,
 })
 
-export const resumesQuerySchema = z.object(paginationQueryShape)
+export const resumesQuerySchema = z.object({ q: searchTextSchema, ...paginationQueryShape })
 
 export const jobApplicationsQuerySchema = z.object({
   q: searchTextSchema,

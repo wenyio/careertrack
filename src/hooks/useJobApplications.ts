@@ -1,11 +1,12 @@
 import { App } from 'antd'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createJobApplication, deleteJobApplication, getJobApplications, getJobApplicationSummary, updateJobApplication } from '@/services/job-application'
+import { createJobApplication, createJobApplicationEvent, deleteJobApplication, getJobApplicationActions, getJobApplicationEvents, getJobApplications, getJobApplicationSummary, updateJobApplication } from '@/services/job-application'
 import { getErrorMessage } from '@/utils/error'
 import type { CreateJobApplicationRequest, JobApplicationStatus, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export const JOB_APPLICATIONS_QUERY_KEY = ['job-applications'] as const
 export const JOB_APPLICATION_SUMMARY_QUERY_KEY = ['job-applications', 'summary'] as const
+export const JOB_APPLICATION_ACTIONS_QUERY_KEY = ['job-applications', 'actions'] as const
 
 export function useJobApplications(options: { page: number; pageSize: number; q: string; status: 'all' | JobApplicationStatus }) {
   return useQuery({ queryKey: [...JOB_APPLICATIONS_QUERY_KEY, options], queryFn: () => getJobApplications(options) })
@@ -13,6 +14,14 @@ export function useJobApplications(options: { page: number; pageSize: number; q:
 
 export function useJobApplicationSummary() {
   return useQuery({ queryKey: JOB_APPLICATION_SUMMARY_QUERY_KEY, queryFn: getJobApplicationSummary })
+}
+
+export function useJobApplicationActions() {
+  return useQuery({ queryKey: JOB_APPLICATION_ACTIONS_QUERY_KEY, queryFn: getJobApplicationActions })
+}
+
+export function useJobApplicationEvents(id: string | undefined, enabled = true) {
+  return useQuery({ queryKey: ['job-applications', id, 'events'], queryFn: () => getJobApplicationEvents(id!), enabled: Boolean(id) && enabled })
 }
 
 export function useJobApplicationMutations() {
@@ -23,5 +32,6 @@ export function useJobApplicationMutations() {
     create: useMutation({ mutationFn: (data: CreateJobApplicationRequest) => createJobApplication(data), onSuccess: () => { invalidate(); message.success('申请已创建') }, onError: (e: Error) => message.error(getErrorMessage(e, '创建失败')) }),
     update: useMutation({ mutationFn: ({ id, data }: { id: string; data: UpdateJobApplicationRequest }) => updateJobApplication(id, data), onSuccess: () => { invalidate(); message.success('申请已更新') }, onError: (e: Error) => message.error(getErrorMessage(e, '更新失败')) }),
     remove: useMutation({ mutationFn: deleteJobApplication, onSuccess: () => { invalidate(); message.success('申请已删除') }, onError: (e: Error) => message.error(getErrorMessage(e, '删除失败')) }),
+    addEvent: useMutation({ mutationFn: ({ id, data }: { id: string; data: Parameters<typeof createJobApplicationEvent>[1] }) => createJobApplicationEvent(id, data), onSuccess: () => { invalidate(); message.success('过程已记录') }, onError: (e: Error) => message.error(getErrorMessage(e, '记录失败')) }),
   }
 }

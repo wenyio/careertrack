@@ -258,15 +258,47 @@ const migrations: Migration[] = [
       )
       for (const column of columns.rows) {
         if (column.data_type === 'date') continue
-        // Previous releases stored an API date as TIMESTAMPTZ. Interpret that
-        // legacy value in UTC so an installation's DB/session timezone cannot
-        // move the calendar date backwards or forwards during conversion.
+        // During this feature branch's initial implementation these columns
+        // were timestamps. API values were serialized at UTC midnight, so UTC
+        // preserves that calendar value while changing the representation.
         await query(
           `ALTER TABLE job_applications
            ALTER COLUMN ${column.column_name}
            TYPE DATE USING (${column.column_name} AT TIME ZONE 'UTC')::date`,
         )
       }
+    },
+  },
+  {
+    version: '008_job_application_events',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        await query(
+          `CREATE TABLE IF NOT EXISTS job_application_events (
+             id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
+             application_id TEXT NOT NULL REFERENCES job_applications(id) ON DELETE CASCADE,
+             user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('created', 'status_changed', 'follow_up', 'interview', 'note', 'offer')),
+             content TEXT, metadata TEXT NOT NULL DEFAULT '{}',
+             occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )`,
+        )
+      } else {
+        await query(
+          `CREATE TABLE IF NOT EXISTS job_application_events (
+             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+             application_id UUID NOT NULL REFERENCES job_applications(id) ON DELETE CASCADE,
+             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('created', 'status_changed', 'follow_up', 'interview', 'note', 'offer')),
+             content TEXT, metadata JSONB NOT NULL DEFAULT '{}',
+             occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+           )`,
+        )
+      }
+      await query('CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_time ON job_application_events(user_id, application_id, occurred_at DESC, id DESC)')
+      await query('CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC)')
     },
   },
 ]

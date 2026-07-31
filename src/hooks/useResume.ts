@@ -24,17 +24,18 @@ import type { Resume, CreateResumeRequest, UpdateResumeRequest, PublishResumeReq
  * 查询 key 常量
  */
 export const RESUMES_QUERY_KEY = ['resumes']
-export const resumesQueryKey = (page: number, pageSize: number) =>
-  [...RESUMES_QUERY_KEY, page, pageSize]
+export const resumesQueryKey = (page: number, pageSize: number, q = '') =>
+  [...RESUMES_QUERY_KEY, page, pageSize, q]
 export const resumeQueryKey = (id: string) => ['resume', id]
 
 /**
  * 获取简历列表 Hook
  */
-export function useResumes(page = 1, pageSize = 20) {
+export function useResumes(page = 1, pageSize = 20, options?: { enabled?: boolean; q?: string }) {
   return useQuery({
-    queryKey: resumesQueryKey(page, pageSize),
-    queryFn: () => getResumes(page, pageSize),
+    queryKey: resumesQueryKey(page, pageSize, options?.q),
+    queryFn: () => getResumes(page, pageSize, options?.q),
+    enabled: options?.enabled ?? true,
   })
 }
 

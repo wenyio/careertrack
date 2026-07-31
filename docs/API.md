@@ -386,6 +386,11 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 `due_today`、`overdue` 和完整 `by_status` 状态计数。汇总不依赖当前分页、搜索或筛选；
 待跟进和逾期仅统计仍可推进的 `wishlist`、`applied`、`screening`、`interview` 状态。
 
+### GET /api/job-applications/actions
+
+返回行动中心所需的服务端集合：`overdue`、`due_today`、`upcoming`（未来七天）。它独立于
+“全部申请”的分页结果，且仅包含仍可推进并设有 `next_action_at` 的申请。
+
 ### POST /api/job-applications
 
 创建申请。`company`、`position` 必填（各最多 120 字），`status` 默认为 `wishlist`；
@@ -402,7 +407,13 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 部分更新，但必须提交正整数 `expected_revision`。服务端以用户 ID 和 revision 条件更新；
 过期 revision 返回 `409 CONFLICT`，不存在或越权统一返回 `404`。状态实际变化时更新
-`status_changed_at`，所有成功写入递增 `revision`。
+`status_changed_at`，并在同一事务追加一条 `status_changed` 过程事件；所有成功写入递增 `revision`。
+
+### GET/POST /api/job-applications/:id/events
+
+返回或追加当前用户该申请的倒序活动时间线。可追加 `follow_up`、`interview`、`note`、`offer`；
+事件为追加式，不会覆盖历史。面试 metadata 至少包含 `round`，可包含 `format`、`result` 等字段。
+传入 `next_action_at` 时，该摘要字段与事件在同一事务更新；可选 `expected_revision` 用于避免并发覆盖。
 
 关联错误稳定返回 `400`，不存在或越权返回 `404`，过期 revision 返回 `409`；未知存储错误会
 记录服务端日志并返回通用 `500 INTERNAL_ERROR`，不会向客户端暴露异常文本。
@@ -411,7 +422,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 删除当前用户的申请并返回 `204`；不存在或越权统一返回 `404`。
 
-首版刻意不提供提醒、统计、阶段时间线、拖拽看板、日历/邮件同步、JD 抓取、ATS/AI 分析。
+首版不提供提醒、拖拽看板、日历/邮件同步、JD 抓取、ATS/AI 分析或游客模式；过程时间线仅限申请所有者读取。
 
 ## 简历管理
 

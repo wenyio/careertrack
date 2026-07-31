@@ -3,23 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dayjs from 'dayjs'
-import { Alert, Button, Card, DatePicker, Descriptions, Drawer, Empty, Form, Grid, Input, Modal, Popconfirm, Select, Space, Spin, Statistic, Tag, Typography } from 'antd'
+import { Alert, Button, Card, DatePicker, Descriptions, Drawer, Empty, Form, Grid, Input, Modal, Popconfirm, Select, Space, Spin, Statistic, Tabs, Tag, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useJobApplicationMutations, useJobApplicationSummary, useJobApplications } from '@/hooks/useJobApplications'
+import { useJobApplicationActions, useJobApplicationMutations, useJobApplicationSummary, useJobApplications } from '@/hooks/useJobApplications'
 import { useResumes } from '@/hooks/useResume'
-import { getResumeVersion, getResumeVersions, getResumes } from '@/services/resume'
+import { getResumeVersion, getResumeVersions } from '@/services/resume'
 import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus } from '@/types/job-application'
 import type { ResumeVersionDetail } from '@/types/resume'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
-
-const STATUS_LABELS: Record<JobApplicationStatus, string> = {
-  wishlist: '心愿单', applied: '已投递', screening: '筛选中', interview: '面试中', offer: '已获 Offer', rejected: '未通过', withdrawn: '已撤回',
-}
-
-const STATUS_COLORS: Record<JobApplicationStatus, string> = {
-  wishlist: 'default', applied: 'blue', screening: 'cyan', interview: 'purple', offer: 'green', rejected: 'red', withdrawn: 'orange',
-}
+import { APPLICATION_STATUS_COLORS as STATUS_COLORS, APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@/lib/job-applications/config'
+import { APPLICATION_ARCHIVED_STATUSES, APPLICATION_STAGE_ORDER, nextApplicationStatus } from '@/lib/job-applications/config'
+import { ApplicationDetailDrawer } from '@/components/applications/ApplicationDetailDrawer'
 
 type ApplicationFormValues = Omit<CreateJobApplicationRequest, 'applied_at' | 'next_action_at'> & {
   applied_at?: dayjs.Dayjs
@@ -45,22 +40,18 @@ function ApplicationForm({ application, open, onClose }: { application: JobAppli
   const [form] = Form.useForm<ApplicationFormValues>()
   const screens = Grid.useBreakpoint()
   const { create, update } = useJobApplicationMutations()
-  const { data: resumePage, isError: resumesError, refetch: refetchResumes } = useResumes(1, 100)
+  const [resumeQuery, setResumeQuery] = useState('')
+  const { data: resumePage, isError: resumesError, refetch: refetchResumes } = useResumes(1, 20, { enabled: open, q: resumeQuery })
   const [resumeId, setResumeId] = useState<string | null | undefined>()
   const [versions, setVersions] = useState<Array<{ id: string; revision: number; source: string; created_at: string }>>([])
-  const [allResumes, setAllResumes] = useState<Array<{ id: string; name: string }>>([])
   const [versionsError, setVersionsError] = useState(false)
-  const [allResumesError, setAllResumesError] = useState(false)
 
   const effectiveResumeId = resumeId === undefined ? application?.resume_id || undefined : resumeId || undefined
 
   const loadVersions = useCallback(async (id: string) => {
     try {
-      const first = await getResumeVersions(id, 1, 100)
-      const remaining = await Promise.all(
-        Array.from({ length: Math.max(0, first.pagination.total_pages - 1) }, (_, index) => getResumeVersions(id, index + 2, 100)),
-      )
-      setVersions([...(first.items || []), ...remaining.flatMap((page) => page.items)])
+      const first = await getResumeVersions(id, 1, 20)
+      setVersions(first.items || [])
       setVersionsError(false)
     } catch {
       setVersions([])
@@ -69,27 +60,8 @@ function ApplicationForm({ application, open, onClose }: { application: JobAppli
   }, [])
 
   useEffect(() => {
-    if (effectiveResumeId) void Promise.resolve().then(() => loadVersions(effectiveResumeId))
-  }, [effectiveResumeId, loadVersions])
-
-  useEffect(() => {
-    if (!resumePage) return
-    const loadAllResumes = async () => {
-      try {
-        const remaining = await Promise.all(
-          Array.from({ length: Math.max(0, resumePage.pagination.total_pages - 1) }, (_, index) => getResumes(index + 2, 100)),
-        )
-        setAllResumes([...resumePage.items, ...remaining.flatMap((page) => page.items)].map(({ id, name }) => ({ id, name })))
-        setAllResumesError(false)
-      } catch {
-        // Keep already-loaded choices visible but clearly disclose that the
-        // selector is incomplete instead of silently omitting later pages.
-        setAllResumes(resumePage.items.map(({ id, name }) => ({ id, name })))
-        setAllResumesError(true)
-      }
-    }
-    void loadAllResumes()
-  }, [resumePage])
+    if (open && effectiveResumeId) void Promise.resolve().then(() => loadVersions(effectiveResumeId))
+  }, [effectiveResumeId, loadVersions, open])
 
   const submit = async () => {
     const values = await form.validateFields()
@@ -139,8 +111,8 @@ function ApplicationForm({ application, open, onClose }: { application: JobAppli
         <Form.Item label="薪资" name="salary" rules={[{ max: 80 }]} style={{ flex: 1 }}><Input /></Form.Item>
       </Space>
       <Typography.Title level={5}>简历与备注</Typography.Title>
-      {(resumesError || allResumesError) && <Alert type="error" showIcon message="简历列表加载不完整" description="请重试后再选择，避免遗漏后续分页中的简历。" action={<Button size="small" onClick={() => void refetchResumes()}>重试</Button>} />}
-      <Form.Item label="关联简历（可选）" name="resume_id"><Select allowClear showSearch optionFilterProp="label" placeholder="不关联简历" options={allResumes.map((resume) => ({ value: resume.id, label: resume.name }))} onChange={(value) => { setResumeId(value || null); setVersions([]); setVersionsError(false); form.setFieldValue('resume_version_id', undefined) }} /></Form.Item>
+      {resumesError && <Alert type="error" showIcon message="简历列表加载失败" action={<Button size="small" onClick={() => void refetchResumes()}>重试</Button>} />}
+      <Form.Item label="关联简历（可选）" name="resume_id" extra={resumePage && resumePage.pagination.total_pages > 1 ? '继续输入名称可缩小范围；列表按页加载。' : undefined}><Select allowClear showSearch filterOption={false} onSearch={setResumeQuery} placeholder="搜索并关联简历" options={(resumePage?.items || []).map((resume) => ({ value: resume.id, label: resume.name }))} onChange={(value) => { setResumeId(value || null); setVersions([]); setVersionsError(false); form.setFieldValue('resume_version_id', undefined) }} /></Form.Item>
       {effectiveResumeId && <>{versionsError && <Alert type="error" showIcon message="简历版本加载失败" action={<Button size="small" onClick={() => void loadVersions(effectiveResumeId)}>重试</Button>} />}<Form.Item label="实际投递版本" name="resume_version_id" extra="不选时会为当前简历创建或复用“申请”快照。"><Select allowClear placeholder="使用当前简历快照" options={versions.map((version) => ({ value: version.id, label: `r${version.revision} · ${version.source} · ${dayjs(version.created_at).format('YYYY-MM-DD HH:mm')}` }))} /></Form.Item></>}
       <Form.Item label="备注" name="notes" rules={[{ max: 5000, message: '备注最多 5000 字' }]}><Input.TextArea rows={4} showCount maxLength={5000} /></Form.Item>
     </Form>
@@ -161,9 +133,12 @@ export default function ApplicationsPage() {
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'all' | JobApplicationStatus>('all')
+  const [view, setView] = useState<'actions' | 'stages' | 'all'>('actions')
   const [editing, setEditing] = useState<JobApplication | null | undefined>(undefined)
+  const [detail, setDetail] = useState<JobApplication | null>(null)
   const { data, isLoading, isError, refetch } = useJobApplications({ page, pageSize: 20, q, status })
   const { data: summary, isError: isSummaryError, refetch: refetchSummary } = useJobApplicationSummary()
+  const { data: actions, isError: isActionsError, refetch: refetchActions } = useJobApplicationActions()
   const { remove, update } = useJobApplicationMutations()
   const [snapshot, setSnapshot] = useState<ResumeVersionDetail | null>(null)
   const [snapshotError, setSnapshotError] = useState<string | null>(null)
@@ -185,6 +160,9 @@ export default function ApplicationsPage() {
 
   const today = dayjs().format('YYYY-MM-DD')
   const isActionable = (item: JobApplication) => ['wishlist', 'applied', 'screening', 'interview'].includes(item.status)
+  const actionSections: Array<[string, JobApplication[]]> = [
+    ['已逾期', actions?.overdue || []], ['今天需要跟进', actions?.due_today || []], ['未来七天', actions?.upcoming || []],
+  ]
 
   return <main style={{ maxWidth: 1120, margin: '0 auto', padding: '88px 20px 40px' }}>
     <Space orientation="vertical" size="large" style={{ display: 'flex' }}>
@@ -192,10 +170,14 @@ export default function ApplicationsPage() {
         <div><Typography.Title level={2} style={{ margin: 0 }}>求职进展</Typography.Title><Typography.Text type="secondary">记录投递、跟进和实际使用的简历版本</Typography.Text></div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(null)}>创建申请</Button>
       </div>
-      {(isError || isSummaryError) && <Alert type="error" showIcon message="求职数据加载失败" description="请检查网络后重试。" action={<Button size="small" onClick={() => { void refetch(); void refetchSummary() }}>重试</Button>} />}
+      {(isError || isSummaryError || isActionsError) && <Alert type="error" showIcon message="求职数据加载失败" description="请检查网络后重试。" action={<Button size="small" onClick={() => { void refetch(); void refetchSummary(); void refetchActions() }}>重试</Button>} />}
       {summary && <div aria-label="求职申请概览" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
-        {[['全部', summary.total], ['进行中', summary.active], ['面试', summary.interview], ['Offer', summary.offer], ['今日待跟进', summary.due_today], ['已逾期', summary.overdue]].map(([label, value]) => <Card size="small" key={String(label)}><Statistic title={label} value={Number(value)} /></Card>)}
+        {[['全部', summary.total, 'all'], ['进行中', summary.active, 'active'], ['面试', summary.interview, 'interview'], ['Offer', summary.offer, 'offer'], ['今日待跟进', summary.due_today, 'today'], ['已逾期', summary.overdue, 'overdue']].map(([label, value, filter]) => <Card size="small" key={String(label)} hoverable onClick={() => { setView(filter === 'today' || filter === 'overdue' ? 'actions' : 'all'); setStatus(filter === 'active' ? 'all' : filter === 'all' || filter === 'today' || filter === 'overdue' ? 'all' : filter as JobApplicationStatus); setPage(1) }}><Statistic title={label} value={Number(value)} /></Card>)}
       </div>}
+      <Tabs activeKey={view} onChange={(key) => setView(key as typeof view)} items={[{ key: 'actions', label: '行动中心' }, { key: 'stages', label: '阶段视图' }, { key: 'all', label: '全部申请' }]} />
+      {view === 'actions' && <div aria-label="行动中心"><Typography.Title level={4}>行动中心</Typography.Title>{actionSections.map(([label, items]) => <section key={label}><Typography.Title level={5}>{label}（{items.length}）</Typography.Title>{items.length === 0 ? <Typography.Text type="secondary">暂无事项</Typography.Text> : items.map((item) => <Card key={item.id} size="small" style={{ marginBottom: 8 }} actions={[<Button key="follow" type="link" onClick={() => setDetail(item)}>记录跟进</Button>, <Button key="next" type="link" onClick={() => setDetail(item)}>安排下一步</Button>, <Button key="status" type="link" onClick={() => update.mutate({ id: item.id, data: { expected_revision: item.revision, status: nextApplicationStatus(item.status) || item.status } })}>推进状态</Button>]}><strong>{item.company}</strong> · {item.position} · {item.next_action_at}</Card>)}</section>)}</div>}
+      {view === 'stages' && <div aria-label="阶段视图" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>{APPLICATION_STAGE_ORDER.map((stage) => { const items = applications.filter((item) => item.status === stage); return <Card key={stage} title={`${STATUS_LABELS[stage]}（${summary?.by_status[stage] || 0}）`}>{items.length ? items.map((item) => <Button block type="text" key={item.id} onClick={() => setDetail(item)}>{item.company} · {item.position}</Button>) : <Typography.Text type="secondary">当前页暂无</Typography.Text>}</Card> })}<Card title={`归档（${(summary?.by_status.rejected || 0) + (summary?.by_status.withdrawn || 0)}）`}>{applications.filter((item) => APPLICATION_ARCHIVED_STATUSES.includes(item.status)).map((item) => <Button block type="text" key={item.id} onClick={() => setDetail(item)}>{item.company} · {item.position}</Button>)}</Card></div>}
+      {view === 'all' && <>
       <Space wrap>
         <Input.Search aria-label="搜索公司或职位" placeholder="搜索公司或职位" allowClear onSearch={(value) => { setQ(value); setPage(1) }} style={{ width: 260 }} />
         <Select aria-label="按状态筛选" value={status} onChange={(value) => { setStatus(value); setPage(1) }} options={[{ value: 'all', label: `全部状态 (${summary?.total || 0})` }, ...filters.map((filter) => ({ ...filter, label: `${filter.label} (${summary?.by_status[filter.value] || 0})` }))]} style={{ width: 170 }} />
@@ -205,6 +187,7 @@ export default function ApplicationsPage() {
         const title = <Space><span>{item.company}</span><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag>{overdue && <Tag color="error">跟进已逾期</Tag>}</Space>
         const actions = <Space>
           <Select aria-label={`快速修改 ${item.company} 的状态`} value={item.status} size="small" options={JOB_APPLICATION_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] }))} onChange={(nextStatus) => update.mutate({ id: item.id, data: { expected_revision: item.revision, status: nextStatus } })} />
+          <Button type="text" aria-label={`查看详情 ${item.company}`} onClick={() => setDetail(item)}>详情</Button>
           <Button type="text" icon={<EditOutlined />} aria-label={`编辑 ${item.company} 的申请`} onClick={() => setEditing(item)} />
           <Popconfirm title="删除这条求职申请？" okText="删除" cancelText="取消" onConfirm={() => remove.mutate(item.id)}><Button type="text" danger icon={<DeleteOutlined />} aria-label={`删除 ${item.company} 的申请`} /></Popconfirm>
         </Space>
@@ -214,8 +197,10 @@ export default function ApplicationsPage() {
         </Card>
       })}
       {data && data.pagination.total_pages > 1 && <div><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</Button><span style={{ margin: '0 12px' }}>第 {page} / {data.pagination.total_pages} 页</span><Button disabled={page >= data.pagination.total_pages} onClick={() => setPage(page + 1)}>下一页</Button></div>}
+      </>}
     </Space>
     <ApplicationForm key={editing?.id || (editing === null ? 'new' : 'closed')} application={editing || null} open={editing !== undefined} onClose={() => setEditing(undefined)} />
+    <ApplicationDetailDrawer application={detail} open={Boolean(detail)} onClose={() => setDetail(null)} onEdit={() => { setEditing(detail); setDetail(null) }} />
     <Modal title={snapshot ? `投递快照 · r${snapshot.revision}` : '投递快照'} open={Boolean(snapshot) || Boolean(snapshotError)} onCancel={() => { setSnapshot(null); setSnapshotError(null) }} footer={<Button aria-label="关闭投递快照" onClick={() => { setSnapshot(null); setSnapshotError(null) }}>关闭</Button>}>
       {snapshotError ? <Alert type="error" message={snapshotError} /> : snapshot && <Descriptions column={1} size="small" items={[{ key: 'name', label: '简历名称', children: snapshot.snapshot.name }, { key: 'template', label: '模板', children: snapshot.snapshot.template }, { key: 'revision', label: '版本', children: `r${snapshot.revision}` }]} />}
     </Modal>

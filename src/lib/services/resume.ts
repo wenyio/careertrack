@@ -44,6 +44,8 @@ interface ResumeListRow {
   updated_at: string
 }
 
+type ResumeListOptions = PaginationParams & { q?: string }
+
 function toResumeListItem(row: ResumeListRow): ResumeListItem {
   const config = row.modules_config || DEFAULT_MODULES_CONFIG
   const order = Array.isArray(row.modules_order)
@@ -74,24 +76,32 @@ function toResumeListItem(row: ResumeListRow): ResumeListItem {
  */
 export async function listResumes(
   userId: string,
-  pagination: PaginationParams = {
+  pagination: ResumeListOptions = {
     page: DEFAULT_PAGE,
     pageSize: DEFAULT_PAGE_SIZE,
   },
 ): Promise<PaginatedData<ResumeListItem>> {
   const offset = paginationOffset(pagination)
+  const q = pagination.q?.trim()
+  const clauses = ['user_id = $1']
+  const values: unknown[] = [userId]
+  if (q) {
+    values.push(`%${q.replace(/[\\%_]/g, '\\$&')}%`)
+    clauses.push(`name ILIKE $${values.length} ESCAPE '\\'`)
+  }
+  const where = clauses.join(' AND ')
   const [itemsResult, countResult] = await Promise.all([
     query(
       `SELECT id, name, is_public, public_slug, template, modules_config, modules_order, updated_at
      FROM resumes
-     WHERE user_id = $1
+     WHERE ${where}
      ORDER BY updated_at DESC, id DESC
-     LIMIT $2 OFFSET $3`,
-      [userId, pagination.pageSize, offset],
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, pagination.pageSize, offset],
     ),
     query(
-      'SELECT COUNT(*)::int AS total FROM resumes WHERE user_id = $1',
-      [userId],
+      `SELECT COUNT(*)::int AS total FROM resumes WHERE ${where}`,
+      values,
     ),
   ])
 

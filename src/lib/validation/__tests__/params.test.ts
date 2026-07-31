@@ -60,7 +60,7 @@ describe('route and query parameter validation', () => {
     )
     expect(parseSearchParams(valid, resumesQuerySchema)).toEqual({
       success: true,
-      data: { page: 3, page_size: 48 },
+      data: { page: 3, page_size: 48, q: '' },
     })
 
     for (const query of [

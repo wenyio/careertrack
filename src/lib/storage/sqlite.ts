@@ -20,6 +20,7 @@ const JSON_COLUMNS = new Set([
   'portfolio', 'awards', 'other_experience', 'research',
   'modules_config', 'modules_order', 'content',
   'otp_recovery_codes', 'snapshot',
+  'metadata',
 ])
 
 /** 已知的布尔字段名 */

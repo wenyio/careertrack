@@ -4,6 +4,32 @@ export const JOB_APPLICATION_STATUSES = [
 
 export type JobApplicationStatus = typeof JOB_APPLICATION_STATUSES[number]
 
+export const JOB_APPLICATION_EVENT_TYPES = [
+  'created', 'status_changed', 'follow_up', 'interview', 'note', 'offer',
+] as const
+
+export type JobApplicationEventType = typeof JOB_APPLICATION_EVENT_TYPES[number]
+
+export interface JobApplicationEvent {
+  id: string
+  application_id: string
+  user_id: string
+  event_type: JobApplicationEventType
+  content: string | null
+  metadata: Record<string, unknown>
+  occurred_at: string
+  created_at: string
+}
+
+export interface CreateJobApplicationEventRequest {
+  event_type: Exclude<JobApplicationEventType, 'created' | 'status_changed'>
+  content?: string | null
+  metadata?: Record<string, unknown>
+  occurred_at?: string
+  expected_revision?: number
+  next_action_at?: string | null
+}
+
 export interface JobApplication {
   id: string
   user_id: string
@@ -36,6 +62,12 @@ export interface JobApplicationSummary {
   due_today: number
   overdue: number
   by_status: Record<JobApplicationStatus, number>
+}
+
+export interface JobApplicationActionCenter {
+  overdue: JobApplication[]
+  due_today: JobApplication[]
+  upcoming: JobApplication[]
 }
 
 export interface CreateJobApplicationRequest {

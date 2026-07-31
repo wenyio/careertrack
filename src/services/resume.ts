@@ -27,11 +27,13 @@ import type { PaginatedData } from '@/types/pagination'
 export async function getResumes(
   page = 1,
   pageSize = 20,
+  q = '',
 ): Promise<PaginatedData<ResumeListItem>> {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
   })
+  if (q) params.set('q', q)
   const response = await api.get<ResumeListItem[]>(`/resumes?${params}`)
   return parsePaginatedResponse(response, page, pageSize)
 }

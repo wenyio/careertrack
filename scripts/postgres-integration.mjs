@@ -156,6 +156,7 @@ async function startServer() {
       DATABASE_URL: testDatabaseUrl.toString(),
       JWT_SECRET: jwtSecret,
       TOTP_ENCRYPTION_KEY: totpEncryptionKey,
+      TZ: 'Asia/Shanghai',
       ADMIN_USERNAME: adminUsername,
       ADMIN_PASSWORD: adminPassword,
     },
@@ -236,6 +237,10 @@ async function runApiFlow() {
   assert(
     migrationRows.rows.some((row) => row.version === '007_job_application_date_only'),
     'job application date-only migration was not applied',
+  )
+  assert(
+    migrationRows.rows.some((row) => row.version === '008_job_application_events'),
+    'job application event migration was not applied',
   )
 
   const adminLogin = await request('/api/auth/login', {
@@ -369,6 +374,10 @@ async function runApiFlow() {
       && createdApplication.body.resume_version_id,
     'PostgreSQL application did not preserve date-only values or create a snapshot',
   )
+  assert(
+    createdApplication.body.next_action_at === '2026-08-01',
+    'PostgreSQL DATE shifted in the application process timezone',
+  )
   const applicationRow = await database.query(
     `SELECT pg_typeof(applied_at) AS applied_type, pg_typeof(next_action_at) AS next_type
      FROM job_applications WHERE id = $1`,
@@ -393,6 +402,8 @@ async function runApiFlow() {
     body: { expected_revision: createdApplication.body.revision, status: 'offer' },
   })
   assert(staleApplication.response.status === 409, 'PostgreSQL stale application update was accepted')
+  const events = await request(`/api/job-applications/${createdApplication.body.id}/events`, { cookie: userCookie })
+  assert(events.response.status === 200 && events.body.some((event) => event.event_type === 'status_changed'), 'PostgreSQL status change did not create an event')
 
   const versionList = await request(`/api/resumes/${createdResume.body.id}/versions`, {
     cookie: userCookie,

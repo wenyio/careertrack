@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { transaction } from '@/lib/storage/sqlite'
-import { createJobApplication, getJobApplication, getJobApplicationSummary, JobApplicationConflictError, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
+import { createJobApplication, createJobApplicationEvent, getJobApplication, getJobApplicationSummary, JobApplicationConflictError, listJobApplicationEvents, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
 
 const userId = '00000000-0000-4000-8000-000000000101'
 const otherUserId = '00000000-0000-4000-8000-000000000102'
@@ -58,6 +58,20 @@ describe('job application service', () => {
     const beta = (await listJobApplications(userId, { page: 1, pageSize: 10 })).items.find((item) => item.company === 'Beta')
     expect(beta).toMatchObject({ applied_at: '2026-07-31', next_action_at: '2026-08-01' })
     await expect(getJobApplicationSummary(userId)).resolves.toMatchObject({ total: 2, active: 2, interview: 0, by_status: { applied: 1, screening: 1 } })
+    const events = await listJobApplicationEvents(first.id, userId)
+    expect(events?.map((event) => event.event_type)).toEqual(expect.arrayContaining(['created', 'status_changed']))
+    expect(await listJobApplicationEvents(first.id, otherUserId)).toBeNull()
+  })
+
+  it('appends follow-ups without replacing history and updates the current next action', async () => {
+    const application = await createJobApplication(userId, { company: '过程公司', position: '设计师' })
+    await createJobApplicationEvent(application.id, userId, { event_type: 'follow_up', content: '已发送邮件', next_action_at: '2026-08-01', expected_revision: application.revision })
+    const refreshed = await getJobApplication(application.id, userId)
+    await createJobApplicationEvent(application.id, userId, { event_type: 'note', content: '等待回复' })
+    const events = await listJobApplicationEvents(application.id, userId)
+    expect(refreshed?.next_action_at).toBe('2026-08-01')
+    expect(events?.filter((event) => event.event_type === 'follow_up')).toHaveLength(1)
+    expect(events?.filter((event) => event.event_type === 'note')).toHaveLength(1)
   })
 
   it('keeps applications when their resume is deleted and cascades them with the user', async () => {

@@ -8,7 +8,7 @@ import { getOrCreateApplicationResumeVersion } from '@/lib/services/resume-versi
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, paginatedData, paginationOffset } from '@/lib/pagination'
 import type { DatabaseQuery } from '@/lib/storage/types'
 import type { PaginatedData, PaginationParams } from '@/types/pagination'
-import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export class JobApplicationConflictError extends Error {
   constructor() {
@@ -39,11 +39,36 @@ function escapeLike(value: string): string {
 
 function toDateOnly(value: unknown): string | null {
   if (value === null || value === undefined) return null
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  // PostgreSQL DATE is configured to return this string directly. Do not turn
+  // it into a Date: Date carries a timezone although this value does not.
   if (typeof value !== 'string') return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
+}
+
+function toEvent(row: JobApplicationEvent): JobApplicationEvent {
+  const metadata = typeof row.metadata === 'string'
+    ? (() => { try { return JSON.parse(row.metadata) as Record<string, unknown> } catch { return {} } })()
+    : row.metadata || {}
+  return { ...row, metadata }
+}
+
+async function insertApplicationEvent(
+  database: DatabaseQuery,
+  applicationId: string,
+  userId: string,
+  eventType: JobApplicationEvent['event_type'],
+  content: string | null,
+  metadata: Record<string, unknown> = {},
+  occurredAt?: string,
+): Promise<JobApplicationEvent> {
+  const result = await database<JobApplicationEvent>(
+    `INSERT INTO job_application_events (application_id, user_id, event_type, content, metadata, occurred_at)
+     VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW())) RETURNING *`,
+    [applicationId, userId, eventType, content, JSON.stringify(metadata), occurredAt || null],
+  )
+  return toEvent(result.rows[0])
 }
 
 /** Keep date-only fields stable across SQLite TEXT and PostgreSQL DATE parsers. */
@@ -158,6 +183,69 @@ export async function getJobApplicationSummary(userId: string): Promise<JobAppli
   return { ...summaryResult.rows[0], by_status }
 }
 
+export async function getJobApplicationActionCenter(userId: string): Promise<JobApplicationActionCenter> {
+  const result = await query<JobApplication>(
+    `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
+     FROM job_applications ja
+     LEFT JOIN resumes r ON r.id = ja.resume_id
+     LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
+     WHERE ja.user_id = $1
+       AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
+       AND ja.next_action_at IS NOT NULL
+     ORDER BY ja.next_action_at ASC, ja.updated_at DESC LIMIT 100`,
+    [userId],
+  )
+  const today = new Date().toISOString().slice(0, 10)
+  const sevenDays = new Date(`${today}T00:00:00.000Z`)
+  sevenDays.setUTCDate(sevenDays.getUTCDate() + 7)
+  const until = sevenDays.toISOString().slice(0, 10)
+  const center: JobApplicationActionCenter = { overdue: [], due_today: [], upcoming: [] }
+  for (const application of result.rows.map(toJobApplication)) {
+    if (!application.next_action_at) continue
+    if (application.next_action_at < today) center.overdue.push(application)
+    else if (application.next_action_at === today) center.due_today.push(application)
+    else if (application.next_action_at <= until) center.upcoming.push(application)
+  }
+  return center
+}
+
+export async function listJobApplicationEvents(applicationId: string, userId: string): Promise<JobApplicationEvent[] | null> {
+  // Include user_id in both the existence probe and event query: a guessed ID
+  // must not reveal whether another user's application has activity.
+  const application = await getJobApplication(applicationId, userId)
+  if (!application) return null
+  const result = await query<JobApplicationEvent>(
+    `SELECT * FROM job_application_events
+     WHERE application_id = $1 AND user_id = $2
+     ORDER BY occurred_at DESC, id DESC`,
+    [applicationId, userId],
+  )
+  return result.rows.map(toEvent)
+}
+
+export async function createJobApplicationEvent(
+  applicationId: string,
+  userId: string,
+  input: CreateJobApplicationEventRequest,
+): Promise<JobApplicationEvent> {
+  return transaction(async (database) => {
+    const application = await getJobApplication(applicationId, userId, database)
+    if (!application) throw new Error('求职申请不存在')
+    if (input.expected_revision !== undefined && application.revision !== input.expected_revision) throw new JobApplicationConflictError()
+    if (input.next_action_at !== undefined) {
+      const update = await database<JobApplication>(
+        `UPDATE job_applications SET next_action_at = $1, revision = revision + 1, updated_at = NOW()
+         WHERE id = $2 AND user_id = $3 AND revision = $4 RETURNING *`,
+        [input.next_action_at, applicationId, userId, application.revision],
+      )
+      if (!update.rows[0]) throw new JobApplicationConflictError()
+    }
+    return insertApplicationEvent(
+      database, applicationId, userId, input.event_type, normalizedNull(input.content), input.metadata || {}, input.occurred_at,
+    )
+  })
+}
+
 export async function createJobApplication(userId: string, input: CreateJobApplicationRequest): Promise<JobApplication> {
   return transaction(async (database) => {
     const resume = await resolveResumeVersion(database, userId, input.resume_id, input.resume_version_id)
@@ -173,6 +261,7 @@ export async function createJobApplication(userId: string, input: CreateJobAppli
         input.next_action_at || null, resume.resumeId, resume.resumeVersionId,
       ],
     )
+    await insertApplicationEvent(database, result.rows[0].id, userId, 'created', null, { status: result.rows[0].status })
     return toJobApplication(result.rows[0])
   })
 }
@@ -211,6 +300,13 @@ export async function updateJobApplication(id: string, userId: string, input: Up
       values,
     )
     if (!result.rows[0]) throw new JobApplicationConflictError()
+    if (input.status !== undefined && input.status !== existing.status) {
+      // The record and its status history share one transaction so a timeline
+      // never observes a current stage without the corresponding transition.
+      await insertApplicationEvent(database, id, userId, 'status_changed', null, {
+        from: existing.status, to: input.status,
+      })
+    }
     return toJobApplication(result.rows[0])
   })
 }

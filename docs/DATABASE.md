@@ -185,7 +185,9 @@ CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabl
 - `006_job_applications` 创建求职申请表及用户/状态/更新时间、用户/跟进时间索引；
   `resume_id` 和 `resume_version_id` 在简历或版本删除时均置空，用户删除级联清理申请
 - `007_job_application_date_only` 将 PostgreSQL 旧的申请时间戳转换为 `DATE`，并固定按 UTC
-  解释历史值，避免数据库会话时区使日历日期前后偏移
+  解释本功能开发期间写入的 UTC 午夜值；PostgreSQL adapter 对 DATE 保留原始 `YYYY-MM-DD` 字符串，
+  不把它解析成带时区的 JavaScript Date
+- `008_job_application_events` 创建追加式的过程事件表与用户/申请/时间索引；申请或用户删除时级联清理事件
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
@@ -500,6 +502,13 @@ CREATE TABLE job_applications (
 CREATE INDEX idx_job_applications_user_status_updated ON job_applications(user_id, status, updated_at DESC, id DESC);
 CREATE INDEX idx_job_applications_next_action ON job_applications(user_id, next_action_at, id);
 ```
+
+### job_application_events 申请过程事件表
+
+该表是追加式历史，不替代 `job_applications` 的当前状态、下一步与 revision 摘要。每行同时保存
+`application_id` 和 `user_id`，服务层始终用两者查询；状态变更与对应 `status_changed` 事件在同一事务。
+`metadata` 在 SQLite 为 JSON 文本、PostgreSQL 为 JSONB；面试可保存轮次、时间、形式、结果和备注。
+申请或用户删除会级联删除事件。
 
 ### mcp_keys MCP Key 表
 

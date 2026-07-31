@@ -100,6 +100,7 @@ describe('versioned storage migrations', () => {
     expect(versions).toContain('005_resume_versions')
     expect(versions).toContain('006_job_applications')
     expect(versions).toContain('007_job_application_date_only')
+    expect(versions).toContain('008_job_application_events')
 
     const versionTable = database.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",
@@ -115,6 +116,7 @@ describe('versioned storage migrations', () => {
     expect(applicationIndexes).toEqual(expect.arrayContaining([
       'idx_job_applications_user_status_updated', 'idx_job_applications_next_action',
     ]))
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'job_application_events'").get()).toBeTruthy()
     database.close()
   })
 })
