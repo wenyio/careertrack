@@ -7,10 +7,12 @@
 # ============================================
 # 构建阶段
 # ============================================
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 # 安装原生模块编译依赖（better-sqlite3 等）
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # 创建项目目录
 WORKDIR /app
@@ -30,7 +32,12 @@ RUN npm run build
 # ============================================
 # 运行阶段
 # ============================================
-FROM node:20-alpine AS runner
+FROM node:20-bookworm-slim AS runner
+
+# 安装健康检查依赖
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends wget ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # 创建非 root 用户
 RUN addgroup --system --gid 1001 nodejs
