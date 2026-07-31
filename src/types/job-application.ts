@@ -23,6 +23,19 @@ export interface JobApplication {
   revision: number
   created_at: string
   updated_at: string
+  /** Joined display metadata; never used as an authorization decision. */
+  resume_name?: string | null
+  resume_version_revision?: number | null
+}
+
+export interface JobApplicationSummary {
+  total: number
+  active: number
+  interview: number
+  offer: number
+  due_today: number
+  overdue: number
+  by_status: Record<JobApplicationStatus, number>
 }
 
 export interface CreateJobApplicationRequest {

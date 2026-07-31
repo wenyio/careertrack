@@ -1,6 +1,6 @@
 import api from './api'
 import { parsePaginatedResponse } from './pagination'
-import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 import type { PaginatedData } from '@/types/pagination'
 
 export async function getJobApplications(options: { page?: number; pageSize?: number; q?: string; status?: 'all' | JobApplicationStatus } = {}): Promise<PaginatedData<JobApplication>> {
@@ -15,6 +15,10 @@ export async function getJobApplications(options: { page?: number; pageSize?: nu
 
 export async function getJobApplication(id: string): Promise<JobApplication> {
   return (await api.get<JobApplication>(`/job-applications/${id}`)).data
+}
+
+export async function getJobApplicationSummary(): Promise<JobApplicationSummary> {
+  return (await api.get<JobApplicationSummary>('/job-applications/summary')).data
 }
 
 export async function createJobApplication(data: CreateJobApplicationRequest): Promise<JobApplication> {

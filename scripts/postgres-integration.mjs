@@ -229,6 +229,14 @@ async function runApiFlow() {
     ),
     'resume version PostgreSQL migration was not applied',
   )
+  assert(
+    migrationRows.rows.some((row) => row.version === '006_job_applications'),
+    'job application PostgreSQL migration was not applied',
+  )
+  assert(
+    migrationRows.rows.some((row) => row.version === '007_job_application_date_only'),
+    'job application date-only migration was not applied',
+  )
 
   const adminLogin = await request('/api/auth/login', {
     method: 'POST',
@@ -338,6 +346,53 @@ async function runApiFlow() {
     snapshotRow.rows[0]?.snapshot && !Array.isArray(snapshotRow.rows[0].snapshot),
     'PostgreSQL version snapshot is not a JSONB object',
   )
+
+  const createdApplication = await request('/api/job-applications', {
+    method: 'POST',
+    cookie: userCookie,
+    body: {
+      company: 'PostgreSQL application company',
+      position: 'PostgreSQL application role',
+      status: 'applied',
+      applied_at: '2026-07-31',
+      next_action_at: '2026-08-01',
+      resume_id: createdResume.body.id,
+    },
+  })
+  assert(
+    createdApplication.response.status === 201,
+    `PostgreSQL application creation failed: ${createdApplication.text}`,
+  )
+  assert(
+    createdApplication.body.applied_at === '2026-07-31'
+      && createdApplication.body.next_action_at === '2026-08-01'
+      && createdApplication.body.resume_version_id,
+    'PostgreSQL application did not preserve date-only values or create a snapshot',
+  )
+  const applicationRow = await database.query(
+    `SELECT pg_typeof(applied_at) AS applied_type, pg_typeof(next_action_at) AS next_type
+     FROM job_applications WHERE id = $1`,
+    [createdApplication.body.id],
+  )
+  assert(
+    applicationRow.rows[0]?.applied_type === 'date' && applicationRow.rows[0]?.next_type === 'date',
+    'PostgreSQL application dates are not DATE columns',
+  )
+  const updatedApplication = await request(`/api/job-applications/${createdApplication.body.id}`, {
+    method: 'PUT', cookie: userCookie,
+    body: { expected_revision: createdApplication.body.revision, status: 'interview', next_action_at: '2026-08-02' },
+  })
+  assert(
+    updatedApplication.response.status === 200
+      && updatedApplication.body.next_action_at === '2026-08-02'
+      && updatedApplication.body.revision === createdApplication.body.revision + 1,
+    `PostgreSQL application update/date failed: ${updatedApplication.text}`,
+  )
+  const staleApplication = await request(`/api/job-applications/${createdApplication.body.id}`, {
+    method: 'PUT', cookie: userCookie,
+    body: { expected_revision: createdApplication.body.revision, status: 'offer' },
+  })
+  assert(staleApplication.response.status === 409, 'PostgreSQL stale application update was accepted')
 
   const versionList = await request(`/api/resumes/${createdResume.body.id}/versions`, {
     cookie: userCookie,

@@ -11,6 +11,7 @@ function needsResolvedSession(pathname: string): boolean {
     || pathname.startsWith('/resumes/')
     || pathname.startsWith('/settings/')
     || pathname.startsWith('/admin')
+    || pathname === '/applications'
     || pathname === '/auth/migrate'
 }
 

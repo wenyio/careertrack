@@ -245,6 +245,30 @@ const migrations: Migration[] = [
       await query('CREATE INDEX IF NOT EXISTS idx_job_applications_next_action ON job_applications(user_id, next_action_at, id)')
     },
   },
+  {
+    version: '007_job_application_date_only',
+    async run(driver, query) {
+      if (driver !== 'postgres') return
+      const columns = await query<{ column_name: string; data_type: string }>(
+        `SELECT column_name, data_type
+         FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'job_applications'
+           AND column_name IN ('applied_at', 'next_action_at')`,
+      )
+      for (const column of columns.rows) {
+        if (column.data_type === 'date') continue
+        // Previous releases stored an API date as TIMESTAMPTZ. Interpret that
+        // legacy value in UTC so an installation's DB/session timezone cannot
+        // move the calendar date backwards or forwards during conversion.
+        await query(
+          `ALTER TABLE job_applications
+           ALTER COLUMN ${column.column_name}
+           TYPE DATE USING (${column.column_name} AT TIME ZONE 'UTC')::date`,
+        )
+      }
+    },
+  },
 ]
 
 export async function runMigrations(

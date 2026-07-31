@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { transaction } from '@/lib/storage/sqlite'
-import { createJobApplication, getJobApplication, JobApplicationConflictError, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
+import { createJobApplication, getJobApplication, getJobApplicationSummary, JobApplicationConflictError, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
 
 const userId = '00000000-0000-4000-8000-000000000101'
 const otherUserId = '00000000-0000-4000-8000-000000000102'
@@ -46,7 +46,7 @@ describe('job application service', () => {
 
   it('filters, paginates, isolates users, and detects a stale revision', async () => {
     const first = await createJobApplication(userId, { company: 'Acme', position: 'Frontend', status: 'wishlist' })
-    await createJobApplication(userId, { company: 'Beta', position: 'Backend', status: 'applied' })
+    await createJobApplication(userId, { company: 'Beta', position: 'Backend', status: 'applied', applied_at: '2026-07-31', next_action_at: '2026-08-01' })
     await createJobApplication(otherUserId, { company: 'Acme', position: 'Private', status: 'applied' })
     const filtered = await listJobApplications(userId, { page: 1, pageSize: 1, q: 'acme', status: 'all' })
     expect(filtered.pagination.total).toBe(1)
@@ -55,6 +55,9 @@ describe('job application service', () => {
     const updated = await updateJobApplication(first.id, userId, { expected_revision: first.revision, status: 'screening', next_action_at: '2026-08-01' })
     expect(updated.status_changed_at).toBeTruthy()
     await expect(updateJobApplication(first.id, userId, { expected_revision: first.revision, status: 'interview' })).rejects.toBeInstanceOf(JobApplicationConflictError)
+    const beta = (await listJobApplications(userId, { page: 1, pageSize: 10 })).items.find((item) => item.company === 'Beta')
+    expect(beta).toMatchObject({ applied_at: '2026-07-31', next_action_at: '2026-08-01' })
+    await expect(getJobApplicationSummary(userId)).resolves.toMatchObject({ total: 2, active: 2, interview: 0, by_status: { applied: 1, screening: 1 } })
   })
 
   it('keeps applications when their resume is deleted and cascades them with the user', async () => {

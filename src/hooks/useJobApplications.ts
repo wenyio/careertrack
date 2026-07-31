@@ -1,13 +1,18 @@
 import { App } from 'antd'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createJobApplication, deleteJobApplication, getJobApplications, updateJobApplication } from '@/services/job-application'
+import { createJobApplication, deleteJobApplication, getJobApplications, getJobApplicationSummary, updateJobApplication } from '@/services/job-application'
 import { getErrorMessage } from '@/utils/error'
 import type { CreateJobApplicationRequest, JobApplicationStatus, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export const JOB_APPLICATIONS_QUERY_KEY = ['job-applications'] as const
+export const JOB_APPLICATION_SUMMARY_QUERY_KEY = ['job-applications', 'summary'] as const
 
 export function useJobApplications(options: { page: number; pageSize: number; q: string; status: 'all' | JobApplicationStatus }) {
   return useQuery({ queryKey: [...JOB_APPLICATIONS_QUERY_KEY, options], queryFn: () => getJobApplications(options) })
+}
+
+export function useJobApplicationSummary() {
+  return useQuery({ queryKey: JOB_APPLICATION_SUMMARY_QUERY_KEY, queryFn: getJobApplicationSummary })
 }
 
 export function useJobApplicationMutations() {

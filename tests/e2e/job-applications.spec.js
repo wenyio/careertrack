@@ -1,9 +1,54 @@
 const { test, expect } = require('playwright/test')
-const { createResumeByApi, createUserByApi, registerHooks } = require('./helpers')
+const { createResumeByApi, createUserByApi, goto, loginByUi, registerHooks } = require('./helpers')
 
 registerHooks(test)
 
 test.describe('求职申请跟踪', () => {
+  test('会话水合后直接访问和刷新 applications，提供空状态与响应式表单', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'applications-session')
+    await loginByUi(page, account.username, account.password)
+    await goto(page, '/applications')
+    await expect(page).toHaveURL(/\/applications$/)
+    await expect(page.getByRole('heading', { name: '求职进展' })).toBeVisible()
+    await expect(page.getByText('还没有求职申请')).toBeVisible()
+    await page.reload()
+    await expect(page).toHaveURL(/\/applications$/)
+    await expect(page.getByRole('heading', { name: '求职进展' })).toBeVisible()
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByRole('button', { name: '创建申请' }).click()
+    await expect(page.getByRole('dialog', { name: '创建求职申请' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()
+  })
+
+  test('页面创建、快速改状态、职位链接、投递快照和删除', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'applications-ui')
+    const resume = await createResumeByApi(request, account.token, `E2E_TEST_UI快照_${Date.now()}`)
+    const created = await request.post('/api/job-applications', {
+      headers: { Cookie: account.token },
+      data: { company: 'UI Acme', position: '工程师', status: 'applied', job_url: 'https://example.com/jobs/ui', resume_id: resume.id },
+    })
+    expect(created.status()).toBe(201)
+    await loginByUi(page, account.username, account.password)
+    await goto(page, '/applications')
+    await expect(page.getByText('UI Acme')).toBeVisible()
+    await expect(page.getByRole('link', { name: '打开 UI Acme 的职位链接' })).toHaveAttribute('target', '_blank')
+    await page.getByRole('button', { name: '查看投递快照' }).click()
+    await expect(page.getByRole('dialog', { name: /投递快照/ })).toContainText('简历名称')
+    await page.getByRole('button', { name: '关闭投递快照' }).click()
+    const quickStatus = page.getByLabel('快速修改 UI Acme 的状态')
+    await quickStatus.press('ArrowDown')
+    await quickStatus.press('ArrowDown')
+    await quickStatus.press('ArrowDown')
+    await quickStatus.press('Enter')
+    await expect(
+      page.locator('.ant-card').filter({ hasText: 'UI Acme' }).locator('.ant-tag').getByText('面试中', { exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: '删除 UI Acme 的申请' }).click()
+    await page.locator('.ant-popconfirm-buttons .ant-btn-primary').click()
+    await expect(page.getByText('还没有求职申请')).toBeVisible()
+  })
+
   test('创建关联当前简历快照、更新、搜索、筛选、刷新与删除', async ({ request }) => {
     const account = await createUserByApi(request, 'applications-flow')
     const headers = { Cookie: account.token }

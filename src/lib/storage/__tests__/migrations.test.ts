@@ -99,6 +99,7 @@ describe('versioned storage migrations', () => {
     expect(versions).toContain('004_consolidate_postgres_resume_config')
     expect(versions).toContain('005_resume_versions')
     expect(versions).toContain('006_job_applications')
+    expect(versions).toContain('007_job_application_date_only')
 
     const versionTable = database.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",

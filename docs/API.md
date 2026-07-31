@@ -380,10 +380,17 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 `all` 或稳定英文枚举 `wishlist`、`applied`、`screening`、`interview`、`offer`、
 `rejected`、`withdrawn`。
 
+### GET /api/job-applications/summary
+
+返回当前用户全部申请的服务端聚合：`total`、`active`、`interview`、`offer`、
+`due_today`、`overdue` 和完整 `by_status` 状态计数。汇总不依赖当前分页、搜索或筛选；
+待跟进和逾期仅统计仍可推进的 `wishlist`、`applied`、`screening`、`interview` 状态。
+
 ### POST /api/job-applications
 
 创建申请。`company`、`position` 必填（各最多 120 字），`status` 默认为 `wishlist`；
-`job_url` 可空但只能为 http/https，`notes` 最多 5,000 字，日期使用 `YYYY-MM-DD`。
+`job_url` 可空但只能为 http/https，`notes` 最多 5,000 字，日期始终为时区无关的
+`YYYY-MM-DD` 或 `null`。
 可选 `resume_id` 和 `resume_version_id`。若只提供 `resume_id`，服务端在事务中创建或复用
 该用户当前简历的 `application` 快照；若提供版本，必须属于该用户及所选简历。成功返回 `201`。
 
@@ -396,6 +403,9 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 部分更新，但必须提交正整数 `expected_revision`。服务端以用户 ID 和 revision 条件更新；
 过期 revision 返回 `409 CONFLICT`，不存在或越权统一返回 `404`。状态实际变化时更新
 `status_changed_at`，所有成功写入递增 `revision`。
+
+关联错误稳定返回 `400`，不存在或越权返回 `404`，过期 revision 返回 `409`；未知存储错误会
+记录服务端日志并返回通用 `500 INTERNAL_ERROR`，不会向客户端暴露异常文本。
 
 ### DELETE /api/job-applications/:id
 
