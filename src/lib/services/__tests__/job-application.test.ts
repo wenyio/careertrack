@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { transaction } from '@/lib/storage/sqlite'
-import { createJobApplication, createJobApplicationEvent, getJobApplication, getJobApplicationSummary, JobApplicationConflictError, listJobApplicationEvents, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
+import { createJobApplication, createJobApplicationEvent, getJobApplication, getJobApplicationActionCenter, getJobApplicationSummary, JobApplicationConflictError, listJobApplicationEvents, listJobApplications, updateJobApplication } from '@/lib/services/job-application'
 
 const userId = '00000000-0000-4000-8000-000000000101'
 const otherUserId = '00000000-0000-4000-8000-000000000102'
@@ -72,6 +72,20 @@ describe('job application service', () => {
     expect(refreshed?.next_action_at).toBe('2026-08-01')
     expect(events?.filter((event) => event.event_type === 'follow_up')).toHaveLength(1)
     expect(events?.filter((event) => event.event_type === 'note')).toHaveLength(1)
+  })
+
+  it('uses a date-only calendar boundary for summaries and the action center', async () => {
+    await createJobApplication(userId, { company: '逾期', position: '工程师', status: 'applied', next_action_at: '2026-07-31' })
+    await createJobApplication(userId, { company: '今日', position: '设计师', status: 'screening', next_action_at: '2026-08-01' })
+    await createJobApplication(userId, { company: '未来', position: '产品', status: 'interview', next_action_at: '2026-08-08' })
+    await createJobApplication(userId, { company: '过期 Offer', position: '运营', status: 'offer', next_action_at: '2026-07-31' })
+
+    await expect(getJobApplicationSummary(userId, '2026-08-01')).resolves.toMatchObject({ due_today: 1, overdue: 1 })
+    await expect(getJobApplicationActionCenter(userId, '2026-08-01')).resolves.toMatchObject({
+      overdue: [expect.objectContaining({ company: '逾期' })],
+      due_today: [expect.objectContaining({ company: '今日' })],
+      upcoming: [expect.objectContaining({ company: '未来' })],
+    })
   })
 
   it('keeps applications when their resume is deleted and cascades them with the user', async () => {

@@ -1,12 +1,13 @@
 import { App } from 'antd'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createJobApplication, createJobApplicationEvent, deleteJobApplication, getJobApplicationActions, getJobApplicationEvents, getJobApplications, getJobApplicationSummary, updateJobApplication } from '@/services/job-application'
+import { createJobApplication, createJobApplicationEvent, deleteJobApplication, getJobApplication, getJobApplicationActions, getJobApplicationEvents, getJobApplications, getJobApplicationSummary, updateJobApplication } from '@/services/job-application'
 import { getErrorMessage } from '@/utils/error'
 import type { CreateJobApplicationRequest, JobApplicationStatus, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export const JOB_APPLICATIONS_QUERY_KEY = ['job-applications'] as const
 export const JOB_APPLICATION_SUMMARY_QUERY_KEY = ['job-applications', 'summary'] as const
 export const JOB_APPLICATION_ACTIONS_QUERY_KEY = ['job-applications', 'actions'] as const
+export const jobApplicationDetailQueryKey = (id: string) => ['job-applications', 'detail', id] as const
 
 export function useJobApplications(options: { page: number; pageSize: number; q: string; status: 'all' | JobApplicationStatus }) {
   return useQuery({ queryKey: [...JOB_APPLICATIONS_QUERY_KEY, options], queryFn: () => getJobApplications(options) })
@@ -18,6 +19,15 @@ export function useJobApplicationSummary() {
 
 export function useJobApplicationActions() {
   return useQuery({ queryKey: JOB_APPLICATION_ACTIONS_QUERY_KEY, queryFn: getJobApplicationActions })
+}
+
+/** The detail drawer reads a fresh record so its revision follows every write. */
+export function useJobApplication(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: id ? jobApplicationDetailQueryKey(id) : ['job-applications', 'detail', 'none'],
+    queryFn: () => getJobApplication(id!),
+    enabled: Boolean(id) && enabled,
+  })
 }
 
 export function useJobApplicationEvents(id: string | undefined, enabled = true) {

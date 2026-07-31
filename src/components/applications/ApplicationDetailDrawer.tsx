@@ -1,68 +1,116 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import dayjs from 'dayjs'
-import { Alert, Button, DatePicker, Descriptions, Divider, Drawer, Form, Input, Space, Tabs, Tag, Typography } from 'antd'
-import { ExportOutlined } from '@ant-design/icons'
+import { useQuery } from '@tanstack/react-query'
+import { Alert, Button, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, Segmented, Space, Spin, Tabs, Tag, Typography } from 'antd'
+import { CalendarOutlined, EditOutlined, ExportOutlined, FileTextOutlined, MessageOutlined } from '@ant-design/icons'
 import { ApplicationEventTimeline } from './ApplicationEventTimeline'
-import { useJobApplicationEvents, useJobApplicationMutations } from '@/hooks/useJobApplications'
+import { useJobApplication, useJobApplicationEvents, useJobApplicationMutations } from '@/hooks/useJobApplications'
 import { getResumeVersion } from '@/services/resume'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import { APPLICATION_STATUS_COLORS, APPLICATION_STATUS_LABELS, nextApplicationStatus, previousApplicationStatus } from '@/lib/job-applications/config'
+import { getPreviewConfig } from '@/utils/resume-preview'
 import type { JobApplication } from '@/types/job-application'
-import type { ResumeVersionDetail } from '@/types/resume'
 
+type ActivityType = 'follow_up' | 'interview' | 'note'
 type EventValues = { content?: string; next_action_at?: dayjs.Dayjs; round?: string; format?: string; result?: string }
 
-export function ApplicationDetailDrawer({ application, open, onClose, onEdit }: {
+const activityOptions = [
+  { value: 'follow_up', label: '跟进' },
+  { value: 'interview', label: '面试' },
+  { value: 'note', label: '备注' },
+]
+
+function activityCopy(type: ActivityType) {
+  if (type === 'interview') return { title: '记录面试', placeholder: '面试重点、反馈或待确认事项', action: '保存面试记录' }
+  if (type === 'note') return { title: '添加备注', placeholder: '记录不会改变当前阶段', action: '保存备注' }
+  return { title: '记录跟进', placeholder: '例如：已发邮件询问面试安排', action: '保存跟进' }
+}
+
+export function ApplicationDetailDrawer({ application, open, onClose, onEdit, initialActivity = 'follow_up' }: {
   application: JobApplication | null
   open: boolean
   onClose: () => void
-  onEdit: () => void
+  onEdit: (application: JobApplication) => void
+  initialActivity?: ActivityType
 }) {
-  const { data: events, isError, refetch } = useJobApplicationEvents(application?.id, open)
+  const detail = useJobApplication(application?.id, open)
+  const current = detail.data || application
+  const { data: events, isError: eventsError, refetch: refetchEvents } = useJobApplicationEvents(current?.id, open)
   const { addEvent, update, remove } = useJobApplicationMutations()
-  const [snapshot, setSnapshot] = useState<ResumeVersionDetail | null>(null)
-  const [snapshotError, setSnapshotError] = useState(false)
+  const [activityType, setActivityType] = useState<ActivityType>(initialActivity)
   const [form] = Form.useForm<EventValues>()
+  const snapshot = useQuery({
+    queryKey: ['job-applications', 'snapshot', current?.resume_id, current?.resume_version_id],
+    queryFn: () => getResumeVersion(current!.resume_id!, current!.resume_version_id!),
+    enabled: open && Boolean(current?.resume_id && current.resume_version_id),
+  })
 
-  useEffect(() => {
-    if (!open || !application?.resume_id || !application.resume_version_id) return
-    void getResumeVersion(application.resume_id, application.resume_version_id)
-      .then((detail) => { setSnapshot(detail); setSnapshotError(false) })
-      .catch(() => setSnapshotError(true))
-  }, [application?.resume_id, application?.resume_version_id, open])
-
-  if (!application) return null
-  const submitEvent = async (event_type: 'follow_up' | 'interview') => {
+  if (!current) return null
+  const copy = activityCopy(activityType)
+  const submitEvent = async () => {
     const values = await form.validateFields()
-    addEvent.mutate({ id: application.id, data: {
-      event_type, content: values.content || null,
+    addEvent.mutate({ id: current.id, data: {
+      event_type: activityType,
+      content: values.content || null,
       next_action_at: values.next_action_at?.format('YYYY-MM-DD') || undefined,
-      expected_revision: application.revision,
-      metadata: event_type === 'interview' ? { round: values.round, format: values.format, result: values.result } : {},
+      expected_revision: current.revision,
+      metadata: activityType === 'interview'
+        ? { round: values.round || undefined, format: values.format || undefined, result: values.result || undefined }
+        : {},
     } }, { onSuccess: () => form.resetFields() })
   }
   const advance = (direction: 'next' | 'previous') => {
-    const status = direction === 'next' ? nextApplicationStatus(application.status) : previousApplicationStatus(application.status)
-    if (status) update.mutate({ id: application.id, data: { expected_revision: application.revision, status } })
+    const status = direction === 'next' ? nextApplicationStatus(current.status) : previousApplicationStatus(current.status)
+    if (status) update.mutate({ id: current.id, data: { expected_revision: current.revision, status } })
   }
+  const preview = snapshot.data ? getPreviewConfig(snapshot.data.snapshot.content.preview_config) : null
 
-  return <Drawer title={`${application.company} · ${application.position}`} open={open} onClose={onClose} width={720} extra={<Space><Button onClick={onEdit}>编辑资料</Button><Button danger onClick={() => remove.mutate(application.id, { onSuccess: onClose })}>删除</Button></Space>}>
-    <Space wrap><Tag color={APPLICATION_STATUS_COLORS[application.status]}>{APPLICATION_STATUS_LABELS[application.status]}</Tag><Button size="small" disabled={!previousApplicationStatus(application.status)} onClick={() => advance('previous')}>退回阶段</Button><Button size="small" type="primary" disabled={!nextApplicationStatus(application.status)} onClick={() => advance('next')}>推进状态</Button></Space>
-    <Descriptions size="small" column={1} style={{ marginTop: 16 }} items={[
-      { key: 'location', label: '地点', children: application.location || '未填写' },
-      { key: 'salary', label: '薪资', children: application.salary || '未填写' },
-      { key: 'channel', label: '渠道', children: application.channel || '未填写' },
-      { key: 'applied', label: '投递日期', children: application.applied_at || '未填写' },
-      { key: 'next', label: '下一步行动', children: application.next_action_at || '未安排' },
-      { key: 'resume', label: '投递简历', children: application.resume_name ? `${application.resume_name} · r${application.resume_version_revision || '?'}` : '未关联' },
-      { key: 'url', label: '职位链接', children: application.job_url && /^https?:\/\//i.test(application.job_url) ? <a href={application.job_url} target="_blank" rel="noopener noreferrer">打开职位链接 <ExportOutlined /></a> : '未填写' },
+  return <Drawer
+    title={<Space direction="vertical" size={0}><Typography.Text strong>{current.company} · {current.position}</Typography.Text><Space size={6}><Tag color={APPLICATION_STATUS_COLORS[current.status]}>{APPLICATION_STATUS_LABELS[current.status]}</Tag>{current.next_action_at && <Typography.Text type="secondary">下一步：{current.next_action_at}</Typography.Text>}</Space></Space>}
+    open={open}
+    onClose={onClose}
+    width={760}
+    destroyOnHidden
+    extra={<Space><Button icon={<EditOutlined />} onClick={() => onEdit(current)}>编辑</Button><Button danger loading={remove.isPending} onClick={() => remove.mutate(current.id, { onSuccess: onClose })}>删除</Button></Space>}
+  >
+    {detail.isFetching && <Typography.Text type="secondary">正在同步最新进展…</Typography.Text>}
+    {detail.isError && <Alert style={{ marginTop: 12 }} type="warning" showIcon message="最新资料加载失败，正在展示已缓存内容" action={<Button size="small" onClick={() => void detail.refetch()}>重试</Button>} />}
+    <Space wrap style={{ marginTop: 16 }}>
+      <Button disabled={!previousApplicationStatus(current.status)} onClick={() => advance('previous')}>退回阶段</Button>
+      <Button type="primary" disabled={!nextApplicationStatus(current.status)} loading={update.isPending} onClick={() => advance('next')}>推进至{nextApplicationStatus(current.status) ? APPLICATION_STATUS_LABELS[nextApplicationStatus(current.status)!] : ''}</Button>
+    </Space>
+    <Descriptions size="small" column={1} style={{ marginTop: 20 }} items={[
+      { key: 'location', label: '地点', children: current.location || '未填写' },
+      { key: 'salary', label: '薪资', children: current.salary || '未填写' },
+      { key: 'channel', label: '渠道', children: current.channel || '未填写' },
+      { key: 'applied', label: '投递日期', children: current.applied_at || '未填写' },
+      { key: 'next', label: '下一步行动', children: current.next_action_at || '未安排' },
+      { key: 'resume', label: '投递简历', children: current.resume_name ? `${current.resume_name} · r${current.resume_version_revision || '?'}` : '未关联' },
+      { key: 'url', label: '职位链接', children: current.job_url && /^https?:\/\//i.test(current.job_url) ? <a href={current.job_url} target="_blank" rel="noopener noreferrer">打开职位链接 <ExportOutlined /></a> : '未填写' },
     ]} />
+    {current.notes && <Typography.Paragraph style={{ marginTop: 16, whiteSpace: 'pre-wrap' }}><Typography.Text type="secondary">申请备注</Typography.Text><br />{current.notes}</Typography.Paragraph>}
     <Divider />
-    <Typography.Title level={5}>记录过程</Typography.Title>
-    <Form form={form} layout="vertical"><Form.Item label="内容" name="content" rules={[{ max: 5000 }]}><Input.TextArea rows={2} /></Form.Item><Form.Item label="下一步行动" name="next_action_at"><DatePicker style={{ width: '100%' }} /></Form.Item><Space><Button onClick={() => void submitEvent('follow_up')}>记录跟进</Button><Button onClick={() => void submitEvent('interview')}>新增面试记录</Button></Space><Space style={{ marginTop: 8 }}><Form.Item label="轮次" name="round"><Input /></Form.Item><Form.Item label="形式" name="format"><Input placeholder="线上 / 现场" /></Form.Item><Form.Item label="结果" name="result"><Input /></Form.Item></Space></Form>
+    <Typography.Title level={5} style={{ marginTop: 0 }}>记录一次进展</Typography.Title>
+    <Typography.Paragraph type="secondary">每次记录会保留在时间线中；填写“下一步行动”会同时更新行动中心。</Typography.Paragraph>
+    <Segmented value={activityType} options={activityOptions} onChange={(value) => { setActivityType(value as ActivityType); form.resetFields() }} />
+    <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+      <Form.Item label={copy.title} name="content" rules={[{ max: 5000, message: '内容最多 5000 字' }]}>
+        <Input.TextArea rows={3} maxLength={5000} showCount placeholder={copy.placeholder} />
+      </Form.Item>
+      {activityType === 'interview' && <Space size="middle" style={{ display: 'flex' }}>
+        <Form.Item label="轮次" name="round" style={{ flex: 1 }}><Input placeholder="一面、HR 面…" /></Form.Item>
+        <Form.Item label="形式" name="format" style={{ flex: 1 }}><Input placeholder="线上 / 现场" /></Form.Item>
+        <Form.Item label="结果" name="result" style={{ flex: 1 }}><Input placeholder="待定、通过…" /></Form.Item>
+      </Space>}
+      {activityType !== 'note' && <Form.Item label="下次行动日期" name="next_action_at" extra="留空不会改动当前日期；可在完成后安排下一次跟进。"><DatePicker style={{ width: '100%' }} /></Form.Item>}
+      <Button type="primary" icon={activityType === 'interview' ? <CalendarOutlined /> : activityType === 'note' ? <FileTextOutlined /> : <MessageOutlined />} loading={addEvent.isPending} onClick={() => void submitEvent()}>{copy.action}</Button>
+    </Form>
     <Divider />
-    <Tabs items={[{ key: 'timeline', label: '活动时间线', children: isError ? <Alert type="error" message="活动加载失败" action={<Button onClick={() => void refetch()}>重试</Button>} /> : <ApplicationEventTimeline events={events || []} /> }, { key: 'resume', label: '投递快照', children: snapshotError ? <Alert type="error" message="投递快照加载失败" /> : snapshot?.id === application.resume_version_id ? <StandardResumePreview content={snapshot.snapshot.content} modulesConfig={snapshot.snapshot.modules_config} modulesOrder={snapshot.snapshot.modules_order} template={snapshot.snapshot.template} /> : <Typography.Text type="secondary">未关联投递快照</Typography.Text> }]} />
+    <Tabs items={[
+      { key: 'timeline', label: '活动时间线', children: eventsError ? <Alert type="error" showIcon message="活动加载失败" action={<Button size="small" onClick={() => void refetchEvents()}>重试</Button>} /> : <ApplicationEventTimeline events={events || []} /> },
+      { key: 'resume', label: '投递快照', children: snapshot.isError ? <Alert type="error" showIcon message="投递快照加载失败" action={<Button size="small" onClick={() => void snapshot.refetch()}>重试</Button>} /> : snapshot.data && snapshot.data.id === current.resume_version_id && preview ? <div aria-label="投递简历只读预览" className="resume-a4-preview"><StandardResumePreview content={snapshot.data.snapshot.content} modulesConfig={snapshot.data.snapshot.modules_config} modulesOrder={snapshot.data.snapshot.modules_order} template={snapshot.data.snapshot.template} fontSize={preview.fontSize} lineHeight={preview.lineHeight} /></div> : snapshot.isLoading ? <Spin aria-label="加载投递快照" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未关联投递快照" /> },
+    ]} />
   </Drawer>
 }

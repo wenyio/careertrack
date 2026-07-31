@@ -43,8 +43,13 @@ function toDateOnly(value: unknown): string | null {
   // it into a Date: Date carries a timezone although this value does not.
   if (typeof value !== 'string') return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
+  return null
+}
+
+function todayDateOnly(now = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const date = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${date}`
 }
 
 function toEvent(row: JobApplicationEvent): JobApplicationEvent {
@@ -159,17 +164,17 @@ export async function getJobApplication(id: string, userId: string, database: Da
   return result.rows[0] ? toJobApplication(result.rows[0]) : null
 }
 
-export async function getJobApplicationSummary(userId: string): Promise<JobApplicationSummary> {
+export async function getJobApplicationSummary(userId: string, today = todayDateOnly()): Promise<JobApplicationSummary> {
   const [summaryResult, statusesResult] = await Promise.all([
     query<{ total: number; active: number; interview: number; offer: number; due_today: number; overdue: number }>(
       `SELECT COUNT(*)::int AS total,
        COALESCE(SUM(CASE WHEN status IN ('applied', 'screening', 'interview') THEN 1 ELSE 0 END), 0)::int AS active,
        COALESCE(SUM(CASE WHEN status = 'interview' THEN 1 ELSE 0 END), 0)::int AS interview,
        COALESCE(SUM(CASE WHEN status = 'offer' THEN 1 ELSE 0 END), 0)::int AS offer,
-       COALESCE(SUM(CASE WHEN next_action_at = CURRENT_DATE AND status IN ('wishlist', 'applied', 'screening', 'interview') THEN 1 ELSE 0 END), 0)::int AS due_today,
-       COALESCE(SUM(CASE WHEN next_action_at < CURRENT_DATE AND status IN ('wishlist', 'applied', 'screening', 'interview') THEN 1 ELSE 0 END), 0)::int AS overdue
+       COALESCE(SUM(CASE WHEN next_action_at = $2 AND status IN ('wishlist', 'applied', 'screening', 'interview') THEN 1 ELSE 0 END), 0)::int AS due_today,
+       COALESCE(SUM(CASE WHEN next_action_at < $2 AND status IN ('wishlist', 'applied', 'screening', 'interview') THEN 1 ELSE 0 END), 0)::int AS overdue
        FROM job_applications WHERE user_id = $1`,
-      [userId],
+      [userId, today],
     ),
     query<{ status: JobApplicationStatus; total: number }>(
       'SELECT status, COUNT(*)::int AS total FROM job_applications WHERE user_id = $1 GROUP BY status',
@@ -183,7 +188,7 @@ export async function getJobApplicationSummary(userId: string): Promise<JobAppli
   return { ...summaryResult.rows[0], by_status }
 }
 
-export async function getJobApplicationActionCenter(userId: string): Promise<JobApplicationActionCenter> {
+export async function getJobApplicationActionCenter(userId: string, today = todayDateOnly()): Promise<JobApplicationActionCenter> {
   const result = await query<JobApplication>(
     `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
      FROM job_applications ja
@@ -195,10 +200,9 @@ export async function getJobApplicationActionCenter(userId: string): Promise<Job
      ORDER BY ja.next_action_at ASC, ja.updated_at DESC LIMIT 100`,
     [userId],
   )
-  const today = new Date().toISOString().slice(0, 10)
-  const sevenDays = new Date(`${today}T00:00:00.000Z`)
-  sevenDays.setUTCDate(sevenDays.getUTCDate() + 7)
-  const until = sevenDays.toISOString().slice(0, 10)
+  const sevenDays = new Date(`${today}T12:00:00`)
+  sevenDays.setDate(sevenDays.getDate() + 7)
+  const until = todayDateOnly(sevenDays)
   const center: JobApplicationActionCenter = { overdue: [], due_today: [], upcoming: [] }
   for (const application of result.rows.map(toJobApplication)) {
     if (!application.next_action_at) continue
