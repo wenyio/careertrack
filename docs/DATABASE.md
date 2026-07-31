@@ -481,7 +481,9 @@ ISO 8601 UTC 字符串后返回客户端。
 乐观并发令牌，`status_changed_at` 只在状态实际变化时更新。申请不保存简历 JSON：
 `resume_version_id` 指向实际投递快照，并在服务层通过 `resume_id -> resumes.user_id` 联表
 校验所有权。`applied_at` 与 `next_action_at` 是 date-only 语义，两个驱动对外均返回
-`YYYY-MM-DD` 或 `NULL`。只选简历时创建或复用 `source=application` 的当前快照；自动保留策略从不清理
+`YYYY-MM-DD` 或 `NULL`；其他时刻字段在 API 层统一归一化为 UTC ISO 8601。服务端“今天”、
+未来七天和顺延日期使用应用日历时区，默认 `Asia/Shanghai`，可由 `APP_TIMEZONE` 覆盖。
+只选简历时创建或复用 `source=application` 的当前快照；自动保留策略从不清理
 该来源。删除简历或版本会将相关引用置空，删除用户则级联删除其申请。
 
 ```sql
@@ -508,8 +510,12 @@ CREATE INDEX idx_job_applications_next_action ON job_applications(user_id, next_
 该表是追加式历史，不替代 `job_applications` 的当前状态、下一步与 revision 摘要。每行同时保存
 `application_id` 和 `user_id`，服务层始终用两者查询；单次过程记录可联动当前阶段和下一步日期，
 摘要更新、revision 递增、对应 `status_changed` 事件与过程事件在同一事务。
-`metadata` 在 SQLite 为 JSON 文本、PostgreSQL 为 JSONB；面试可保存轮次、时间、形式、结果和备注。
-申请或用户删除会级联删除事件。
+`metadata` 在 SQLite 为 JSON 文本、PostgreSQL 为 JSONB；服务端按事件类型校验 metadata：
+跟进/备注不接受空内容，面试 metadata 必须符合轮次、形式和结果 schema。`occurred_at` 是真实时刻：
+SQLite 历史无时区文本按 UTC 解释，带 offset 输入会在写入前归一化为 UTC ISO；PostgreSQL 使用
+`TIMESTAMPTZ`，API 出口同样返回 UTC ISO。迁移 `009_job_application_event_utc_ordering`
+归一化既有 SQLite 事件时间并新增 `(user_id, application_id, occurred_at DESC, created_at DESC, id DESC)`
+排序索引。申请或用户删除会级联删除事件。
 
 ### mcp_keys MCP Key 表
 

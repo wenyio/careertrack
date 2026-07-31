@@ -27,6 +27,7 @@ export function paginatedSuccess<T>(data: PaginatedData<T>) {
       'X-Page-Size': String(pagination.page_size),
       'X-Total-Count': String(pagination.total),
       'X-Total-Pages': String(pagination.total_pages),
+      'X-Has-More': String(Boolean(pagination.has_more)),
     },
   })
 }

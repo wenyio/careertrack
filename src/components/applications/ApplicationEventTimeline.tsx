@@ -10,7 +10,7 @@ const labels: Record<JobApplicationEvent['event_type'], string> = {
   created: '创建申请', status_changed: '阶段变更', follow_up: '记录跟进', interview: '面试记录', note: '备注', offer: 'Offer',
 }
 
-export function ApplicationEventTimeline({ events, limit = 5, onViewAll }: { events: JobApplicationEvent[]; limit?: number | null; onViewAll?: () => void }) {
+export function ApplicationEventTimeline({ events, total = events.length, limit = 5, onViewAll }: { events: JobApplicationEvent[]; total?: number; limit?: number | null; onViewAll?: () => void }) {
   const [expanded, setExpanded] = useState(false)
   if (!events.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有过程记录" />
   const shouldLimit = typeof limit === 'number' && limit > 0
@@ -24,6 +24,6 @@ export function ApplicationEventTimeline({ events, limit = 5, onViewAll }: { eve
         {event.event_type === 'interview' && <div><Typography.Text type="secondary">{[event.metadata.round, event.metadata.format, event.metadata.result].filter(Boolean).join(' · ')}</Typography.Text></div>}
       </div>,
     }))} />
-    {shouldLimit && events.length > limit && <Button type="link" size="small" style={{ padding: 0 }} onClick={onViewAll || (() => setExpanded((value) => !value))}>{onViewAll ? `查看全部 ${events.length} 条记录` : expanded ? '收起历史记录' : `查看全部 ${events.length} 条记录`}</Button>}
+    {shouldLimit && total > limit && <Button type="link" size="small" style={{ padding: 0 }} onClick={onViewAll || (() => setExpanded((value) => !value))}>{onViewAll ? `查看全部 ${total} 条记录` : expanded ? '收起历史记录' : `查看全部 ${total} 条记录`}</Button>}
   </>
 }

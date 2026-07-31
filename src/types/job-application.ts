@@ -71,11 +71,18 @@ export interface JobApplicationSummary {
   by_status: Record<JobApplicationStatus, number>
 }
 
+export interface JobApplicationActionBucket {
+  items: JobApplication[]
+  total: number
+  has_more: boolean
+  limit: number
+}
+
 export interface JobApplicationActionCenter {
-  overdue: JobApplication[]
-  due_today: JobApplication[]
-  upcoming: JobApplication[]
-  unplanned: JobApplication[]
+  overdue: JobApplicationActionBucket
+  due_today: JobApplicationActionBucket
+  upcoming: JobApplicationActionBucket
+  unplanned: JobApplicationActionBucket
 }
 
 export interface CreateJobApplicationRequest {

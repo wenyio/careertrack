@@ -31,6 +31,7 @@ export function parsePaginatedResponse<T>(
         'x-total-pages',
         total === 0 ? 0 : Math.ceil(total / fallbackPageSize),
       ),
+      has_more: response.headers['x-has-more'] === 'true',
     },
   }
 }

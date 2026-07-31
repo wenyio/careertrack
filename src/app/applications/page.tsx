@@ -12,6 +12,7 @@ import { getResumeVersions } from '@/services/resume'
 import type { CreateJobApplicationRequest, JobApplication, JobApplicationSort, JobApplicationStatus } from '@/types/job-application'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
 import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS as STATUS_COLORS, APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@/lib/job-applications/config'
+import { appTodayDateOnly } from '@/lib/app-time'
 import { ApplicationDetailDrawer } from '@/components/applications/ApplicationDetailDrawer'
 import PageContainer from '@/components/layout/PageContainer'
 import styles from './applications.module.css'
@@ -188,14 +189,17 @@ export default function ApplicationsPage() {
 
   const applications = data?.items || []
   const filters = useMemo(() => JOB_APPLICATION_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })), [])
-  const today = dayjs().format('YYYY-MM-DD')
+  const today = appTodayDateOnly()
   const isActionable = (item: JobApplication) => APPLICATION_STAGE_ORDER.slice(0, 4).includes(item.status)
   const allPriorityItems = [
-    ...(actions?.overdue || []).map((item) => ({ item, tone: 'error' as const, label: '已逾期', description: `原定 ${item.next_action_at}`, kind: 'scheduled' as const })),
-    ...(actions?.due_today || []).map((item) => ({ item, tone: 'warning' as const, label: '今天', description: '今天需要完成跟进', kind: 'scheduled' as const })),
-    ...(actions?.upcoming || []).map((item) => ({ item, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理`, kind: 'scheduled' as const })),
-    ...(actions?.unplanned || []).map((item) => ({ item, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动', kind: 'unplanned' as const })),
+    ...(actions?.overdue.items || []).map((item) => ({ item, tone: 'error' as const, label: '已逾期', description: `原定 ${item.next_action_at}`, kind: 'scheduled' as const })),
+    ...(actions?.due_today.items || []).map((item) => ({ item, tone: 'warning' as const, label: '今天', description: '今天需要完成跟进', kind: 'scheduled' as const })),
+    ...(actions?.upcoming.items || []).map((item) => ({ item, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理`, kind: 'scheduled' as const })),
+    ...(actions?.unplanned.items || []).map((item) => ({ item, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动', kind: 'unplanned' as const })),
   ]
+  const totalPriorityItems = actions
+    ? actions.overdue.total + actions.due_today.total + actions.upcoming.total + actions.unplanned.total
+    : allPriorityItems.length
   const priorityItems = showAllActions ? allPriorityItems : allPriorityItems.slice(0, 4)
 
   if (!sessionReady || !isAuthenticated) return null
@@ -279,7 +283,7 @@ export default function ApplicationsPage() {
         <div ref={priorityRef} style={{ scrollMarginTop: 72 }}>
           <Card
             title="优先处理"
-            extra={allPriorityItems.length > 4 && <Button type="link" onClick={() => setShowAllActions((value) => !value)}>{showAllActions ? '收起' : `查看全部 ${allPriorityItems.length}`}</Button>}
+            extra={totalPriorityItems > 4 && <Button type="link" onClick={() => setShowAllActions((value) => !value)}>{showAllActions ? '收起' : `查看全部 ${totalPriorityItems}`}</Button>}
             styles={{ body: { paddingTop: priorityItems.length ? 0 : 24 } }}
           >
             {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办，当前申请都已安排妥当" style={{ margin: '12px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, tone, label, description, kind }, index) => <div key={item.id} className={styles.priorityRow}>

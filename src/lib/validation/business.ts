@@ -335,17 +335,72 @@ export const updateJobApplicationBodySchema = applicationFieldsSchema.partial().
   }
 })
 
-export const createJobApplicationEventBodySchema = z.object({
-  event_type: z.enum(['follow_up', 'interview', 'note', 'offer']),
-  content: optionalApplicationText(5000, '活动内容'),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-  occurred_at: z.iso.datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional(),
-  next_action_at: applicationDateSchema,
-  next_status: jobApplicationStatusSchema.optional(),
-  expected_revision: z.number().int().positive().optional(),
-}).superRefine((body, context) => {
-  if (body.event_type === 'interview' && !body.metadata?.round) {
-    context.addIssue({ code: 'custom', path: ['metadata'], message: '面试记录需要轮次信息' })
+const eventOccurredAtSchema = z.iso.datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional()
+const eventExpectedRevisionSchema = z.number({ error: 'expected_revision 必须是整数' })
+  .int('expected_revision 必须是整数')
+  .positive('expected_revision 必须大于 0')
+  .optional()
+const eventContentSchema = z.string({ error: '活动内容必须是字符串' })
+  .trim()
+  .min(1, '活动内容不能为空')
+  .max(5000, '活动内容不能超过 5000 个字符')
+const optionalEventContentSchema = z.string({ error: '活动内容必须是字符串' })
+  .trim()
+  .min(1, '活动内容不能为空')
+  .max(5000, '活动内容不能超过 5000 个字符')
+  .nullable()
+  .optional()
+const interviewMetadataSchema = z.object({
+  round: z.string({ error: '面试轮次必须是字符串' }).trim().min(1, '面试轮次不能为空').max(80, '面试轮次不能超过 80 个字符'),
+  format: z.enum(['线上', '现场', '电话']).optional(),
+  result: z.enum(['待定', '通过', '未通过', '需补充材料']).optional(),
+}).strict()
+const emptyMetadataSchema = z.object({}).strict().optional()
+
+export const createJobApplicationEventBodySchema = z.discriminatedUnion('event_type', [
+  z.object({
+    event_type: z.literal('follow_up'),
+    content: eventContentSchema,
+    metadata: emptyMetadataSchema,
+    occurred_at: eventOccurredAtSchema,
+    next_action_at: applicationDateSchema,
+    next_status: jobApplicationStatusSchema.optional(),
+    expected_revision: eventExpectedRevisionSchema,
+  }),
+  z.object({
+    event_type: z.literal('note'),
+    content: eventContentSchema,
+    metadata: emptyMetadataSchema,
+    occurred_at: eventOccurredAtSchema,
+    next_action_at: applicationDateSchema,
+    next_status: jobApplicationStatusSchema.optional(),
+    expected_revision: eventExpectedRevisionSchema,
+  }),
+  z.object({
+    event_type: z.literal('interview'),
+    content: optionalEventContentSchema,
+    metadata: interviewMetadataSchema,
+    occurred_at: eventOccurredAtSchema,
+    next_action_at: applicationDateSchema,
+    next_status: jobApplicationStatusSchema.optional(),
+    expected_revision: eventExpectedRevisionSchema,
+  }),
+  z.object({
+    event_type: z.literal('offer'),
+    content: optionalEventContentSchema,
+    metadata: emptyMetadataSchema,
+    occurred_at: eventOccurredAtSchema,
+    next_action_at: applicationDateSchema,
+    next_status: jobApplicationStatusSchema.optional(),
+    expected_revision: eventExpectedRevisionSchema,
+  }),
+]).superRefine((body, context) => {
+  if (
+    (Object.prototype.hasOwnProperty.call(body, 'next_action_at')
+      || Object.prototype.hasOwnProperty.call(body, 'next_status'))
+    && body.expected_revision === undefined
+  ) {
+    context.addIssue({ code: 'custom', path: ['expected_revision'], message: '联动阶段或下一步时必须提供 expected_revision' })
   }
 })
 

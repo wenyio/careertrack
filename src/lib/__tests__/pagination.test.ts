@@ -15,6 +15,7 @@ describe('pagination helpers', () => {
       page_size: 20,
       total: 45,
       total_pages: 3,
+      has_more: false,
     })
   })
 
@@ -26,6 +27,7 @@ describe('pagination helpers', () => {
         page_size: 20,
         total: 0,
         total_pages: 0,
+        has_more: false,
       },
     })
   })

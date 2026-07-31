@@ -24,6 +24,7 @@ export function paginationMeta(
     page_size: pageSize,
     total,
     total_pages: total === 0 ? 0 : Math.ceil(total / pageSize),
+    has_more: page * pageSize < total,
   }
 }
 

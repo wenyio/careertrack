@@ -13,6 +13,7 @@ import { useResume, useResumes } from '@/hooks/useResume'
 import { getResumeVersion, getResumeVersions } from '@/services/resume'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS, APPLICATION_STATUS_LABELS, nextApplicationStatus, previousApplicationStatus } from '@/lib/job-applications/config'
+import { appDateOnlyAfterDays } from '@/lib/app-time'
 import { getPreviewConfig } from '@/utils/resume-preview'
 import type { JobApplication } from '@/types/job-application'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
@@ -205,7 +206,7 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
       : values.next_action_mode === 'clear'
         ? null
         : values.next_action_mode === 'snooze'
-          ? dayjs().add(3, 'day').format('YYYY-MM-DD')
+          ? appDateOnlyAfterDays(3)
           : values.next_action_at?.format('YYYY-MM-DD')
     addEvent.mutate({ id: current.id, data: {
       event_type: activityType,
@@ -232,7 +233,7 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   const snoozeThreeDays = () => {
     update.mutate({
       id: current.id,
-      data: { expected_revision: current.revision, next_action_at: dayjs().add(3, 'day').format('YYYY-MM-DD') },
+      data: { expected_revision: current.revision, next_action_at: appDateOnlyAfterDays(3) },
     })
   }
   const archiveAs = (status: 'rejected' | 'withdrawn') => {
@@ -300,12 +301,14 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     if (key === 'withdrawn') confirmArchive('withdrawn')
     if (key === 'delete') confirmDelete()
   }
+  const eventItems = events?.items || []
+  const eventTotal = events?.pagination.total || eventItems.length
   const timelineContent = eventsError
     ? <Alert type="error" showIcon title="活动加载失败" action={<Button size="small" onClick={() => void refetchEvents()}>重试</Button>} />
-    : <ApplicationEventTimeline events={events || []} limit={8} onViewAll={() => setActiveTab('timeline')} />
+    : <ApplicationEventTimeline events={eventItems} total={eventTotal} limit={8} onViewAll={() => setActiveTab('timeline')} />
   const fullTimelineContent = eventsError
     ? <Alert type="error" showIcon title="活动加载失败" action={<Button size="small" onClick={() => void refetchEvents()}>重试</Button>} />
-    : <ApplicationEventTimeline events={events || []} limit={null} />
+    : <ApplicationEventTimeline events={eventItems} total={eventTotal} limit={null} />
   const resumeContent = <>
     <div className={styles.resumeLinkPanel}>
       <div className={styles.resumeLinkGrid}>
@@ -414,7 +417,7 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
       <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 14 }}>一次提交可以同时记录过程、调整阶段并安排下一步提醒。</Typography.Paragraph>
       <Segmented value={activityType} options={activityOptions} onChange={(value) => resetRecorder(value as ActivityType)} />
       <Form form={form} layout="vertical" preserve={false} initialValues={{ next_action_mode: 'keep', next_status: suggestedStatus(initialActivity, current.status) }} style={{ marginTop: 16 }}>
-        <Form.Item label={copy.title} name="content" rules={[{ max: 5000, message: '内容最多 5000 字' }]} style={{ marginBottom: 8 }}>
+        <Form.Item label={copy.title} name="content" rules={[{ required: activityType !== 'interview', message: '请输入活动内容' }, { max: 5000, message: '内容最多 5000 字' }]} style={{ marginBottom: 8 }}>
           <Input.TextArea rows={3} maxLength={5000} showCount placeholder={copy.placeholder} />
         </Form.Item>
         <Space wrap size={[8, 4]} style={{ display: 'flex', marginBottom: 16 }}>

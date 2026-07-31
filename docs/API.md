@@ -387,10 +387,25 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 `due_today`、`overdue` 和完整 `by_status` 状态计数。汇总不依赖当前分页、搜索或筛选；
 待跟进和逾期仅统计仍可推进的 `wishlist`、`applied`、`screening`、`interview` 状态。
 
+所有时刻字段（如 `created_at`、`updated_at`、`status_changed_at`、事件 `occurred_at`）均以
+UTC ISO 8601 字符串返回；`applied_at`、`next_action_at` 是 date-only，仍返回 `YYYY-MM-DD`
+或 `null`。服务端应用日历默认按 `Asia/Shanghai` 计算“今天”、未来七天和顺延日期，可通过
+`APP_TIMEZONE` 配置。
+
 ### GET /api/job-applications/actions
 
 返回行动中心所需的服务端集合：`overdue`、`due_today`、`upcoming`（未来七天）和
 `unplanned`（尚未安排下一步）。它独立于“全部申请”的分页结果，且仅包含仍可推进的申请。
+四个分桶独立查询，避免逾期数据过多时挤掉今日事项；每个分桶返回：
+
+```json
+{
+  "items": ["JobApplication..."],
+  "total": 24,
+  "has_more": true,
+  "limit": 20
+}
+```
 
 ### POST /api/job-applications
 
@@ -412,11 +427,20 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 ### GET/POST /api/job-applications/:id/events
 
-返回或追加当前用户该申请的倒序活动时间线。可追加 `follow_up`、`interview`、`note`、`offer`；
-事件为追加式，不会覆盖历史。面试 metadata 至少包含 `round`，可包含 `format`、`result` 等字段。
-可同时传入 `next_status` 与 `next_action_at`（`null` 表示清除下一步）；当前阶段、下一步摘要、
-`status_changed` 事件和本次过程事件在同一事务提交。只要更新阶段或下一步，就应传
-`expected_revision` 避免并发覆盖；成功后申请 revision 递增一次。
+GET 返回当前用户该申请的倒序活动时间线，支持 `page`、`page_size`/`pageSize`，响应体保持数组，
+分页信息通过 `X-Page`、`X-Page-Size`、`X-Total-Count`、`X-Total-Pages`、`X-Has-More`
+响应头返回。
+
+POST 可追加 `follow_up`、`interview`、`note`、`offer`；事件为追加式，不会覆盖历史。事件
+`occurred_at` 可传带 offset 的 ISO 8601 时间，服务端统一存储并返回 UTC ISO 8601，排序按真实
+UTC 时刻倒序。`follow_up` 和 `note` 必须包含非空 `content`；`interview.metadata` 必须是严格
+schema，至少包含非空 `round`，`format` 仅支持 `线上`、`现场`、`电话`，`result` 仅支持
+`待定`、`通过`、`未通过`、`需补充材料`。
+
+可同时传入 `next_status` 与 `next_action_at`（`null` 表示不再提醒）；当前阶段、下一步摘要、
+`status_changed` 事件和本次过程事件在同一事务提交。只要请求体包含 `next_status` 或
+`next_action_at`，就必须提供 `expected_revision`；校验层缺失时返回 `400`，服务层也会防御，
+过期 revision 返回 `409`。成功联动后申请 revision 递增一次。
 
 关联错误稳定返回 `400`，不存在或越权返回 `404`，过期 revision 返回 `409`；未知存储错误会
 记录服务端日志并返回通用 `500 INTERNAL_ERROR`，不会向客户端暴露异常文本。

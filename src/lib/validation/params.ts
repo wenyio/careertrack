@@ -106,6 +106,19 @@ export const jobApplicationsQuerySchema = z.object({
   sort: value.sort,
 }))
 
+export const jobApplicationEventsQuerySchema = z.object({
+  page: paginationQueryShape.page,
+  page_size: paginationQueryShape.page_size.optional(),
+  pageSize: paginationQueryShape.page_size.optional(),
+}).superRefine((value, context) => {
+  if (value.page_size !== undefined && value.pageSize !== undefined) {
+    context.addIssue({ code: 'custom', path: ['pageSize'], message: 'page_size 与 pageSize 不能同时提供' })
+  }
+}).transform((value) => ({
+  page: value.page,
+  page_size: value.page_size ?? value.pageSize ?? DEFAULT_PAGE_SIZE,
+}))
+
 export const paginationQuerySchema = z.object(paginationQueryShape)
 
 export const mcpKeyActionQuerySchema = z.object({

@@ -301,6 +301,22 @@ const migrations: Migration[] = [
       await query('CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC)')
     },
   },
+  {
+    version: '009_job_application_event_utc_ordering',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        await query(
+          `UPDATE job_application_events
+           SET occurred_at = strftime('%Y-%m-%dT%H:%M:%fZ', datetime(occurred_at)),
+               created_at = strftime('%Y-%m-%dT%H:%M:%fZ', datetime(created_at))
+           WHERE occurred_at IS NOT NULL`,
+        )
+      }
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_utc_time ON job_application_events(user_id, application_id, occurred_at DESC, created_at DESC, id DESC)',
+      )
+    },
+  },
 ]
 
 export async function runMigrations(

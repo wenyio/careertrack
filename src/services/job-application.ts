@@ -26,8 +26,11 @@ export async function getJobApplicationActions(): Promise<JobApplicationActionCe
   return (await api.get<JobApplicationActionCenter>('/job-applications/actions')).data
 }
 
-export async function getJobApplicationEvents(id: string): Promise<JobApplicationEvent[]> {
-  return (await api.get<JobApplicationEvent[]>(`/job-applications/${id}/events`)).data
+export async function getJobApplicationEvents(id: string, options: { page?: number; pageSize?: number } = {}): Promise<PaginatedData<JobApplicationEvent>> {
+  const page = options.page || 1
+  const pageSize = options.pageSize || 20
+  const response = await api.get<JobApplicationEvent[]>(`/job-applications/${id}/events?page=${page}&pageSize=${pageSize}`)
+  return parsePaginatedResponse(response, page, pageSize)
 }
 
 export async function createJobApplicationEvent(id: string, data: CreateJobApplicationEventRequest): Promise<JobApplicationEvent> {

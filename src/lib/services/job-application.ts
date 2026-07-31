@@ -6,9 +6,10 @@
 import { query, transaction } from '@/lib/db'
 import { getOrCreateApplicationResumeVersion } from '@/lib/services/resume-version'
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, paginatedData, paginationOffset } from '@/lib/pagination'
+import { addDateOnlyDays, appTodayDateOnly, nowUtcIsoString, toUtcIsoString } from '@/lib/app-time'
 import type { DatabaseQuery } from '@/lib/storage/types'
 import type { PaginatedData, PaginationParams } from '@/types/pagination'
-import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationSort, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionBucket, JobApplicationActionCenter, JobApplicationEvent, JobApplicationSort, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export class JobApplicationConflictError extends Error {
   constructor() {
@@ -24,11 +25,20 @@ export class JobApplicationRelationError extends Error {
   }
 }
 
+export class JobApplicationValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'JobApplicationValidationError'
+  }
+}
+
 interface ListOptions extends PaginationParams {
   q?: string
   status?: 'all' | JobApplicationStatus
   sort?: JobApplicationSort
 }
+
+type EventListOptions = PaginationParams
 
 function normalizedNull(value: string | null | undefined): string | null {
   return value?.trim() || null
@@ -47,17 +57,16 @@ function toDateOnly(value: unknown): string | null {
   return null
 }
 
-function todayDateOnly(now = new Date()): string {
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const date = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${date}`
-}
-
 function toEvent(row: JobApplicationEvent): JobApplicationEvent {
   const metadata = typeof row.metadata === 'string'
     ? (() => { try { return JSON.parse(row.metadata) as Record<string, unknown> } catch { return {} } })()
     : row.metadata || {}
-  return { ...row, metadata }
+  return {
+    ...row,
+    metadata,
+    occurred_at: toUtcIsoString(row.occurred_at),
+    created_at: toUtcIsoString(row.created_at),
+  }
 }
 
 async function insertApplicationEvent(
@@ -69,10 +78,11 @@ async function insertApplicationEvent(
   metadata: Record<string, unknown> = {},
   occurredAt?: string,
 ): Promise<JobApplicationEvent> {
+  const normalizedOccurredAt = occurredAt ? toUtcIsoString(occurredAt) : nowUtcIsoString()
   const result = await database<JobApplicationEvent>(
     `INSERT INTO job_application_events (application_id, user_id, event_type, content, metadata, occurred_at)
-     VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW())) RETURNING *`,
-    [applicationId, userId, eventType, content, JSON.stringify(metadata), occurredAt || null],
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [applicationId, userId, eventType, content, JSON.stringify(metadata), normalizedOccurredAt],
   )
   return toEvent(result.rows[0])
 }
@@ -83,6 +93,9 @@ function toJobApplication(row: JobApplication): JobApplication {
     ...row,
     applied_at: toDateOnly(row.applied_at),
     next_action_at: toDateOnly(row.next_action_at),
+    status_changed_at: toUtcIsoString(row.status_changed_at),
+    created_at: toUtcIsoString(row.created_at),
+    updated_at: toUtcIsoString(row.updated_at),
   }
 }
 
@@ -172,7 +185,7 @@ export async function getJobApplication(id: string, userId: string, database: Da
   return result.rows[0] ? toJobApplication(result.rows[0]) : null
 }
 
-export async function getJobApplicationSummary(userId: string, today = todayDateOnly()): Promise<JobApplicationSummary> {
+export async function getJobApplicationSummary(userId: string, today = appTodayDateOnly()): Promise<JobApplicationSummary> {
   const [summaryResult, statusesResult] = await Promise.all([
     query<{ total: number; active: number; interview: number; offer: number; due_today: number; overdue: number }>(
       `SELECT COUNT(*)::int AS total,
@@ -196,8 +209,14 @@ export async function getJobApplicationSummary(userId: string, today = todayDate
   return { ...summaryResult.rows[0], by_status }
 }
 
-export async function getJobApplicationActionCenter(userId: string, today = todayDateOnly()): Promise<JobApplicationActionCenter> {
-  const [scheduled, unplanned] = await Promise.all([
+async function actionBucket(
+  userId: string,
+  whereClause: string,
+  values: unknown[],
+  orderBy: string,
+  limit: number,
+): Promise<JobApplicationActionBucket> {
+  const [items, count] = await Promise.all([
     query<JobApplication>(
       `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
        FROM job_applications ja
@@ -205,49 +224,74 @@ export async function getJobApplicationActionCenter(userId: string, today = toda
        LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
        WHERE ja.user_id = $1
          AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
-         AND ja.next_action_at IS NOT NULL
-       ORDER BY ja.next_action_at ASC, ja.updated_at DESC LIMIT 100`,
-      [userId],
+         AND ${whereClause}
+       ORDER BY ${orderBy}
+       LIMIT $${values.length + 2}`,
+      [userId, ...values, limit],
     ),
-    query<JobApplication>(
-      `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
+    query<{ total: number }>(
+      `SELECT COUNT(*)::int AS total
        FROM job_applications ja
-       LEFT JOIN resumes r ON r.id = ja.resume_id
-       LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
        WHERE ja.user_id = $1
          AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
-         AND ja.next_action_at IS NULL
-       ORDER BY ja.updated_at DESC, ja.id DESC LIMIT 100`,
-      [userId],
+         AND ${whereClause}`,
+      [userId, ...values],
     ),
   ])
-  const sevenDays = new Date(`${today}T12:00:00`)
-  sevenDays.setDate(sevenDays.getDate() + 7)
-  const until = todayDateOnly(sevenDays)
-  const center: JobApplicationActionCenter = {
-    overdue: [], due_today: [], upcoming: [], unplanned: unplanned.rows.map(toJobApplication),
+  const total = Number(count.rows[0]?.total || 0)
+  return {
+    items: items.rows.map(toJobApplication),
+    total,
+    has_more: total > items.rows.length,
+    limit,
   }
-  for (const application of scheduled.rows.map(toJobApplication)) {
-    if (!application.next_action_at) continue
-    if (application.next_action_at < today) center.overdue.push(application)
-    else if (application.next_action_at === today) center.due_today.push(application)
-    else if (application.next_action_at <= until) center.upcoming.push(application)
-  }
-  return center
 }
 
-export async function listJobApplicationEvents(applicationId: string, userId: string): Promise<JobApplicationEvent[] | null> {
+export async function getJobApplicationActionCenter(
+  userId: string,
+  today = appTodayDateOnly(),
+  limit = DEFAULT_PAGE_SIZE,
+): Promise<JobApplicationActionCenter> {
+  const until = addDateOnlyDays(today, 7)
+  const [overdue, dueToday, upcoming, unplanned] = await Promise.all([
+    actionBucket(userId, 'ja.next_action_at < $2', [today], 'ja.next_action_at ASC, ja.updated_at DESC, ja.id DESC', limit),
+    actionBucket(userId, 'ja.next_action_at = $2', [today], 'ja.updated_at DESC, ja.id DESC', limit),
+    actionBucket(userId, 'ja.next_action_at > $2 AND ja.next_action_at <= $3', [today, until], 'ja.next_action_at ASC, ja.updated_at DESC, ja.id DESC', limit),
+    actionBucket(userId, 'ja.next_action_at IS NULL', [], 'ja.updated_at DESC, ja.id DESC', limit),
+  ])
+  return {
+    overdue,
+    due_today: dueToday,
+    upcoming,
+    unplanned,
+  }
+}
+
+export async function listJobApplicationEvents(
+  applicationId: string,
+  userId: string,
+  options: EventListOptions = { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE },
+): Promise<PaginatedData<JobApplicationEvent> | null> {
   // Include user_id in both the existence probe and event query: a guessed ID
   // must not reveal whether another user's application has activity.
   const application = await getJobApplication(applicationId, userId)
   if (!application) return null
-  const result = await query<JobApplicationEvent>(
-    `SELECT * FROM job_application_events
-     WHERE application_id = $1 AND user_id = $2
-     ORDER BY occurred_at DESC, id DESC`,
-    [applicationId, userId],
-  )
-  return result.rows.map(toEvent)
+  const [result, count] = await Promise.all([
+    query<JobApplicationEvent>(
+      `SELECT * FROM job_application_events
+       WHERE application_id = $1 AND user_id = $2
+       ORDER BY occurred_at DESC, created_at DESC, id DESC
+       LIMIT $3 OFFSET $4`,
+      [applicationId, userId, options.pageSize, paginationOffset(options)],
+    ),
+    query<{ total: number }>(
+      `SELECT COUNT(*)::int AS total
+       FROM job_application_events
+       WHERE application_id = $1 AND user_id = $2`,
+      [applicationId, userId],
+    ),
+  ])
+  return paginatedData(result.rows.map(toEvent), options, Number(count.rows[0]?.total || 0))
 }
 
 export async function createJobApplicationEvent(
@@ -258,6 +302,10 @@ export async function createJobApplicationEvent(
   return transaction(async (database) => {
     const application = await getJobApplication(applicationId, userId, database)
     if (!application) throw new Error('求职申请不存在')
+    const updatesCurrentApplication = input.next_action_at !== undefined || input.next_status !== undefined
+    if (updatesCurrentApplication && input.expected_revision === undefined) {
+      throw new JobApplicationValidationError('联动阶段或下一步时必须提供 expected_revision')
+    }
     if (input.expected_revision !== undefined && application.revision !== input.expected_revision) throw new JobApplicationConflictError()
     const nextStatus = input.next_status !== undefined && input.next_status !== application.status
       ? input.next_status
@@ -271,9 +319,13 @@ export async function createJobApplicationEvent(
       }
       if (nextStatus !== undefined) {
         values.push(nextStatus)
-        fields.push(`status = $${values.length}`, 'status_changed_at = NOW()')
+        fields.push(`status = $${values.length}`)
+        values.push(nowUtcIsoString())
+        fields.push(`status_changed_at = $${values.length}`)
       }
-      fields.push('revision = revision + 1', 'updated_at = NOW()')
+      fields.push('revision = revision + 1')
+      values.push(nowUtcIsoString())
+      fields.push(`updated_at = $${values.length}`)
       values.push(applicationId, userId, application.revision)
       const update = await database<JobApplication>(
         `UPDATE job_applications SET ${fields.join(', ')}
@@ -337,9 +389,12 @@ export async function updateJobApplication(id: string, userId: string, input: Up
       // Compare in the service rather than reusing a SET placeholder inside a
       // CASE expression. PostgreSQL otherwise can infer conflicting parameter
       // types for that placeholder on dynamic updates.
-      setClauses.push('status_changed_at = NOW()')
+      values.push(nowUtcIsoString())
+      setClauses.push(`status_changed_at = $${values.length}`)
     }
-    setClauses.push('revision = revision + 1', 'updated_at = NOW()')
+    setClauses.push('revision = revision + 1')
+    values.push(nowUtcIsoString())
+    setClauses.push(`updated_at = $${values.length}`)
     values.push(id, userId, input.expected_revision)
     const result = await database<JobApplication>(
       `UPDATE job_applications SET ${setClauses.join(', ')}

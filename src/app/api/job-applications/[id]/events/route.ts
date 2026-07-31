@@ -1,16 +1,21 @@
-import { error, success, withAuth } from '@/lib/api'
-import { parseJsonBody, parseRouteParams } from '@/lib/api-validation'
-import { createJobApplicationEvent, getJobApplication, JobApplicationConflictError, listJobApplicationEvents } from '@/lib/services/job-application'
+import { error, paginatedSuccess, success, withAuth } from '@/lib/api'
+import { parseJsonBody, parseRouteParams, parseSearchParams } from '@/lib/api-validation'
+import { createJobApplicationEvent, getJobApplication, JobApplicationConflictError, JobApplicationValidationError, listJobApplicationEvents } from '@/lib/services/job-application'
 import { createJobApplicationEventBodySchema } from '@/lib/validation/business'
-import { idPathParamsSchema } from '@/lib/validation/params'
+import { idPathParamsSchema, jobApplicationEventsQuerySchema } from '@/lib/validation/params'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(request, async (user) => {
     const parsed = await parseRouteParams(params, idPathParamsSchema)
     if (!parsed.success) return parsed.response
+    const parsedQuery = parseSearchParams(request, jobApplicationEventsQuerySchema)
+    if (!parsedQuery.success) return parsedQuery.response
     try {
-      const events = await listJobApplicationEvents(parsed.data.id, user.id)
-      return events ? success(events) : error('求职申请不存在', 404)
+      const events = await listJobApplicationEvents(parsed.data.id, user.id, {
+        page: parsedQuery.data.page,
+        pageSize: parsedQuery.data.page_size,
+      })
+      return events ? paginatedSuccess(events) : error('求职申请不存在', 404)
     } catch (reason) {
       console.error('[job-application-events] list failed', reason)
       return error('服务器内部错误', 500)
@@ -30,6 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!await getJobApplication(parsedParams.data.id, user.id)) return error('求职申请不存在', 404)
       return success(await createJobApplicationEvent(parsedParams.data.id, user.id, parsedBody.data), 201)
     } catch (reason) {
+      if (reason instanceof JobApplicationValidationError) return error(reason.message, 400)
       if (reason instanceof JobApplicationConflictError) return error(reason.message, 409)
       if (reason instanceof Error && reason.message === '求职申请不存在') return error(reason.message, 404)
       console.error('[job-application-events] create failed', reason)

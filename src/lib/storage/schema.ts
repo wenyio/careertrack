@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS job_application_events (
 );
 CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_time ON job_application_events(user_id, application_id, occurred_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_utc_time ON job_application_events(user_id, application_id, occurred_at DESC, created_at DESC, id DESC);
 
 -- MCP Key 表
 CREATE TABLE IF NOT EXISTS mcp_keys (
@@ -320,6 +321,7 @@ CREATE TABLE IF NOT EXISTS job_application_events (
 );
 CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_time ON job_application_events(user_id, application_id, occurred_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_job_application_events_application_time ON job_application_events(application_id, occurred_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_job_application_events_user_application_utc_time ON job_application_events(user_id, application_id, occurred_at DESC, created_at DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

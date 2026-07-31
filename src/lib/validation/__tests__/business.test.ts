@@ -49,6 +49,29 @@ describe('business request validation', () => {
       event_type: 'interview',
       next_status: 'paused',
     }).success).toBe(false)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'follow_up',
+      content: '   ',
+    }).success).toBe(false)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'note',
+      content: null,
+    }).success).toBe(false)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'interview',
+      metadata: { round: '一面', format: '鸽子传书' },
+    }).success).toBe(false)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'follow_up',
+      content: '已邮件跟进',
+      next_action_at: '2026-08-01',
+    }).success).toBe(false)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'follow_up',
+      content: '已邮件跟进',
+      next_action_at: '2026-08-01',
+      expected_revision: 1,
+    }).success).toBe(true)
   })
   it('normalizes resume names and rejects empty updates', () => {
     expect(createResumeBodySchema.parse({
