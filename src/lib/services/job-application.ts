@@ -129,9 +129,11 @@ export async function updateJobApplication(id: string, userId: string, input: Up
     }
     const values: unknown[] = fields.map(([, value]) => value)
     const setClauses = fields.map(([field], index) => `${field} = $${index + 1}`)
-    if (input.status !== undefined) {
-      // Preserve the original transition time on idempotent resubmits.
-      setClauses.push(`status_changed_at = CASE WHEN status <> $${fields.findIndex(([field]) => field === 'status') + 1} THEN NOW() ELSE status_changed_at END`)
+    if (input.status !== undefined && input.status !== existing.status) {
+      // Compare in the service rather than reusing a SET placeholder inside a
+      // CASE expression. PostgreSQL otherwise can infer conflicting parameter
+      // types for that placeholder on dynamic updates.
+      setClauses.push('status_changed_at = NOW()')
     }
     setClauses.push('revision = revision + 1', 'updated_at = NOW()')
     values.push(id, userId, input.expected_revision)
