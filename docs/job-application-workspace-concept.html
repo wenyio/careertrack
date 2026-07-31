@@ -163,7 +163,7 @@
 
     <div class="grid">
       <section class="card">
-        <div class="card-head"><div><h2>优先处理</h2><span class="hint">按行动日期排序，完成后自动进入时间线</span></div><button class="link" data-action="show-all">查看全部</button></div>
+        <div class="card-head"><div><h2>优先处理</h2><span class="hint">固定展示最高优先级的五条，完整记录在下方全部申请分页查看，不再展开或收起</span></div></div>
         <div class="priority" id="priorityList"></div>
       </section>
 
@@ -329,7 +329,7 @@
 
     function renderPriority() {
       const list = byId("priorityList");
-      const items = applications.filter((item) => item.priority).slice(0, 3);
+      const items = applications.filter((item) => item.priority).slice(0, 5);
       list.innerHTML = items.map((item, index) => `
         <article class="task ${item.done ? "is-done" : ""}" data-id="${item.id}">
           <span class="company-avatar ${item.tone}">${item.avatar}</span>
@@ -550,7 +550,7 @@
     }
 
     document.addEventListener("click", (event) => {
-      const target = event.target.closest("button,[data-action],[data-filter-status],.application");
+      const target = event.target.closest("button,[data-action],[data-filter-status]");
       if (!target) return;
       const action = target.dataset.action;
       if (target.dataset.nav) {
@@ -563,10 +563,8 @@
         showToast(`已筛选：${statusMeta[target.dataset.filterStatus].label}`);
       }
       if (target.dataset.summary === "followup") {
-        byId("statusFilter").value = "all";
-        byId("sortSelect").value = "next";
-        setTab("all");
-        showToast("已切到待跟进优先的列表");
+        byId("priorityList").scrollIntoView({ behavior: "smooth", block: "start" });
+        showToast("已定位到优先处理，固定只展示最高优先级的五条");
       }
       if (target.dataset.summary === "active") {
         byId("statusFilter").value = "all";
@@ -584,7 +582,7 @@
       if (action === "open-create") openCreateWorkspace();
       if (action === "record-followup") openDrawer(target.dataset.id, true);
       if (action === "complete-task") completeTask(target.dataset.id);
-      if (action === "open-detail" || target.classList.contains("application")) openDrawer(target.dataset.id);
+      if (action === "open-detail") openDrawer(target.dataset.id);
       if (action === "close-workspace") closeWorkspace();
       if (action === "save-workspace") saveWorkspace();
       if (action === "advance-stage") advanceStage();

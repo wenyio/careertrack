@@ -192,7 +192,6 @@ export default function ApplicationsPage() {
   const [detailActivity, setDetailActivity] = useState<ActivityType>('follow_up')
   const [detailRecorderOpen, setDetailRecorderOpen] = useState(false)
   const [detailNextActionMode, setDetailNextActionMode] = useState<PriorityNextActionMode>('keep')
-  const [showAllActions, setShowAllActions] = useState(false)
   const priorityRef = useRef<HTMLDivElement>(null)
 
   const queryOptions = useMemo(() => ({
@@ -228,10 +227,8 @@ export default function ApplicationsPage() {
     ...(actions?.upcoming.items || []).map((item) => ({ item, bucket: 'upcoming' as const, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理` })),
     ...(actions?.unplanned.items || []).map((item) => ({ item, bucket: 'unplanned' as const, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动' })),
   ]
-  const totalPriorityItems = actions
-    ? actions.overdue.total + actions.due_today.total + actions.upcoming.total + actions.unplanned.total
-    : allPriorityItems.length
-  const priorityItems = showAllActions ? allPriorityItems : allPriorityItems.slice(0, 4)
+  // 优先处理只展示最高优先级的五条；完整数据通过下方申请列表管理。
+  const priorityItems = allPriorityItems.slice(0, 5)
 
   if (!sessionReady || !isAuthenticated) return null
 
@@ -274,17 +271,6 @@ export default function ApplicationsPage() {
     return <div
       key={item.id}
       className={`${styles.applicationRow} ${overdue ? styles.applicationRowOverdue : ''}`}
-      role="button"
-      tabIndex={0}
-      aria-label={`查看详情 ${item.company}`}
-      onClick={() => openDetail(item)}
-      onKeyDown={(event) => {
-        if (event.currentTarget !== event.target) return
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          openDetail(item)
-        }
-      }}
     >
       <span className={avatarClassName} aria-hidden="true">{companyAvatarText(item.company)}</span>
       <Space orientation="vertical" size={5} className={styles.applicationMain}>
@@ -300,13 +286,14 @@ export default function ApplicationsPage() {
           {item.channel && <span>渠道：{item.channel}</span>}
           {item.applied_at && <span>投递：{item.applied_at}</span>}
           {item.next_action_at ? <Typography.Text strong={overdue}><CalendarOutlined /> 下一步：{item.next_action_at}</Typography.Text> : <Typography.Text type="secondary">尚未安排下一步</Typography.Text>}
-          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`} onClick={(event) => event.stopPropagation()}>职位链接 <ExportOutlined /></a>}
+          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`}>职位链接 <ExportOutlined /></a>}
           {item.resume_id && <span>简历：{item.resume_name || '已删除'}{item.resume_version_revision ? ` · r${item.resume_version_revision}` : ''}</span>}
         </Space>
         {item.notes && <Typography.Text type="secondary" className={styles.applicationNotes}>{item.notes}</Typography.Text>}
       </Space>
-      <div className={styles.applicationActions} onClick={(event) => event.stopPropagation()}>
+      <div className={styles.applicationActions}>
         <Button type="primary" size="small" icon={<MessageOutlined />} aria-label={`记录 ${item.company} 的进展`} onClick={() => openDetail(item, 'follow_up', true)}>记录进展</Button>
+        <Button size="small" aria-label={`查看申请详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
         <Dropdown menu={{
           items: [{ key: 'edit', label: '编辑申请' }, { key: 'delete', label: '删除申请', danger: true }],
           onClick: ({ key }) => key === 'edit' ? setEditing(item) : confirmRemove(item),
@@ -330,7 +317,6 @@ export default function ApplicationsPage() {
         <div ref={priorityRef} style={{ scrollMarginTop: 72 }}>
           <Card
             title="优先处理"
-            extra={totalPriorityItems > 4 && <Button type="link" onClick={() => setShowAllActions((value) => !value)}>{showAllActions ? '收起' : `查看全部 ${totalPriorityItems}`}</Button>}
             styles={{ body: { paddingTop: priorityItems.length ? 0 : 24 } }}
           >
             {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : !actions && isActionsLoading ? <div style={{ textAlign: 'center', padding: 32 }} aria-label="正在加载优先处理"><Spin /></div> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办，当前申请都已安排妥当" style={{ margin: '12px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, bucket, tone, label, description }, index) => {
@@ -338,25 +324,15 @@ export default function ApplicationsPage() {
               return <div
                 key={item.id}
                 className={styles.priorityRow}
-                role="button"
-                tabIndex={0}
-                aria-label={`查看详情 ${item.company}`}
-                onClick={() => openDetail(item)}
-                onKeyDown={(event) => {
-                  if (event.currentTarget !== event.target) return
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    openDetail(item)
-                  }
-                }}
               >
               <span className={`${styles.companyAvatar} ${styles[`companyAvatarTone${companyAvatarTone(item.company)}`]}`} aria-hidden="true">{companyAvatarText(item.company)}</span>
               <Space orientation="vertical" size={4} className={styles.priorityMain}>
                 <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag><Tag color={tone}>{label}</Tag></Space>
                 <Typography.Text type={tone === 'error' ? 'danger' : 'secondary'}><ClockCircleOutlined /> {description}</Typography.Text>
               </Space>
-              <div className={styles.priorityActions} onClick={(event) => event.stopPropagation()}>
+              <div className={styles.priorityActions}>
                 <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, actionPolicy.activity, true, actionPolicy.initialNextActionMode)}>{actionPolicy.primaryLabel}</Button>
+                <Button size="small" aria-label={`查看优先事项详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
               </div>
             </div>})}</div>}
           </Card>

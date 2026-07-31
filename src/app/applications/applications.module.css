@@ -72,24 +72,10 @@
   border-bottom: 1px solid #f0f0f0;
   border-radius: 6px;
   color: inherit;
-  cursor: pointer;
 }
 
 .priorityRow:last-child {
   border-bottom: 0;
-}
-
-.priorityRow:hover,
-.priorityRow:focus-visible,
-.applicationRow:hover,
-.applicationRow:focus-visible {
-  background: #fafafa;
-  outline: none;
-}
-
-.priorityRow:focus-visible,
-.applicationRow:focus-visible {
-  box-shadow: 0 0 0 2px #1677ff inset;
 }
 
 .priorityMain {
@@ -154,8 +140,6 @@
   padding: 18px 8px;
   border-radius: 6px;
   color: inherit;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
   border-bottom: 1px solid #f0f0f0;
 }
 

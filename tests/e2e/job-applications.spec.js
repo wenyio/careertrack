@@ -46,12 +46,14 @@ test.describe('求职申请跟踪', () => {
   test('优先处理按真实分桶决定按钮和记录器默认行为', async ({ page, request }) => {
     const account = await createUserByApi(request, 'app-priority')
     const headers = { Cookie: account.token }
+    const earlierOverdue = appDateOnlyAfter(-2)
     const yesterday = appDateOnlyAfter(-1)
     const today = appDateOnlyAfter(0)
     const tomorrow = appDateOnlyAfter(1)
     const later = appDateOnlyAfter(2)
     const records = [
-      { company: '逾期普通公司', position: '工程师', status: 'applied', next_action_at: yesterday },
+      { company: '逾期更早公司', position: '工程师', status: 'applied', next_action_at: earlierOverdue },
+      { company: '逾期较晚公司', position: '工程师', status: 'applied', next_action_at: yesterday },
       { company: '今日面试公司', position: '工程师', status: 'interview', next_action_at: today },
       { company: '未来普通公司', position: '工程师', status: 'applied', next_action_at: tomorrow },
       { company: '未来面试公司', position: '工程师', status: 'interview', next_action_at: later },
@@ -75,39 +77,79 @@ test.describe('求职申请跟踪', () => {
     const priority = page.getByLabel('优先处理申请')
     await expect(priority).toBeVisible()
     const row = (company) => priority.locator('[class*="priorityRow"]', { hasText: company })
-    await expect(row('逾期普通公司').getByRole('button', { name: /处\s*理/ })).toBeVisible()
+    await expect(priority.locator('[class*="priorityRow"]')).toHaveCount(5)
+    const priorityTexts = await priority.locator('[class*="priorityRow"]').evaluateAll((rows) => rows.map((node) => node.textContent || ''))
+    expect(priorityTexts[0]).toContain('逾期更早公司')
+    expect(priorityTexts[1]).toContain('逾期较晚公司')
+    expect(priorityTexts[2]).toContain('今日面试公司')
+    expect(priorityTexts[3]).toContain('未来普通公司')
+    expect(priorityTexts[4]).toContain('未来面试公司')
+    await expect(row('待规划公司')).toHaveCount(0)
+    await expect(row('逾期更早公司').getByRole('button', { name: /处\s*理/ })).toBeVisible()
+    await expect(row('逾期较晚公司').getByRole('button', { name: /处\s*理/ })).toBeVisible()
     await expect(row('今日面试公司').getByRole('button', { name: '记录面试' })).toBeVisible()
     await expect(row('未来普通公司').getByRole('button', { name: '记录进展' })).toBeVisible()
     await expect(row('未来面试公司').getByRole('button', { name: '记录面试' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /查看全部/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /收\s*起/ })).toHaveCount(0)
 
     await page.getByLabel('求职申请概览').locator('button', { hasText: '待跟进' }).click()
-    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
+    await expect(priority.locator('[class*="priorityRow"]')).toHaveCount(5)
     await expect(row('待规划公司')).toHaveCount(0)
 
-    await page.getByRole('button', { name: '查看全部 5' }).click()
-    await expect(page.getByRole('button', { name: /收\s*起/ })).toBeVisible()
-    const unplanned = row('待规划公司')
-    await expect(unplanned.getByRole('button', { name: '安排下一步' })).toBeVisible()
-    await expect(unplanned.getByRole('button', { name: '面试' })).toHaveCount(0)
-    await page.getByRole('button', { name: /收\s*起/ }).click()
-    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
-    await page.getByRole('button', { name: '查看全部 5' }).click()
-
-    await unplanned.click()
-    await expect(page.getByRole('dialog', { name: /待规划公司/ })).toBeVisible()
+    const priorityDetailButton = row('逾期更早公司').getByRole('button', { name: '查看优先事项详情 逾期更早公司' })
+    await priorityDetailButton.click()
+    await expect(page.getByRole('dialog', { name: /逾期更早公司/ })).toBeVisible()
     await expect(page.getByRole('dialog', { name: '记录一次进展' })).toBeHidden()
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog', { name: /待规划公司/ })).toBeHidden()
+    await expect(page.getByRole('dialog', { name: /逾期更早公司/ })).toBeHidden()
+    await priorityDetailButton.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog', { name: /逾期更早公司/ })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: /逾期更早公司/ })).toBeHidden()
 
-    await unplanned.getByRole('button', { name: '安排下一步' }).click()
+    await row('今日面试公司').getByRole('button', { name: '记录面试' }).click()
+    const recorder = page.getByRole('dialog', { name: '记录一次进展' })
+    await expect(recorder).toBeVisible()
+    await expect(recorder.locator('.ant-segmented-item-selected', { hasText: '面试' })).toBeVisible()
+    await expect(recorder.locator('.ant-segmented-item-selected', { hasText: '指定日期' })).toBeVisible()
+    await recorder.getByRole('button', { name: '取消记录进展' }).click()
+  })
+
+  test('优先处理可将待规划申请安排到未来七天', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'app-unplanned')
+    const headers = { Cookie: account.token }
+    const futureDate = appDateOnlyAfter(3)
+    const created = await request.post('/api/job-applications', {
+      headers,
+      data: { company: '待规划成功公司', position: '工程师', status: 'applied' },
+    })
+    expect(created.status(), await created.text()).toBe(201)
+
+    await loginByUi(page, account.username, account.password)
+    await goto(page, '/applications')
+
+    const priority = page.getByLabel('优先处理申请')
+    const row = priority.locator('[class*="priorityRow"]', { hasText: '待规划成功公司' })
+    await expect(row.getByText('待规划', { exact: true })).toBeVisible()
+    await row.getByRole('button', { name: '安排下一步' }).click()
     const recorder = page.getByRole('dialog', { name: '记录一次进展' })
     await expect(recorder).toBeVisible()
     await expect(recorder.locator('.ant-segmented-item-selected', { hasText: '指定日期' })).toBeVisible()
     await recorder.getByLabel('记录跟进').fill('准备明确下一次跟进时间')
     await recorder.getByRole('button', { name: '保存跟进' }).click()
     await expect(recorder.getByText('请选择提醒日期')).toBeVisible()
-    await recorder.getByRole('button', { name: '取消记录进展' }).click()
+    const dateInput = recorder.locator('#next_action_at')
+    await dateInput.click()
+    await page.locator('.ant-picker-dropdown:visible').locator(`[title="${futureDate}"]`).click()
+    await expect(dateInput).toHaveValue(futureDate)
+    await recorder.getByRole('button', { name: '保存跟进' }).click()
+    await expect(recorder).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: /待规划成功公司/ })).toBeHidden()
+    await expect(row.getByText('未来七天', { exact: true })).toBeVisible()
+    await expect(row.getByText('待规划', { exact: true })).toHaveCount(0)
   })
 
   test('页面创建、进展联动阶段、职位链接、投递快照和删除', async ({ page, request }) => {
@@ -132,9 +174,23 @@ test.describe('求职申请跟踪', () => {
     await loginByUi(page, account.username, account.password)
     await goto(page, '/applications')
     await page.getByRole('tab', { name: '全部申请' }).click()
-    await expect(page.getByLabel('求职申请列表').getByText('UI Acme', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: '打开 UI Acme 的职位链接' })).toHaveAttribute('target', '_blank')
-    await page.getByRole('button', { name: '查看详情 UI Acme' }).click()
+    const applicationList = page.getByLabel('求职申请列表')
+    const uiRow = applicationList.locator('[class*="applicationRow"]', { hasText: 'UI Acme' })
+    await expect(uiRow.getByText('UI Acme', { exact: true })).toBeVisible()
+    await expect(uiRow.getByRole('link', { name: '打开 UI Acme 的职位链接' })).toHaveAttribute('target', '_blank')
+    const [jobPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      uiRow.getByRole('link', { name: '打开 UI Acme 的职位链接' }).click(),
+    ])
+    await jobPage.close()
+    await expect(page.getByRole('dialog', { name: /UI Acme/ })).toBeHidden()
+    await uiRow.getByRole('button', { name: 'UI Acme 的更多操作' }).click()
+    await expect(page.getByRole('menuitem', { name: '编辑申请' })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: /UI Acme/ })).toBeHidden()
+    await page.keyboard.press('Escape')
+    const applicationDetailButton = uiRow.getByRole('button', { name: '查看申请详情 UI Acme' })
+    await applicationDetailButton.focus()
+    await page.keyboard.press('Space')
     const workbench = page.getByRole('dialog', { name: /UI Acme/ })
     await expect(workbench.getByText('备注：需要重点关注岗位要求')).toBeVisible()
     await workbench.getByRole('button', { name: '编辑' }).click()
@@ -164,7 +220,7 @@ test.describe('求职申请跟踪', () => {
     await expect(workbench.getByLabel('投递简历只读预览')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(workbench).toBeHidden()
-    await page.getByRole('button', { name: '查看详情 UI Acme' }).click()
+    await applicationList.getByRole('button', { name: '查看申请详情 UI Acme' }).click()
     await workbench.getByRole('button', { name: '记录一次进展' }).click()
     const interviewRecorder = page.getByRole('dialog', { name: '记录一次进展' })
     await interviewRecorder.locator('.ant-segmented-item-label').getByText('面试', { exact: true }).click()
@@ -173,7 +229,7 @@ test.describe('求职申请跟踪', () => {
     await interviewRecorder.getByLabel('记录面试').fill('一面通过，等待下一轮安排')
     await interviewRecorder.getByRole('button', { name: '保存面试记录并更新阶段' }).click()
     await expect(interviewRecorder).toBeHidden()
-    await expect(workbench.getByText('面试中', { exact: true }).first()).toBeVisible()
+    await expect(workbench.locator('section').filter({ hasText: '当前阶段' }).getByText('面试中', { exact: true })).toBeVisible()
     await workbench.getByRole('button', { name: /查看全部 .* 条记录/ }).click()
     await expect(workbench.getByRole('tab', { name: '时间线' })).toHaveAttribute('aria-selected', 'true')
     await page.keyboard.press('Escape')
