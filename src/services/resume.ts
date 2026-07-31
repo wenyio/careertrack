@@ -15,6 +15,7 @@ import type {
   PublicResume,
   ResumeVersion,
   ResumeVersionDetail,
+  CreateResumeVersionRequest,
 } from '@/types/resume'
 import type { PaginatedData } from '@/types/pagination'
 
@@ -145,8 +146,11 @@ export async function getResumeVersion(id: string, versionId: string): Promise<R
   return response.data
 }
 
-export async function createResumeVersion(id: string, label?: string): Promise<ResumeVersion> {
-  const response = await api.post<ResumeVersion>(`/resumes/${id}/versions`, label ? { label } : {})
+export async function createResumeVersion(
+  id: string,
+  data: CreateResumeVersionRequest,
+): Promise<ResumeVersion> {
+  const response = await api.post<ResumeVersion>(`/resumes/${id}/versions`, data)
   return response.data
 }
 

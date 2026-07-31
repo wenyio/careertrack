@@ -25,6 +25,7 @@ interface EditorData {
   isLoading: boolean
   triggerAutoSave: () => void
   handleManualSave: () => void
+  flushCurrentSave?: () => Promise<number>
   applyRestoredResume?: (resume: Resume) => void
 }
 
@@ -46,6 +47,7 @@ function EditorContent({
     isLoading,
     triggerAutoSave,
     handleManualSave,
+    flushCurrentSave,
     applyRestoredResume,
   } = data
 
@@ -85,6 +87,7 @@ function EditorContent({
       resumeId={resume?.id}
       revision={resume?.revision}
       onResumeRestored={supportsPublic ? applyRestoredResume : undefined}
+      flushCurrentSave={supportsPublic ? flushCurrentSave : undefined}
     />
   )
 }

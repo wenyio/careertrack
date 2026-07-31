@@ -62,7 +62,7 @@ export function useResumeEditorData(id: string) {
   )
 
   // 自动保存 Hook
-  const { triggerAutoSave, handleManualSave } = useAutoSave({
+  const { triggerAutoSave, handleManualSave, flushSave } = useAutoSave({
     isInitializedRef,
     updateResume: updateResumeSilent,
     setSaveStatus,
@@ -73,6 +73,12 @@ export function useResumeEditorData(id: string) {
       }
     },
   })
+
+  const flushCurrentSave = useCallback(async () => {
+    const result = await flushSave()
+    if (!result?.revision) throw new Error('保存未返回最新版本号')
+    return result.revision
+  }, [flushSave])
 
   const applyRestoredResume = useCallback((restoredResume: NonNullable<typeof resume>) => {
     initResume(buildResumeEditorInitialData(restoredResume))
@@ -93,6 +99,7 @@ export function useResumeEditorData(id: string) {
     isLoading,
     triggerAutoSave,
     handleManualSave,
+    flushCurrentSave,
     applyRestoredResume,
   }
 }

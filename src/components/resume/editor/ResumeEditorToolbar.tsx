@@ -21,6 +21,7 @@ interface ResumeEditorToolbarProps {
   hidePublic?: boolean
   revision?: number
   onResumeRestored?: (resume: Resume) => void
+  flushCurrentSave?: () => Promise<number>
 }
 
 /**
@@ -41,6 +42,7 @@ export default function ResumeEditorToolbar({
   hidePublic,
   revision,
   onResumeRestored,
+  flushCurrentSave,
 }: ResumeEditorToolbarProps) {
   const {
     resumeName,
@@ -95,6 +97,7 @@ export default function ResumeEditorToolbar({
         revision={revision}
         onClose={() => setHistoryOpen(false)}
         onRestored={onResumeRestored}
+        flushCurrentSave={flushCurrentSave}
       />
     )}
     </>

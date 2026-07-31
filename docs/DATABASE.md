@@ -463,7 +463,10 @@ CREATE INDEX idx_resume_versions_auto_created ON resume_versions(resume_id, sour
 删除 `manual`、`restore`、`application`。手动版本每份最多 100 条，到达上限会明确
 返回冲突。`(resume_id, revision, source)` 唯一键使同一逻辑快照幂等。恢复在一个
 事务中校验 `expected_revision`、更新简历、递增 revision 并写入新的 `restore` 快照；
-任何失败均会回滚，不会留下半恢复状态。
+任何失败均会回滚，不会留下半恢复状态。创建手动版本也必须在同一事务中校验
+`expected_revision`，以确保快照对应客户端刚成功保存的当前内容。版本列表只读取
+元数据，SQLite 的 `created_at` 文本与 PostgreSQL 的 `TIMESTAMPTZ` 均在服务层转换为
+ISO 8601 UTC 字符串后返回客户端。
 
 ### mcp_keys MCP Key 表
 

@@ -25,6 +25,7 @@ import type {
   ResumeVersionSource,
 } from '@/types/resume'
 import type { PaginatedData, PaginationParams } from '@/types/pagination'
+import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/config/modules'
 
 export const AUTO_VERSION_WINDOW_MS = 10 * 60 * 1000
 export const AUTO_VERSION_RETENTION = 30
@@ -38,22 +39,28 @@ export class ResumeVersionLimitError extends Error {
 }
 
 export class ResumeVersionConflictError extends Error {
-  constructor() {
-    super('简历已在其他位置更新，请刷新后重试恢复')
+  constructor(message = '简历已在其他位置更新，请刷新后重试恢复') {
+    super(message)
     this.name = 'ResumeVersionConflictError'
   }
 }
 
-interface VersionRow extends ResumeVersion {
+interface VersionRow extends Omit<ResumeVersion, 'created_at'> {
+  created_at: unknown
   snapshot?: ResumeVersionSnapshot | string
 }
 
-function snapshotFor(resume: Resume): ResumeVersionSnapshot {
+export function snapshotFor(resume: Resume): ResumeVersionSnapshot {
+  const modulesConfig = resume.modules_config && Object.keys(resume.modules_config).length > 0
+    ? resume.modules_config
+    : DEFAULT_MODULES_CONFIG
   return {
     name: resume.name,
     template: (resume.template || 'classic') as ResumeTemplateId,
-    modules_config: resume.modules_config as ModulesConfig,
-    modules_order: (resume.modules_order || []) as ResumeModuleType[],
+    modules_config: modulesConfig as ModulesConfig,
+    modules_order: Array.isArray(resume.modules_order) && resume.modules_order.length > 0
+      ? resume.modules_order as ResumeModuleType[]
+      : DEFAULT_MODULES_ORDER,
     content: (resume.content || {}) as ResumeContent,
   }
 }
@@ -75,7 +82,7 @@ function toMetadata(row: VersionRow): ResumeVersion {
     revision: Number(row.revision),
     source: row.source,
     label: row.label,
-    created_at: row.created_at,
+    created_at: toVersionCreatedAt(row.created_at),
   }
 }
 
@@ -91,6 +98,14 @@ export function parseVersionCreatedAt(value: unknown): number {
   return Date.parse(
     value.includes('T') ? value : `${value.replace(' ', 'T')}Z`,
   )
+}
+
+/** Return one UTC representation regardless of SQLite TEXT or PostgreSQL Date. */
+export function toVersionCreatedAt(value: unknown): string {
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value !== 'string') return ''
+  const timestamp = parseVersionCreatedAt(value)
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : value
 }
 
 async function getOwnedResume(
@@ -207,11 +222,15 @@ export async function getResumeVersion(
 export async function createManualResumeVersion(
   resumeId: string,
   userId: string,
+  expectedRevision: number,
   label?: string,
 ): Promise<ResumeVersion> {
   return transaction(async (database) => {
     const resume = await getOwnedResume(database, resumeId, userId)
     if (!resume) throw new Error('简历不存在')
+    if (resume.revision !== expectedRevision) {
+      throw new ResumeVersionConflictError('简历已更新，请刷新后再保存版本')
+    }
 
     const existing = await findVersion(database, resume.id, resume.revision, 'manual')
     if (existing) return existing

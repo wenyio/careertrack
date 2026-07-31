@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Drawer, Empty, Input, Modal, Space, Spin, Typography } from 'antd'
+import { Alert, App, Button, Drawer, Empty, Input, Modal, Pagination, Space, Spin, Typography } from 'antd'
 import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import {
@@ -34,6 +34,7 @@ interface ResumeVersionHistoryDrawerProps {
   revision: number
   onClose: () => void
   onRestored: (resume: Resume) => void
+  flushCurrentSave?: () => Promise<number>
 }
 
 export default function ResumeVersionHistoryDrawer({
@@ -42,21 +43,50 @@ export default function ResumeVersionHistoryDrawer({
   revision,
   onClose,
   onRestored,
+  flushCurrentSave,
 }: ResumeVersionHistoryDrawerProps) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
   const [label, setLabel] = useState('')
   const [detail, setDetail] = useState<ResumeVersionDetail | null>(null)
   const [restoreCandidate, setRestoreCandidate] = useState<ResumeVersion | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const versions = useQuery({
-    queryKey: ['resume-versions', resumeId],
-    queryFn: () => getResumeVersions(resumeId),
+    queryKey: ['resume-versions', resumeId, page, pageSize],
+    queryFn: () => getResumeVersions(resumeId, page, pageSize),
     enabled: open,
   })
+  const pagination = versions.data?.pagination
+
+  useEffect(() => {
+    if (!pagination) return
+    const lastPage = Math.max(1, pagination.total_pages)
+    if (page <= lastPage) return
+    // Defer the correction until after React commits the stale page response.
+    // This refetches the final valid page when retention or a refresh shrinks it.
+    const timer = window.setTimeout(() => setPage(lastPage), 0)
+    return () => window.clearTimeout(timer)
+  }, [page, pagination])
+
+  const handleClose = () => {
+    setPage(1)
+    setDetail(null)
+    onClose()
+  }
+
   const createVersion = useMutation({
-    mutationFn: () => createResumeVersion(resumeId, label.trim() || undefined),
+    mutationFn: async () => {
+      if (!flushCurrentSave) throw new Error('当前编辑器不支持保存版本')
+      const expectedRevision = await flushCurrentSave()
+      return createResumeVersion(resumeId, {
+        expected_revision: expectedRevision,
+        label: label.trim() || undefined,
+      })
+    },
     onSuccess: () => {
       setLabel('')
+      setPage(1)
       void queryClient.invalidateQueries({ queryKey: ['resume-versions', resumeId] })
     },
     onError: (reason) => message.error(getErrorMessage(reason, '创建版本失败')),
@@ -64,6 +94,7 @@ export default function ResumeVersionHistoryDrawer({
   const loadDetail = useMutation({
     mutationFn: (versionId: string) => getResumeVersion(resumeId, versionId),
     onSuccess: setDetail,
+    onError: (reason) => message.error(getErrorMessage(reason, '加载版本详情失败')),
   })
   const restore = useMutation({
     mutationFn: (versionId: string) => restoreResumeVersion(resumeId, versionId, revision),
@@ -83,7 +114,7 @@ export default function ResumeVersionHistoryDrawer({
       <Drawer
         title="版本历史"
         open={open}
-        onClose={onClose}
+        onClose={handleClose}
         size={460}
         destroyOnHidden
       >
@@ -97,19 +128,31 @@ export default function ResumeVersionHistoryDrawer({
             maxLength={100}
             placeholder="版本标签（可选）"
             onChange={(event) => setLabel(event.target.value)}
-            onPressEnter={() => createVersion.mutate()}
+            onPressEnter={() => !createVersion.isPending && createVersion.mutate()}
+            disabled={createVersion.isPending}
           />
           <Button
             type="primary"
             icon={<HistoryOutlined />}
             aria-label="创建手动版本"
             loading={createVersion.isPending}
+            disabled={!flushCurrentSave}
             onClick={() => createVersion.mutate()}
           >
-            保存版本
+            {createVersion.isPending ? '正在保存并创建…' : '保存版本'}
           </Button>
         </Space.Compact>
-        {versions.isLoading ? <Spin aria-label="加载版本历史" /> : (
+        {createVersion.isPending && (
+          <Typography.Paragraph type="secondary">正在保存当前修改后创建版本，请勿重复提交。</Typography.Paragraph>
+        )}
+        {versions.isLoading ? <Spin aria-label="加载版本历史" /> : versions.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="版本历史加载失败"
+            action={<Button size="small" onClick={() => versions.refetch()}>重试</Button>}
+          />
+        ) : (
           versions.data?.items.length ? (
             <ul aria-label="版本记录" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {versions.data.items.map((version) => (
@@ -133,13 +176,37 @@ export default function ResumeVersionHistoryDrawer({
                     </Typography.Text>
                   </div>
                   <Space size={0}>
-                    <Button type="link" onClick={() => loadDetail.mutate(version.id)}>查看</Button>
-                    <Button type="link" danger onClick={() => setRestoreCandidate(version)}>恢复</Button>
+                    <Button
+                      type="link"
+                      aria-label={`查看版本 revision ${version.revision}${version.label ? ` ${version.label}` : ''}`}
+                      onClick={() => loadDetail.mutate(version.id)}
+                    >查看</Button>
+                    <Button
+                      type="link"
+                      danger
+                      aria-label={`恢复版本 revision ${version.revision}${version.label ? ` ${version.label}` : ''}`}
+                      onClick={() => setRestoreCandidate(version)}
+                    >恢复</Button>
                   </Space>
                 </li>
               ))}
             </ul>
           ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有版本记录" />
+        )}
+        {pagination && pagination.total > 0 && (
+          <nav aria-label="版本历史分页">
+            <Pagination
+              style={{ marginTop: 16 }}
+              current={page}
+              pageSize={pageSize}
+              total={pagination.total}
+              showSizeChanger
+              onChange={(nextPage, nextPageSize) => {
+                setPage(nextPage)
+                setPageSize(nextPageSize)
+              }}
+            />
+          </nav>
         )}
       </Drawer>
 

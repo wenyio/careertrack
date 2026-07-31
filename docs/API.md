@@ -480,14 +480,16 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 ### POST /api/resumes/:id/versions
 
-创建手动版本（需认证）。请求体可为空，或提供可选的 `label`（1–100 字符）：
+创建手动版本（需认证）。`expected_revision` 必填，客户端应先完成当前编辑保存并使用
+服务端返回的最新 revision；可选 `label` 为 1–100 字符：
 
 ```json
-{ "label": "投递前" }
+{ "expected_revision": 12, "label": "投递前" }
 ```
 
 同一简历、revision 与 `manual` 来源重复提交会返回已有逻辑版本；每份简历最多
-100 个手动版本，达到上限返回 `409 VERSION_LIMIT_REACHED`，不会静默删除数据。
+100 个手动版本，达到上限返回 `409 VERSION_LIMIT_REACHED`，不会静默删除数据。当前
+revision 不匹配时返回 `409 CONFLICT`，且不会写入旧快照。
 
 ### GET /api/resumes/:id/versions/:versionId
 

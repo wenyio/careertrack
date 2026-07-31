@@ -180,6 +180,11 @@ export interface ResumeVersionDetail extends ResumeVersion {
   snapshot: ResumeVersionSnapshot
 }
 
+export interface CreateResumeVersionRequest {
+  expected_revision: number
+  label?: string
+}
+
 /** 公开简历 DTO：不包含内部用户或简历标识。 */
 export interface PublicResume {
   name: string

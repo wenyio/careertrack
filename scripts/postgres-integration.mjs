@@ -225,9 +225,9 @@ async function runApiFlow() {
   )
   assert(
     migrationRows.rows.some(
-      (row) => row.version === '004_consolidate_postgres_resume_config',
+      (row) => row.version === '005_resume_versions',
     ),
-    'latest PostgreSQL migration was not applied',
+    'resume version PostgreSQL migration was not applied',
   )
 
   const adminLogin = await request('/api/auth/login', {
@@ -318,12 +318,75 @@ async function runApiFlow() {
   )
   assert(updatedResume.body.revision === 2, 'PostgreSQL revision did not increment')
 
+  const createdVersion = await request(`/api/resumes/${createdResume.body.id}/versions`, {
+    method: 'POST',
+    cookie: userCookie,
+    body: { label: 'PostgreSQL manual version', expected_revision: 2 },
+  })
+  assert(
+    createdVersion.response.status === 201,
+    `PostgreSQL manual version creation failed: ${createdVersion.text}`,
+  )
+  const versionId = createdVersion.body.id
+  const snapshotRow = await database.query(
+    `SELECT snapshot, pg_typeof(snapshot) AS snapshot_type
+     FROM resume_versions WHERE id = $1`,
+    [versionId],
+  )
+  assert(snapshotRow.rows[0]?.snapshot_type === 'jsonb', 'PostgreSQL version snapshot is not JSONB')
+  assert(
+    snapshotRow.rows[0]?.snapshot && !Array.isArray(snapshotRow.rows[0].snapshot),
+    'PostgreSQL version snapshot is not a JSONB object',
+  )
+
+  const versionList = await request(`/api/resumes/${createdResume.body.id}/versions`, {
+    cookie: userCookie,
+  })
+  assert(versionList.response.status === 200, `PostgreSQL version list failed: ${versionList.text}`)
+  assert(
+    Array.isArray(versionList.body) && versionList.body.every((version) => !('snapshot' in version)),
+    'PostgreSQL version list exposed snapshot data',
+  )
+  const versionDetail = await request(`/api/resumes/${createdResume.body.id}/versions/${versionId}`, {
+    cookie: userCookie,
+  })
+  assert(versionDetail.response.status === 200, `PostgreSQL version detail failed: ${versionDetail.text}`)
+  assert(
+    versionDetail.body?.snapshot?.content?.basic_info?.name === 'PostgreSQL User',
+    'PostgreSQL version detail did not return the complete snapshot',
+  )
+
   const staleUpdate = await request(`/api/resumes/${createdResume.body.id}`, {
     method: 'PUT',
     cookie: userCookie,
     body: { revision: 1, name: 'stale write' },
   })
   assert(staleUpdate.response.status === 409, 'PostgreSQL stale write was accepted')
+
+  const changedAfterVersion = await request(`/api/resumes/${createdResume.body.id}`, {
+    method: 'PUT',
+    cookie: userCookie,
+    body: { revision: 2, name: 'PostgreSQL changed after version' },
+  })
+  assert(
+    changedAfterVersion.response.status === 200 && changedAfterVersion.body.revision === 3,
+    `PostgreSQL post-version update failed: ${changedAfterVersion.text}`,
+  )
+  const restoredVersion = await request(`/api/resumes/${createdResume.body.id}/versions/${versionId}/restore`, {
+    method: 'POST',
+    cookie: userCookie,
+    body: { expected_revision: 3 },
+  })
+  assert(
+    restoredVersion.response.status === 200 && restoredVersion.body.revision === 4,
+    `PostgreSQL version restore failed: ${restoredVersion.text}`,
+  )
+  const staleVersion = await request(`/api/resumes/${createdResume.body.id}/versions`, {
+    method: 'POST',
+    cookie: userCookie,
+    body: { label: 'stale PostgreSQL version', expected_revision: 3 },
+  })
+  assert(staleVersion.response.status === 409, 'PostgreSQL stale manual version was accepted')
 
   const persistedResume = await database.query(
     'SELECT content FROM resumes WHERE id = $1',
@@ -489,6 +552,7 @@ try {
       'postgres-migrations',
       'postgres-registration-transaction',
       'postgres-jsonb-resume-revision',
+      'postgres-jsonb-resume-versions',
       'postgres-totp-recovery',
       'postgres-legacy-config-consolidation',
     ],

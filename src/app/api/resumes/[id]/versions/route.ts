@@ -2,6 +2,7 @@ import { error, paginatedSuccess, success, withAuth } from '@/lib/api'
 import { parseJsonBody, parseRouteParams, parseSearchParams } from '@/lib/api-validation'
 import {
   createManualResumeVersion,
+  ResumeVersionConflictError,
   ResumeVersionLimitError,
   listResumeVersions,
 } from '@/lib/services/resume-version'
@@ -39,21 +40,23 @@ export async function POST(
   return withAuth(request, async (user) => {
     const parsedParams = await parseRouteParams(params, idPathParamsSchema)
     if (!parsedParams.success) return parsedParams.response
-    const parsedBody = await parseJsonBody(request, createResumeVersionBodySchema, {
-      allowEmpty: true,
-    })
+    const parsedBody = await parseJsonBody(request, createResumeVersionBodySchema)
     if (!parsedBody.success) return parsedBody.response
 
     try {
       const version = await createManualResumeVersion(
         parsedParams.data.id,
         user.id,
+        parsedBody.data.expected_revision,
         parsedBody.data.label,
       )
       return success(version, 201)
     } catch (reason) {
       if (reason instanceof ResumeVersionLimitError) {
         return error(reason.message, 409, 'VERSION_LIMIT_REACHED')
+      }
+      if (reason instanceof ResumeVersionConflictError) {
+        return error(reason.message, 409)
       }
       if (reason instanceof Error && reason.message === '简历不存在') {
         return error(reason.message, 404)

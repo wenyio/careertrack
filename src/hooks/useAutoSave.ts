@@ -26,6 +26,8 @@ interface UseAutoSaveOptions {
   delay?: number
 }
 
+type SaveResult = { revision?: number } | void
+
 export function useAutoSave({
   isInitializedRef,
   updateResume,
@@ -41,6 +43,20 @@ export function useAutoSave({
   const saveRequestedRef = useRef(false)
   const manualRequestedRef = useRef(false)
   const mountedRef = useRef(true)
+  const lastSaveResultRef = useRef<SaveResult>(undefined)
+  const lastSaveErrorRef = useRef<unknown>(undefined)
+  const flushWaitersRef = useRef<Array<{
+    resolve: (result: SaveResult) => void
+    reject: (reason: unknown) => void
+  }>>([])
+
+  const settleFlushWaiters = useCallback(() => {
+    const waiters = flushWaitersRef.current.splice(0)
+    for (const waiter of waiters) {
+      if (lastSaveErrorRef.current) waiter.reject(lastSaveErrorRef.current)
+      else waiter.resolve(lastSaveResultRef.current)
+    }
+  }, [])
 
   const scheduleIdle = useCallback(() => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
@@ -66,10 +82,13 @@ export function useAutoSave({
         try {
           const result = await updateResume(getCurrentData())
           if (!mountedRef.current) return
+          lastSaveResultRef.current = result
+          lastSaveErrorRef.current = undefined
           onSaveSuccess?.(result)
           setSaveStatus(isManual ? 'manual_saved' : 'saved')
           scheduleIdle()
-        } catch {
+        } catch (saveError) {
+          lastSaveErrorRef.current = saveError
           if (mountedRef.current) setSaveStatus('error')
           saveRequestedRef.current = false
           manualRequestedRef.current = false
@@ -77,12 +96,14 @@ export function useAutoSave({
       }
     } finally {
       processingRef.current = false
+      if (!saveRequestedRef.current) settleFlushWaiters()
     }
   }, [
     getCurrentData,
     isInitializedRef,
     onSaveSuccess,
     scheduleIdle,
+    settleFlushWaiters,
     setSaveStatus,
     updateResume,
   ])
@@ -117,6 +138,21 @@ export function useAutoSave({
     requestSave(true)
   }, [requestSave])
 
+  /**
+   * Use the existing single-flight queue to persist the newest editor state.
+   * Version creation awaits this instead of issuing a competing PUT request.
+   */
+  const flushSave = useCallback(async (): Promise<SaveResult> => {
+    if (!isInitializedRef.current) throw new Error('简历尚未加载完成')
+    if (timerRef.current) clearTimeout(timerRef.current)
+    lastManualSaveRef.current = Date.now()
+    const completion = new Promise<SaveResult>((resolve, reject) => {
+      flushWaitersRef.current.push({ resolve, reject })
+    })
+    requestSave(true)
+    return completion
+  }, [isInitializedRef, requestSave])
+
   // 清理
   useEffect(() => {
     mountedRef.current = true
@@ -130,5 +166,6 @@ export function useAutoSave({
   return {
     triggerAutoSave,
     handleManualSave,
+    flushSave,
   }
 }

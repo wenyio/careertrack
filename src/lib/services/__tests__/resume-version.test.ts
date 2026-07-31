@@ -15,7 +15,10 @@ import {
   restoreResumeVersion,
   ResumeVersionConflictError,
   ResumeVersionLimitError,
+  snapshotFor,
+  toVersionCreatedAt,
 } from '@/lib/services/resume-version'
+import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/config/modules'
 
 let directory: string
 let previousDatabasePath: string | undefined
@@ -49,12 +52,30 @@ describe('resume version service', () => {
     const timestamp = Date.parse('2026-07-31T03:00:00.000Z')
     expect(parseVersionCreatedAt(new Date(timestamp))).toBe(timestamp)
     expect(parseVersionCreatedAt('2026-07-31 03:00:00')).toBe(timestamp)
+    expect(toVersionCreatedAt(new Date(timestamp))).toBe('2026-07-31T03:00:00.000Z')
+    expect(toVersionCreatedAt('2026-07-31 03:00:00')).toBe('2026-07-31T03:00:00.000Z')
+  })
+
+  it('uses default module settings for legacy resumes with empty module fields', () => {
+    const snapshot = snapshotFor({
+      id: resumeId,
+      user_id: userId,
+      name: '旧简历',
+      content: {},
+      modules_config: {} as never,
+      modules_order: [],
+      revision: 1,
+      created_at: '',
+      updated_at: '',
+    })
+    expect(snapshot.modules_config).toEqual(DEFAULT_MODULES_CONFIG)
+    expect(snapshot.modules_order).toEqual(DEFAULT_MODULES_ORDER)
   })
 
   it('enforces ownership, returns metadata without snapshot, and creates manual versions idempotently', async () => {
-    await expect(createManualResumeVersion(resumeId, otherUserId)).rejects.toThrow('简历不存在')
-    const first = await createManualResumeVersion(resumeId, userId, '投递前')
-    const repeated = await createManualResumeVersion(resumeId, userId, 'ignored')
+    await expect(createManualResumeVersion(resumeId, otherUserId, 1)).rejects.toThrow('简历不存在')
+    const first = await createManualResumeVersion(resumeId, userId, 1, '投递前')
+    const repeated = await createManualResumeVersion(resumeId, userId, 1, 'ignored')
     expect(repeated.id).toBe(first.id)
 
     const versions = await listResumeVersions(resumeId)
@@ -106,7 +127,7 @@ describe('resume version service', () => {
       )
       await database('UPDATE resumes SET revision = $1 WHERE id = $2', [MANUAL_VERSION_LIMIT + 1, resumeId])
     })
-    await expect(createManualResumeVersion(resumeId, userId)).rejects.toBeInstanceOf(ResumeVersionLimitError)
+    await expect(createManualResumeVersion(resumeId, userId, MANUAL_VERSION_LIMIT + 1)).rejects.toBeInstanceOf(ResumeVersionLimitError)
     const restoreRows = await transaction((database) => database(
       "SELECT id FROM resume_versions WHERE resume_id = $1 AND source = 'restore'", [resumeId],
     ))
@@ -114,7 +135,7 @@ describe('resume version service', () => {
   })
 
   it('restores atomically with a higher revision and rejects stale expected revisions', async () => {
-    const version = await createManualResumeVersion(resumeId, userId)
+    const version = await createManualResumeVersion(resumeId, userId, 1)
     await transaction((database) => database(
       "UPDATE resumes SET content = $1, revision = 2 WHERE id = $2",
       [JSON.stringify({ summary: '版本二' }), resumeId],
@@ -133,7 +154,7 @@ describe('resume version service', () => {
   })
 
   it('rolls back the resume update when recording the restore snapshot fails', async () => {
-    const version = await createManualResumeVersion(resumeId, userId)
+    const version = await createManualResumeVersion(resumeId, userId, 1)
     await transaction(async (database) => {
       await database(
         "UPDATE resumes SET content = $1, revision = 2 WHERE id = $2",
@@ -155,5 +176,19 @@ describe('resume version service', () => {
       'SELECT revision, content FROM resumes WHERE id = $1', [resumeId],
     ))
     expect(current.rows[0]).toMatchObject({ revision: 2, content: { summary: '恢复前内容' } })
+  })
+
+  it('rejects a manual snapshot when the current revision has changed', async () => {
+    await transaction((database) => database(
+      'UPDATE resumes SET revision = 2 WHERE id = $1', [resumeId],
+    ))
+
+    await expect(createManualResumeVersion(resumeId, userId, 1))
+      .rejects.toBeInstanceOf(ResumeVersionConflictError)
+    const versions = await transaction((database) => database<{ total: number }>(
+      "SELECT COUNT(*)::int AS total FROM resume_versions WHERE resume_id = $1 AND source = 'manual'",
+      [resumeId],
+    ))
+    expect(versions.rows[0].total).toBe(0)
   })
 })

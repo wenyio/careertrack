@@ -42,6 +42,7 @@ interface ResumeEditorShellProps {
   resumeId?: string
   revision?: number
   onResumeRestored?: (resume: Resume) => void
+  flushCurrentSave?: () => Promise<number>
 }
 
 export default function ResumeEditorShell({
@@ -58,6 +59,7 @@ export default function ResumeEditorShell({
   resumeId,
   revision,
   onResumeRestored,
+  flushCurrentSave,
 }: ResumeEditorShellProps) {
   const router = useRouter()
 
@@ -128,6 +130,7 @@ export default function ResumeEditorShell({
         hidePublic={hidePublic}
         revision={revision}
         onResumeRestored={onResumeRestored}
+        flushCurrentSave={flushCurrentSave}
       />
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
