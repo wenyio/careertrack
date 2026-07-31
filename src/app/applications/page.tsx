@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dayjs from 'dayjs'
-import { Alert, Button, Card, Col, DatePicker, Drawer, Empty, Form, Grid, Input, List, Popconfirm, Progress, Row, Select, Space, Spin, Statistic, Tabs, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, DatePicker, Drawer, Empty, Form, Grid, Input, Popconfirm, Progress, Row, Select, Space, Spin, Statistic, Tabs, Tag, Typography } from 'antd'
 import { CalendarOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined, ExportOutlined, PlusOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useJobApplicationActions, useJobApplicationMutations, useJobApplicationSummary, useJobApplications } from '@/hooks/useJobApplications'
@@ -174,25 +174,24 @@ export default function ApplicationsPage() {
       <Button type="text" icon={<EditOutlined />} aria-label={`编辑 ${item.company} 的申请`} onClick={() => setEditing(item)} />
       <Popconfirm title="删除这条求职申请？" okText="删除" cancelText="取消" onConfirm={() => remove.mutate(item.id)}><Button type="text" danger icon={<DeleteOutlined />} aria-label={`删除 ${item.company} 的申请`} /></Popconfirm>
     </Space>
-    return <List.Item key={item.id} style={overdue ? { background: '#fff2f0', margin: '0 -24px', padding: '16px 24px' } : undefined} actions={[actions]}>
-      <List.Item.Meta
-        title={title}
-        description={<Space orientation="vertical" size={4}>
+    return <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '16px 0', borderBottom: '1px solid #f0f0f0', ...(overdue ? { background: '#fff2f0', margin: '0 -24px', padding: '16px 24px' } : {}) }}>
+      <Space orientation="vertical" size={4} style={{ flex: 1, minWidth: 0 }}>
+        {title}
+        <Space orientation="vertical" size={4}>
           <Space wrap separator={<span>·</span>}><span>{item.location || '地点未填写'}</span>{item.salary && <span>薪资：{item.salary}</span>}{item.channel && <span>渠道：{item.channel}</span>}{item.applied_at && <span>投递：{item.applied_at}</span>}{item.next_action_at && <strong><CalendarOutlined /> 下次跟进：{item.next_action_at}</strong>}{item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`}>职位链接 <ExportOutlined /></a>}{item.resume_id && <span>简历：{item.resume_name || '已删除'}{item.resume_version_revision ? ` · r${item.resume_version_revision}` : ''}</span>}</Space>
           {item.notes && <Typography.Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>{item.notes}</Typography.Text>}
-        </Space>}
-      />
-    </List.Item>
+        </Space>
+      </Space>
+      {actions}
+    </div>
   }
   const renderStageView = () => {
     const stageRows = [...APPLICATION_STAGE_ORDER, 'rejected' as const, 'withdrawn' as const]
-    return <List
-      aria-label="阶段视图"
-      dataSource={stageRows}
-      renderItem={(stage) => {
+    return <div aria-label="阶段视图" style={{ display: 'flex', flexDirection: 'column' }}>
+      {stageRows.map((stage) => {
         const items = applications.filter((item) => item.status === stage)
         const count = summary?.by_status[stage] || 0
-        return <List.Item>
+        return <div key={stage} style={{ padding: '14px 0', borderBottom: '1px solid #f0f0f0' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr)', gap: 16, width: '100%', alignItems: 'start' }}>
             <Space size={8}>
               <Tag color={STATUS_COLORS[stage]}>{STATUS_LABELS[stage]}</Tag>
@@ -202,9 +201,9 @@ export default function ApplicationsPage() {
               {items.map((item) => <Button key={item.id} size="small" onClick={() => openDetail(item)}>{item.company} · {item.position}{item.next_action_at ? ` · ${item.next_action_at}` : ''}</Button>)}
             </Space> : <Typography.Text type="secondary">当前页暂无</Typography.Text>}
           </div>
-        </List.Item>
-      }}
-    />
+        </div>
+      })}
+    </div>
   }
 
   return <PageContainer
@@ -218,19 +217,13 @@ export default function ApplicationsPage() {
       <Row gutter={[20, 16]} align="top">
         <Col xs={24} lg={15}>
           <Card title="优先处理" extra={<Button type="link" onClick={() => setView('all')}>查看全部</Button>} styles={{ body: { padding: priorityItems.length ? '0 24px' : 24 } }}>
-            {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂时没有需要处理的申请" style={{ margin: '24px 0' }} /> : <List
-              dataSource={priorityItems}
-              split
-              renderItem={({ item, tone, label, description }, index) => <List.Item actions={[
-                <Button key="follow-up" size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, 'follow_up')}>记录跟进</Button>,
-                <Button key="interview" size="small" onClick={() => openDetail(item, 'interview')}>面试</Button>,
-              ]}>
+            {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂时没有需要处理的申请" style={{ margin: '24px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, tone, label, description }, index) => <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '16px 0', borderBottom: index < priorityItems.length - 1 ? '1px solid #f0f0f0' : undefined }}>
                 <Space orientation="vertical" size={4}>
                   <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag><Tag color={tone}>{label}</Tag></Space>
                   <Typography.Text type={tone === 'error' ? 'danger' : 'secondary'}><ClockCircleOutlined /> {description}</Typography.Text>
                 </Space>
-              </List.Item>}
-            />}
+                <Space><Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, 'follow_up')}>记录跟进</Button><Button size="small" onClick={() => openDetail(item, 'interview')}>面试</Button></Space>
+              </div>)}</div>}
           </Card>
         </Col>
         <Col xs={24} lg={9}>
@@ -263,7 +256,7 @@ export default function ApplicationsPage() {
         </Space>
       {view === 'stages' && renderStageView()}
       {view !== 'stages' && <>
-      {isLoading ? <div style={{ textAlign: 'center', padding: 80 }} aria-label="正在加载求职申请"><Spin /></div> : displayedApplications.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={q || status !== 'all' ? '没有符合条件的申请' : '还没有求职申请'} style={{ margin: '32px 0' }}><Button type="primary" onClick={() => setEditing(null)}>创建第一条申请</Button></Empty> : <List dataSource={displayedApplications} renderItem={renderApplicationCard} />}
+      {isLoading ? <div style={{ textAlign: 'center', padding: 80 }} aria-label="正在加载求职申请"><Spin /></div> : displayedApplications.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={q || status !== 'all' ? '没有符合条件的申请' : '还没有求职申请'} style={{ margin: '32px 0' }}><Button type="primary" onClick={() => setEditing(null)}>创建第一条申请</Button></Empty> : <div aria-label="求职申请列表">{displayedApplications.map(renderApplicationCard)}</div>}
       {data && data.pagination.total_pages > 1 && <div><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</Button><span style={{ margin: '0 12px' }}>第 {page} / {data.pagination.total_pages} 页</span><Button disabled={page >= data.pagination.total_pages} onClick={() => setPage(page + 1)}>下一页</Button></div>}
       </>}
       </Card>
