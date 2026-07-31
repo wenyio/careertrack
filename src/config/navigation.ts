@@ -12,6 +12,7 @@ import {
   ApiOutlined,
   TeamOutlined,
   FileTextOutlined,
+  FundProjectionScreenOutlined,
   KeyOutlined,
 } from '@ant-design/icons'
 
@@ -35,6 +36,13 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     label: '我的简历',
     href: '/resumes',
     match: (p) => p.startsWith('/resumes') && !p.includes('/edit'),
+  },
+  {
+    key: '/applications',
+    label: '求职进展',
+    href: '/applications',
+    icon: FundProjectionScreenOutlined,
+    match: (p) => p.startsWith('/applications'),
   },
   {
     key: '/admin',

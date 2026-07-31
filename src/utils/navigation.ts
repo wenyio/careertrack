@@ -29,6 +29,11 @@ export function isResumeEditorRoute(pathname: string): boolean {
   return /^\/resumes\/[^/]+\/edit$/.test(pathname)
 }
 
+/** /applications is authenticated-only; it intentionally has no guest mode. */
+export function isApplicationsRoute(pathname: string): boolean {
+  return pathname === '/applications'
+}
+
 /** /resume/* 公开简历页（注意：不含 /resumes） */
 export function isPublicResumeRoute(pathname: string): boolean {
   return pathname.startsWith('/resume/')

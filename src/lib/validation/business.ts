@@ -261,6 +261,80 @@ export const publishResumeBodySchema = z.object({
     ),
 })
 
+export const jobApplicationStatusSchema = z.enum([
+  'wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn',
+])
+
+const optionalApplicationText = (max: number, label: string) => z.string({ error: `${label}必须是字符串` })
+  .trim()
+  .max(max, `${label}不能超过 ${max} 个字符`)
+  .nullable()
+  .optional()
+
+const applicationDateSchema = z.string({ error: '日期必须是 YYYY-MM-DD 格式' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, '日期必须是 YYYY-MM-DD 格式')
+  .refine((value) => {
+    const [year, month, day] = value.split('-').map(Number)
+    const parsed = new Date(Date.UTC(year, month - 1, day))
+    return parsed.getUTCFullYear() === year
+      && parsed.getUTCMonth() === month - 1
+      && parsed.getUTCDate() === day
+  }, '日期无效')
+  .nullable()
+  .optional()
+
+const applicationUrlSchema = z.string({ error: '职位链接必须是字符串' })
+  .trim()
+  .max(2048, '职位链接不能超过 2048 个字符')
+  .refine((value) => !value || /^https?:\/\//i.test(value), '职位链接仅支持 http 或 https')
+  .refine((value) => {
+    if (!value) return true
+    try {
+      return ['http:', 'https:'].includes(new URL(value).protocol)
+    } catch {
+      return false
+    }
+  }, '职位链接格式无效')
+  .nullable()
+  .optional()
+
+const applicationFieldsSchema = z.object({
+  company: z.string({ error: '公司名称不能为空' }).trim().min(1, '公司名称不能为空').max(120, '公司名称不能超过 120 个字符'),
+  position: z.string({ error: '职位名称不能为空' }).trim().min(1, '职位名称不能为空').max(120, '职位名称不能超过 120 个字符'),
+  status: jobApplicationStatusSchema.optional(),
+  job_url: applicationUrlSchema,
+  location: optionalApplicationText(120, '地点'),
+  channel: optionalApplicationText(80, '投递渠道'),
+  salary: optionalApplicationText(80, '薪资'),
+  notes: optionalApplicationText(5000, '备注'),
+  applied_at: applicationDateSchema,
+  next_action_at: applicationDateSchema,
+  resume_id: z.string().uuid('简历 ID 格式错误').nullable().optional(),
+  resume_version_id: z.string().uuid('简历版本 ID 格式错误').nullable().optional(),
+})
+
+export const createJobApplicationBodySchema = applicationFieldsSchema.extend({
+  status: jobApplicationStatusSchema.default('wishlist'),
+}).superRefine((body, context) => {
+  if (!body.resume_id && body.resume_version_id) {
+    context.addIssue({ code: 'custom', path: ['resume_version_id'], message: '选择简历版本时必须同时选择简历' })
+  }
+})
+
+export const updateJobApplicationBodySchema = applicationFieldsSchema.partial().extend({
+  expected_revision: z.number({ error: 'expected_revision 必须是整数' }).int('expected_revision 必须是整数').positive('expected_revision 必须大于 0'),
+}).superRefine((body, context) => {
+  if (body.resume_id === null && body.resume_version_id && body.resume_version_id !== null) {
+    context.addIssue({ code: 'custom', path: ['resume_version_id'], message: '未关联简历时不能关联简历版本' })
+  }
+  if (body.resume_id === undefined && body.resume_version_id && body.resume_version_id !== null) {
+    context.addIssue({ code: 'custom', path: ['resume_id'], message: '更新简历版本时必须同时提供简历' })
+  }
+  if (Object.keys(body).length === 1) {
+    context.addIssue({ code: 'custom', message: '没有需要更新的字段' })
+  }
+})
+
 export const createMcpKeyBodySchema = z.object({
   scope: z.enum(['read_write', 'read_only'], {
     error: 'scope 必须是 read_write 或 read_only',

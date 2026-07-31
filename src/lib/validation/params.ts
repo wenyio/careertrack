@@ -84,6 +84,25 @@ export const registrationCodesQuerySchema = z.object({
 
 export const resumesQuerySchema = z.object(paginationQueryShape)
 
+export const jobApplicationsQuerySchema = z.object({
+  q: searchTextSchema,
+  status: z.enum(['all', 'wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'], {
+    error: '无效的申请状态',
+  }).default('all'),
+  page: paginationQueryShape.page,
+  page_size: paginationQueryShape.page_size.optional(),
+  pageSize: paginationQueryShape.page_size.optional(),
+}).superRefine((value, context) => {
+  if (value.page_size !== undefined && value.pageSize !== undefined) {
+    context.addIssue({ code: 'custom', path: ['pageSize'], message: 'page_size 与 pageSize 不能同时提供' })
+  }
+}).transform((value) => ({
+  page: value.page,
+  page_size: value.page_size ?? value.pageSize ?? DEFAULT_PAGE_SIZE,
+  q: value.q,
+  status: value.status,
+}))
+
 export const paginationQuerySchema = z.object(paginationQueryShape)
 
 export const mcpKeyActionQuerySchema = z.object({

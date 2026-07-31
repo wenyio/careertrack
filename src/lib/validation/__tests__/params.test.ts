@@ -7,6 +7,7 @@ import {
 import {
   adminResumesQuerySchema,
   idPathParamsSchema,
+  jobApplicationsQuerySchema,
   mcpKeyActionQuerySchema,
   registrationCodesQuerySchema,
   resumesQuerySchema,
@@ -73,6 +74,19 @@ describe('route and query parameter validation', () => {
         new Request(`http://localhost/api/resumes${query}`),
         resumesQuerySchema,
       ).success).toBe(false)
+    }
+  })
+
+  it('supports job application search, status and pageSize compatibility', () => {
+    expect(parseSearchParams(
+      new Request('http://localhost/api/job-applications?q=%20Acme%20&status=applied&page=2&pageSize=10'),
+      jobApplicationsQuerySchema,
+    )).toEqual({
+      success: true,
+      data: { q: 'Acme', status: 'applied', page: 2, page_size: 10 },
+    })
+    for (const query of ['?status=paused', `?q=${'x'.repeat(101)}`, '?page_size=10&pageSize=10']) {
+      expect(parseSearchParams(new Request(`http://localhost/api/job-applications${query}`), jobApplicationsQuerySchema).success).toBe(false)
     }
   })
 

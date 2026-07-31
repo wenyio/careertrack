@@ -202,6 +202,49 @@ const migrations: Migration[] = [
       )
     },
   },
+  {
+    version: '006_job_applications',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        await query(
+          `CREATE TABLE IF NOT EXISTS job_applications (
+             id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
+             user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             company VARCHAR(120) NOT NULL,
+             position VARCHAR(120) NOT NULL,
+             status VARCHAR(20) NOT NULL CHECK (status IN ('wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn')),
+             job_url TEXT, location VARCHAR(120), channel VARCHAR(80), salary VARCHAR(80), notes TEXT,
+             applied_at TEXT, next_action_at TEXT,
+             status_changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+             resume_id TEXT REFERENCES resumes(id) ON DELETE SET NULL,
+             resume_version_id TEXT REFERENCES resume_versions(id) ON DELETE SET NULL,
+             revision INTEGER NOT NULL DEFAULT 1,
+             created_at TEXT NOT NULL DEFAULT (datetime('now')),
+             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )`,
+        )
+      } else {
+        await query(
+          `CREATE TABLE IF NOT EXISTS job_applications (
+             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+             company VARCHAR(120) NOT NULL, position VARCHAR(120) NOT NULL,
+             status VARCHAR(20) NOT NULL CHECK (status IN ('wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn')),
+             job_url TEXT, location VARCHAR(120), channel VARCHAR(80), salary VARCHAR(80), notes TEXT,
+             applied_at TIMESTAMPTZ, next_action_at TIMESTAMPTZ,
+             status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+             resume_id UUID REFERENCES resumes(id) ON DELETE SET NULL,
+             resume_version_id UUID REFERENCES resume_versions(id) ON DELETE SET NULL,
+             revision INTEGER NOT NULL DEFAULT 1,
+             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+           )`,
+        )
+      }
+      await query('CREATE INDEX IF NOT EXISTS idx_job_applications_user_status_updated ON job_applications(user_id, status, updated_at DESC, id DESC)')
+      await query('CREATE INDEX IF NOT EXISTS idx_job_applications_user_updated ON job_applications(user_id, updated_at DESC, id DESC)')
+      await query('CREATE INDEX IF NOT EXISTS idx_job_applications_next_action ON job_applications(user_id, next_action_at, id)')
+    },
+  },
 ]
 
 export async function runMigrations(

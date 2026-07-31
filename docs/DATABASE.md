@@ -182,6 +182,8 @@ CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabl
   `content`；已有 `content` 键优先，完成后删除旧列，使双驱动恢复同一存储模型
 - `005_resume_versions` 创建 `resume_versions`；SQLite 使用 JSON 文本、PostgreSQL
   使用 JSONB，来源约束、唯一键和列表索引保持相同语义
+- `006_job_applications` 创建求职申请表及用户/状态/更新时间、用户/跟进时间索引；
+  `resume_id` 和 `resume_version_id` 在简历或版本删除时均置空，用户删除级联清理申请
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
@@ -467,6 +469,34 @@ CREATE INDEX idx_resume_versions_auto_created ON resume_versions(resume_id, sour
 `expected_revision`，以确保快照对应客户端刚成功保存的当前内容。版本列表只读取
 元数据，SQLite 的 `created_at` 文本与 PostgreSQL 的 `TIMESTAMPTZ` 均在服务层转换为
 ISO 8601 UTC 字符串后返回客户端。
+
+### job_applications 求职申请表
+
+申请记录使用稳定英文状态枚举：`wishlist`、`applied`、`screening`、`interview`、
+`offer`、`rejected`、`withdrawn`；中文显示文案仅由客户端映射。`revision` 是申请本身的
+乐观并发令牌，`status_changed_at` 只在状态实际变化时更新。申请不保存简历 JSON：
+`resume_version_id` 指向实际投递快照，并在服务层通过 `resume_id -> resumes.user_id` 联表
+校验所有权。只选简历时创建或复用 `source=application` 的当前快照；自动保留策略从不清理
+该来源。删除简历或版本会将相关引用置空，删除用户则级联删除其申请。
+
+```sql
+CREATE TABLE job_applications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    company VARCHAR(120) NOT NULL,
+    position VARCHAR(120) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn')),
+    job_url TEXT, location VARCHAR(120), channel VARCHAR(80), salary VARCHAR(80), notes TEXT,
+    applied_at TIMESTAMPTZ, next_action_at TIMESTAMPTZ,
+    status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resume_id UUID REFERENCES resumes(id) ON DELETE SET NULL,
+    resume_version_id UUID REFERENCES resume_versions(id) ON DELETE SET NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_job_applications_user_status_updated ON job_applications(user_id, status, updated_at DESC, id DESC);
+CREATE INDEX idx_job_applications_next_action ON job_applications(user_id, next_action_at, id);
+```
 
 ### mcp_keys MCP Key 表
 

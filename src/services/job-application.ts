@@ -1,0 +1,30 @@
+import api from './api'
+import { parsePaginatedResponse } from './pagination'
+import type { CreateJobApplicationRequest, JobApplication, JobApplicationStatus, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { PaginatedData } from '@/types/pagination'
+
+export async function getJobApplications(options: { page?: number; pageSize?: number; q?: string; status?: 'all' | JobApplicationStatus } = {}): Promise<PaginatedData<JobApplication>> {
+  const page = options.page || 1
+  const pageSize = options.pageSize || 20
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (options.q) params.set('q', options.q)
+  if (options.status && options.status !== 'all') params.set('status', options.status)
+  const response = await api.get<JobApplication[]>(`/job-applications?${params}`)
+  return parsePaginatedResponse(response, page, pageSize)
+}
+
+export async function getJobApplication(id: string): Promise<JobApplication> {
+  return (await api.get<JobApplication>(`/job-applications/${id}`)).data
+}
+
+export async function createJobApplication(data: CreateJobApplicationRequest): Promise<JobApplication> {
+  return (await api.post<JobApplication>('/job-applications', data)).data
+}
+
+export async function updateJobApplication(id: string, data: UpdateJobApplicationRequest): Promise<JobApplication> {
+  return (await api.put<JobApplication>(`/job-applications/${id}`, data)).data
+}
+
+export async function deleteJobApplication(id: string): Promise<void> {
+  await api.delete(`/job-applications/${id}`)
+}

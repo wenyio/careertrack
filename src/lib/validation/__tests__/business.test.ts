@@ -12,6 +12,8 @@ import {
   profileUpdateBodySchema,
   publishResumeBodySchema,
   updateResumeBodySchema,
+  createJobApplicationBodySchema,
+  updateJobApplicationBodySchema,
 } from '@/lib/validation/business'
 import {
   adminBatchDeleteUsersBodySchema,
@@ -20,6 +22,19 @@ import {
 } from '@/lib/validation/admin'
 
 describe('business request validation', () => {
+  it('validates job application status, lengths, URLs, dates and optimistic updates', () => {
+    const valid = createJobApplicationBodySchema.safeParse({
+      company: '示例公司', position: '工程师', status: 'applied',
+      job_url: 'https://example.com/jobs/1', applied_at: '2026-07-31', next_action_at: '2026-08-01',
+    })
+    expect(valid.success).toBe(true)
+    expect(createJobApplicationBodySchema.safeParse({ company: 'x', position: 'y', status: 'unknown' }).success).toBe(false)
+    expect(createJobApplicationBodySchema.safeParse({ company: 'x'.repeat(121), position: 'y' }).success).toBe(false)
+    expect(createJobApplicationBodySchema.safeParse({ company: 'x', position: 'y', job_url: 'ftp://example.com' }).success).toBe(false)
+    expect(createJobApplicationBodySchema.safeParse({ company: 'x', position: 'y', applied_at: '2026-02-30' }).success).toBe(false)
+    expect(updateJobApplicationBodySchema.safeParse({ expected_revision: 1 }).success).toBe(false)
+    expect(updateJobApplicationBodySchema.safeParse({ expected_revision: 1, notes: '已跟进' }).success).toBe(true)
+  })
   it('normalizes resume names and rejects empty updates', () => {
     expect(createResumeBodySchema.parse({
       name: '  我的简历  ',

@@ -18,6 +18,7 @@ An Open-Source Career Portfolio & Resume Platform
 - **实时预览** - 编辑简历时实时查看效果，支持 4 套简历模板（classic、modern、minimal、black-white）
 - **PDF 导出** - 一键导出高质量 PDF 简历（浏览器原生打印方案）
 - **简历公开** - 生成公开链接，可作为个人主页访问，支持 SEO 优化和分享预览图
+- **求职申请跟踪** - 登录用户可记录投递进展、跟进日期和实际投递的简历版本；首版不含提醒、统计、时间线或游客模式
 - **安全认证** - HttpOnly Cookie + 服务端可撤销会话 + 加密 TOTP/一次性恢复码 + GitHub OAuth
 - **游客模式** - 无需注册即可本地离线创建和编辑简历，注册后可一键导入
 - **MCP 服务** - 通过 MCP 协议供 AI Agent 访问和编辑简历数据

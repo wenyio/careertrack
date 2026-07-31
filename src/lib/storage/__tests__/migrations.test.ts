@@ -98,11 +98,22 @@ describe('versioned storage migrations', () => {
     expect(versions).toContain('003_encrypt_totp_and_recovery_codes')
     expect(versions).toContain('004_consolidate_postgres_resume_config')
     expect(versions).toContain('005_resume_versions')
+    expect(versions).toContain('006_job_applications')
 
     const versionTable = database.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",
     ).get()
     expect(versionTable).toBeTruthy()
+    const applicationTable = database.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'job_applications'",
+    ).get()
+    const applicationIndexes = database.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'job_applications'",
+    ).all().map((row) => row.name)
+    expect(applicationTable).toBeTruthy()
+    expect(applicationIndexes).toEqual(expect.arrayContaining([
+      'idx_job_applications_user_status_updated', 'idx_job_applications_next_action',
+    ]))
     database.close()
   })
 })

@@ -368,6 +368,41 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 ---
 
+## 求职申请跟踪
+
+以下接口仅支持登录用户；不提供游客、MCP、公开或后台入口。列表沿用数组响应体和
+`X-Page`、`X-Page-Size`、`X-Total-Count`、`X-Total-Pages` 分页头，支持 `page`、
+`page_size`（也兼容 `pageSize`）、`q`（公司/职位，最多 100 字）和 `status`。
+
+### GET /api/job-applications
+
+返回当前用户的申请列表，按 `updated_at DESC, id DESC` 稳定排序。`status` 可为
+`all` 或稳定英文枚举 `wishlist`、`applied`、`screening`、`interview`、`offer`、
+`rejected`、`withdrawn`。
+
+### POST /api/job-applications
+
+创建申请。`company`、`position` 必填（各最多 120 字），`status` 默认为 `wishlist`；
+`job_url` 可空但只能为 http/https，`notes` 最多 5,000 字，日期使用 `YYYY-MM-DD`。
+可选 `resume_id` 和 `resume_version_id`。若只提供 `resume_id`，服务端在事务中创建或复用
+该用户当前简历的 `application` 快照；若提供版本，必须属于该用户及所选简历。成功返回 `201`。
+
+### GET /api/job-applications/:id
+
+返回当前用户的一条申请；不存在或不属于当前用户均返回 `404 NOT_FOUND`。
+
+### PUT /api/job-applications/:id
+
+部分更新，但必须提交正整数 `expected_revision`。服务端以用户 ID 和 revision 条件更新；
+过期 revision 返回 `409 CONFLICT`，不存在或越权统一返回 `404`。状态实际变化时更新
+`status_changed_at`，所有成功写入递增 `revision`。
+
+### DELETE /api/job-applications/:id
+
+删除当前用户的申请并返回 `204`；不存在或越权统一返回 `404`。
+
+首版刻意不提供提醒、统计、阶段时间线、拖拽看板、日历/邮件同步、JD 抓取、ATS/AI 分析。
+
 ## 简历管理
 
 ### GET /api/resumes

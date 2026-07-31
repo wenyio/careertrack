@@ -179,6 +179,21 @@ async function trimAutoVersions(database: DatabaseQuery, resumeId: string): Prom
   }
 }
 
+/**
+ * Create/reuse the immutable snapshot selected for an application within the
+ * caller's transaction. Application rows retain this source, while automatic
+ * retention deliberately targets only `source = auto` rows.
+ */
+export async function getOrCreateApplicationResumeVersion(
+  resumeId: string,
+  userId: string,
+  database: DatabaseQuery,
+): Promise<ResumeVersion> {
+  const resume = await getOwnedResume(database, resumeId, userId)
+  if (!resume) throw new Error('简历不存在')
+  return insertSnapshot(database, resume, 'application')
+}
+
 /** List metadata only; snapshots are intentionally not selected on this path. */
 export async function listResumeVersions(
   resumeId: string,
