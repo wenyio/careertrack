@@ -47,6 +47,16 @@ import type { AdminResumeItem } from '@/types/admin'
 
 const { Text } = Typography
 
+const ACCOUNT_DESCRIPTION_COLUMNS = {
+  xs: 1,
+  sm: 2,
+  md: 2,
+  lg: 2,
+  xl: 2,
+  xxl: 2,
+  xxxl: 2,
+} as const
+
 export default function AdminUserDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -361,7 +371,7 @@ export default function AdminUserDetailPage() {
             key: 'account',
             label: '账号信息',
             children: (
-              <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+              <Descriptions bordered column={ACCOUNT_DESCRIPTION_COLUMNS} size="small">
                 <Descriptions.Item label="用户名">{userDetail.username}</Descriptions.Item>
                 <Descriptions.Item label="角色">
                   <Tag color={userDetail.role === 'admin' ? 'red' : 'default'}>
@@ -394,7 +404,7 @@ export default function AdminUserDetailPage() {
                 <Descriptions.Item label="更新时间">
                   {formatDate(userDetail.updated_at, 'YYYY-MM-DD HH:mm')}
                 </Descriptions.Item>
-                <Descriptions.Item label="角色调整" span={{ xs: 1, sm: 2 }}>
+                <Descriptions.Item label="角色调整" span={ACCOUNT_DESCRIPTION_COLUMNS}>
                   <Button
                     type={userDetail.role === 'admin' ? 'default' : 'primary'}
                     disabled={userDetail.id === currentUser?.id && userDetail.role === 'admin'}
