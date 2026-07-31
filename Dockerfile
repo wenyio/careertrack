@@ -39,7 +39,8 @@ RUN adduser --system --uid 1001 nextjs
 # 创建项目目录
 WORKDIR /app
 
-# SQLite 数据卷使用独立目录，并授予非 root 运行用户写权限。
+# SQLite 数据目录使用独立路径，并授予非 root 运行用户写权限。
+# 持久化由运行平台挂载到 /data，例如 docker run -v 或 Railway Volume。
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
 # 复制构建产物
@@ -57,8 +58,6 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 ENV SQLITE_DB_PATH "/data/careertrack.db"
-
-VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1

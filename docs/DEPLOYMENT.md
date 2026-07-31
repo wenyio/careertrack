@@ -121,7 +121,11 @@ docker run -d \
 1. **构建阶段**（node:20-alpine）：安装依赖、编译 Next.js
 2. **运行阶段**（node:20-alpine）：仅复制构建产物，以非 root 用户运行
 
-最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。SQLite 固定写入 `/data/careertrack.db`，`/data` 已声明为 volume 并授权给 UID 1001。容器通过 `/api/health` 检查应用与数据库状态。
+最终镜像暴露端口 3000，启动命令为 `node server.js`（Next.js standalone 模式）。SQLite 固定写入 `/data/careertrack.db`，`/data` 已在镜像内创建并授权给 UID 1001；持久化由运行平台挂载该目录提供，例如本地 Docker 的 `-v careertrack-data:/data` 或 Railway Volume。容器通过 `/api/health` 检查应用与数据库状态。
+
+### Railway 部署说明
+
+Railway 不支持 Dockerfile 中的 `VOLUME` 指令。使用 SQLite 时，请在 Railway 服务中创建 Volume，并将挂载路径设置为 `/data`；应用会通过默认的 `SQLITE_DB_PATH=/data/careertrack.db` 写入该挂载目录。使用 PostgreSQL 时无需挂载 `/data`，配置 `STORAGE_DRIVER=postgres` 与 `DATABASE_URL` 即可。
 
 ---
 
