@@ -79,13 +79,13 @@ describe('route and query parameter validation', () => {
 
   it('supports job application search, status and pageSize compatibility', () => {
     expect(parseSearchParams(
-      new Request('http://localhost/api/job-applications?q=%20Acme%20&status=applied&page=2&pageSize=10'),
+      new Request('http://localhost/api/job-applications?q=%20Acme%20&status=applied&page=2&pageSize=10&sort=next_action'),
       jobApplicationsQuerySchema,
     )).toEqual({
       success: true,
-      data: { q: 'Acme', status: 'applied', page: 2, page_size: 10 },
+      data: { q: 'Acme', status: 'applied', sort: 'next_action', page: 2, page_size: 10 },
     })
-    for (const query of ['?status=paused', `?q=${'x'.repeat(101)}`, '?page_size=10&pageSize=10']) {
+    for (const query of ['?status=paused', '?sort=oldest', `?q=${'x'.repeat(101)}`, '?page_size=10&pageSize=10']) {
       expect(parseSearchParams(new Request(`http://localhost/api/job-applications${query}`), jobApplicationsQuerySchema).success).toBe(false)
     }
   })

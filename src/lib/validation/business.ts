@@ -341,6 +341,7 @@ export const createJobApplicationEventBodySchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
   occurred_at: z.iso.datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional(),
   next_action_at: applicationDateSchema,
+  next_status: jobApplicationStatusSchema.optional(),
   expected_revision: z.number().int().positive().optional(),
 }).superRefine((body, context) => {
   if (body.event_type === 'interview' && !body.metadata?.round) {

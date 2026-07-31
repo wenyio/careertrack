@@ -16,7 +16,6 @@ export const APPLICATION_STATUS_PROGRESS_COLORS: Record<JobApplicationStatus, st
 }
 
 export const APPLICATION_ACTIVE_STATUSES: JobApplicationStatus[] = ['wishlist', 'applied', 'screening', 'interview', 'offer']
-export const APPLICATION_ARCHIVED_STATUSES: JobApplicationStatus[] = ['rejected', 'withdrawn']
 
 /** Stage order is a product rule shared by action controls and stage grouping. */
 export const APPLICATION_STAGE_ORDER: JobApplicationStatus[] = ['wishlist', 'applied', 'screening', 'interview', 'offer']

@@ -88,6 +88,9 @@ export const jobApplicationsQuerySchema = z.object({
   status: z.enum(['all', 'wishlist', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'], {
     error: '无效的申请状态',
   }).default('all'),
+  sort: z.enum(['updated', 'next_action', 'applied_at', 'company'], {
+    error: '无效的申请排序方式',
+  }).default('updated'),
   page: paginationQueryShape.page,
   page_size: paginationQueryShape.page_size.optional(),
   pageSize: paginationQueryShape.page_size.optional(),
@@ -100,6 +103,7 @@ export const jobApplicationsQuerySchema = z.object({
   page_size: value.page_size ?? value.pageSize ?? DEFAULT_PAGE_SIZE,
   q: value.q,
   status: value.status,
+  sort: value.sort,
 }))
 
 export const paginationQuerySchema = z.object(paginationQueryShape)

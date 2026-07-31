@@ -1,14 +1,15 @@
 import api from './api'
 import { parsePaginatedResponse } from './pagination'
-import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationSort, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 import type { PaginatedData } from '@/types/pagination'
 
-export async function getJobApplications(options: { page?: number; pageSize?: number; q?: string; status?: 'all' | JobApplicationStatus } = {}): Promise<PaginatedData<JobApplication>> {
+export async function getJobApplications(options: { page?: number; pageSize?: number; q?: string; status?: 'all' | JobApplicationStatus; sort?: JobApplicationSort } = {}): Promise<PaginatedData<JobApplication>> {
   const page = options.page || 1
   const pageSize = options.pageSize || 20
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   if (options.q) params.set('q', options.q)
   if (options.status && options.status !== 'all') params.set('status', options.status)
+  if (options.sort) params.set('sort', options.sort)
   const response = await api.get<JobApplication[]>(`/job-applications?${params}`)
   return parsePaginatedResponse(response, page, pageSize)
 }

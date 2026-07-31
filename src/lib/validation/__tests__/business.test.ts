@@ -13,6 +13,7 @@ import {
   publishResumeBodySchema,
   updateResumeBodySchema,
   createJobApplicationBodySchema,
+  createJobApplicationEventBodySchema,
   updateJobApplicationBodySchema,
 } from '@/lib/validation/business'
 import {
@@ -34,6 +35,20 @@ describe('business request validation', () => {
     expect(createJobApplicationBodySchema.safeParse({ company: 'x', position: 'y', applied_at: '2026-02-30' }).success).toBe(false)
     expect(updateJobApplicationBodySchema.safeParse({ expected_revision: 1 }).success).toBe(false)
     expect(updateJobApplicationBodySchema.safeParse({ expected_revision: 1, notes: '已跟进' }).success).toBe(true)
+  })
+
+  it('validates an atomic progress record with its linked stage and next action', () => {
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'interview',
+      metadata: { round: '一面', result: '通过' },
+      next_status: 'interview',
+      next_action_at: null,
+      expected_revision: 1,
+    }).success).toBe(true)
+    expect(createJobApplicationEventBodySchema.safeParse({
+      event_type: 'interview',
+      next_status: 'paused',
+    }).success).toBe(false)
   })
   it('normalizes resume names and rejects empty updates', () => {
     expect(createResumeBodySchema.parse({

@@ -4,6 +4,12 @@ export const JOB_APPLICATION_STATUSES = [
 
 export type JobApplicationStatus = typeof JOB_APPLICATION_STATUSES[number]
 
+export const JOB_APPLICATION_SORTS = [
+  'updated', 'next_action', 'applied_at', 'company',
+] as const
+
+export type JobApplicationSort = typeof JOB_APPLICATION_SORTS[number]
+
 export const JOB_APPLICATION_EVENT_TYPES = [
   'created', 'status_changed', 'follow_up', 'interview', 'note', 'offer',
 ] as const
@@ -28,6 +34,7 @@ export interface CreateJobApplicationEventRequest {
   occurred_at?: string
   expected_revision?: number
   next_action_at?: string | null
+  next_status?: JobApplicationStatus
 }
 
 export interface JobApplication {
@@ -68,6 +75,7 @@ export interface JobApplicationActionCenter {
   overdue: JobApplication[]
   due_today: JobApplication[]
   upcoming: JobApplication[]
+  unplanned: JobApplication[]
 }
 
 export interface CreateJobApplicationRequest {

@@ -1,0 +1,84 @@
+.detailTabs :global(.ant-tabs-nav) {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 24px;
+  background: #fff;
+}
+
+.detailTabs :global(.ant-tabs-nav::before) {
+  border-bottom-color: #f0f0f0;
+}
+
+.titleNote {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.3;
+  font-size: 10px;
+}
+
+.resumeLinkPanel {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.resumeLinkGrid {
+  display: grid;
+  grid-template-columns: 220px 280px;
+  gap: 10px;
+  align-items: start;
+}
+
+.resumeSelectGroup,
+.versionSelectGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resumeSelectGroup {
+  width: 220px;
+}
+
+.versionSelectGroup {
+  width: 280px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.resumeLinkActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 24px;
+  margin-top: 8px;
+}
+
+.resumeLinkActions :global(.ant-space-item) {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 991px) {
+  .resumeLinkGrid {
+    grid-template-columns: 180px minmax(200px, 1fr);
+  }
+
+  .resumeSelectGroup,
+  .versionSelectGroup {
+    width: 100%;
+  }
+
+  .resumeLinkActions {
+    margin-top: 0;
+  }
+}

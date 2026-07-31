@@ -10,7 +10,8 @@ export async function GET(request: Request) {
       const parsed = parseSearchParams(request, jobApplicationsQuerySchema)
       if (!parsed.success) return parsed.response
       return paginatedSuccess(await listJobApplications(user.id, {
-        page: parsed.data.page, pageSize: parsed.data.page_size, q: parsed.data.q, status: parsed.data.status,
+        page: parsed.data.page, pageSize: parsed.data.page_size, q: parsed.data.q,
+        status: parsed.data.status, sort: parsed.data.sort,
       }))
     } catch (reason) {
       console.error('[job-applications] list failed', reason)

@@ -57,6 +57,8 @@ describe('job application service', () => {
     await expect(updateJobApplication(first.id, userId, { expected_revision: first.revision, status: 'interview' })).rejects.toBeInstanceOf(JobApplicationConflictError)
     const beta = (await listJobApplications(userId, { page: 1, pageSize: 10 })).items.find((item) => item.company === 'Beta')
     expect(beta).toMatchObject({ applied_at: '2026-07-31', next_action_at: '2026-08-01' })
+    const alphabetical = await listJobApplications(userId, { page: 1, pageSize: 10, sort: 'company' })
+    expect(alphabetical.items.map((item) => item.company)).toEqual(['Acme', 'Beta'])
     await expect(getJobApplicationSummary(userId)).resolves.toMatchObject({ total: 2, active: 2, interview: 0, by_status: { applied: 1, screening: 1 } })
     const events = await listJobApplicationEvents(first.id, userId)
     expect(events?.map((event) => event.event_type)).toEqual(expect.arrayContaining(['created', 'status_changed']))
@@ -65,12 +67,23 @@ describe('job application service', () => {
 
   it('appends follow-ups without replacing history and updates the current next action', async () => {
     const application = await createJobApplication(userId, { company: '过程公司', position: '设计师' })
-    await createJobApplicationEvent(application.id, userId, { event_type: 'follow_up', content: '已发送邮件', next_action_at: '2026-08-01', expected_revision: application.revision })
+    await createJobApplicationEvent(application.id, userId, {
+      event_type: 'follow_up',
+      content: '已发送邮件',
+      next_status: 'screening',
+      next_action_at: '2026-08-01',
+      expected_revision: application.revision,
+    })
     const refreshed = await getJobApplication(application.id, userId)
     await createJobApplicationEvent(application.id, userId, { event_type: 'note', content: '等待回复' })
     const events = await listJobApplicationEvents(application.id, userId)
-    expect(refreshed?.next_action_at).toBe('2026-08-01')
+    expect(refreshed).toMatchObject({
+      status: 'screening',
+      next_action_at: '2026-08-01',
+      revision: application.revision + 1,
+    })
     expect(events?.filter((event) => event.event_type === 'follow_up')).toHaveLength(1)
+    expect(events?.filter((event) => event.event_type === 'status_changed')).toHaveLength(1)
     expect(events?.filter((event) => event.event_type === 'note')).toHaveLength(1)
   })
 
@@ -79,12 +92,14 @@ describe('job application service', () => {
     await createJobApplication(userId, { company: '今日', position: '设计师', status: 'screening', next_action_at: '2026-08-01' })
     await createJobApplication(userId, { company: '未来', position: '产品', status: 'interview', next_action_at: '2026-08-08' })
     await createJobApplication(userId, { company: '过期 Offer', position: '运营', status: 'offer', next_action_at: '2026-07-31' })
+    await createJobApplication(userId, { company: '待规划', position: '测试', status: 'applied' })
 
     await expect(getJobApplicationSummary(userId, '2026-08-01')).resolves.toMatchObject({ due_today: 1, overdue: 1 })
     await expect(getJobApplicationActionCenter(userId, '2026-08-01')).resolves.toMatchObject({
       overdue: [expect.objectContaining({ company: '逾期' })],
       due_today: [expect.objectContaining({ company: '今日' })],
       upcoming: [expect.objectContaining({ company: '未来' })],
+      unplanned: [expect.objectContaining({ company: '待规划' })],
     })
   })
 

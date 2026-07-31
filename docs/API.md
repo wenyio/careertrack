@@ -372,11 +372,12 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 以下接口仅支持登录用户；不提供游客、MCP、公开或后台入口。列表沿用数组响应体和
 `X-Page`、`X-Page-Size`、`X-Total-Count`、`X-Total-Pages` 分页头，支持 `page`、
-`page_size`（也兼容 `pageSize`）、`q`（公司/职位，最多 100 字）和 `status`。
+`page_size`（也兼容 `pageSize`）、`q`（公司/职位，最多 100 字）、`status` 和 `sort`。
 
 ### GET /api/job-applications
 
-返回当前用户的申请列表，按 `updated_at DESC, id DESC` 稳定排序。`status` 可为
+返回当前用户的申请列表。`sort` 默认为 `updated`，也可传 `next_action`（无日期置后）、
+`applied_at`（无日期置后）或 `company`；每种排序都有稳定的更新时间或 ID 兜底。`status` 可为
 `all` 或稳定英文枚举 `wishlist`、`applied`、`screening`、`interview`、`offer`、
 `rejected`、`withdrawn`。
 
@@ -388,8 +389,8 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 ### GET /api/job-applications/actions
 
-返回行动中心所需的服务端集合：`overdue`、`due_today`、`upcoming`（未来七天）。它独立于
-“全部申请”的分页结果，且仅包含仍可推进并设有 `next_action_at` 的申请。
+返回行动中心所需的服务端集合：`overdue`、`due_today`、`upcoming`（未来七天）和
+`unplanned`（尚未安排下一步）。它独立于“全部申请”的分页结果，且仅包含仍可推进的申请。
 
 ### POST /api/job-applications
 
@@ -413,7 +414,9 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 返回或追加当前用户该申请的倒序活动时间线。可追加 `follow_up`、`interview`、`note`、`offer`；
 事件为追加式，不会覆盖历史。面试 metadata 至少包含 `round`，可包含 `format`、`result` 等字段。
-传入 `next_action_at` 时，该摘要字段与事件在同一事务更新；可选 `expected_revision` 用于避免并发覆盖。
+可同时传入 `next_status` 与 `next_action_at`（`null` 表示清除下一步）；当前阶段、下一步摘要、
+`status_changed` 事件和本次过程事件在同一事务提交。只要更新阶段或下一步，就应传
+`expected_revision` 避免并发覆盖；成功后申请 revision 递增一次。
 
 关联错误稳定返回 `400`，不存在或越权返回 `404`，过期 revision 返回 `409`；未知存储错误会
 记录服务端日志并返回通用 `500 INTERNAL_ERROR`，不会向客户端暴露异常文本。

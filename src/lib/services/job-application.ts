@@ -8,7 +8,7 @@ import { getOrCreateApplicationResumeVersion } from '@/lib/services/resume-versi
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, paginatedData, paginationOffset } from '@/lib/pagination'
 import type { DatabaseQuery } from '@/lib/storage/types'
 import type { PaginatedData, PaginationParams } from '@/types/pagination'
-import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
+import type { CreateJobApplicationEventRequest, CreateJobApplicationRequest, JobApplication, JobApplicationActionCenter, JobApplicationEvent, JobApplicationSort, JobApplicationStatus, JobApplicationSummary, UpdateJobApplicationRequest } from '@/types/job-application'
 
 export class JobApplicationConflictError extends Error {
   constructor() {
@@ -27,6 +27,7 @@ export class JobApplicationRelationError extends Error {
 interface ListOptions extends PaginationParams {
   q?: string
   status?: 'all' | JobApplicationStatus
+  sort?: JobApplicationSort
 }
 
 function normalizedNull(value: string | null | undefined): string | null {
@@ -137,6 +138,13 @@ export async function listJobApplications(
   }
   const where = clauses.join(' AND ')
   const offset = paginationOffset(options)
+  const orderBy: Record<JobApplicationSort, string> = {
+    updated: 'ja.updated_at DESC, ja.id DESC',
+    next_action: 'CASE WHEN ja.next_action_at IS NULL THEN 1 ELSE 0 END, ja.next_action_at ASC, ja.updated_at DESC, ja.id DESC',
+    applied_at: 'CASE WHEN ja.applied_at IS NULL THEN 1 ELSE 0 END, ja.applied_at DESC, ja.updated_at DESC, ja.id DESC',
+    company: 'LOWER(ja.company) ASC, LOWER(ja.position) ASC, ja.id DESC',
+  }
+  const sort = options.sort || 'updated'
   const [items, count] = await Promise.all([
     query<JobApplication>(
       `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
@@ -144,7 +152,7 @@ export async function listJobApplications(
        LEFT JOIN resumes r ON r.id = ja.resume_id
        LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
        WHERE ${where}
-       ORDER BY ja.updated_at DESC, ja.id DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+       ORDER BY ${orderBy[sort]} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, options.pageSize, offset],
     ),
     query<{ total: number }>(`SELECT COUNT(*)::int AS total FROM job_applications ja WHERE ${where}`, values),
@@ -189,22 +197,37 @@ export async function getJobApplicationSummary(userId: string, today = todayDate
 }
 
 export async function getJobApplicationActionCenter(userId: string, today = todayDateOnly()): Promise<JobApplicationActionCenter> {
-  const result = await query<JobApplication>(
-    `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
-     FROM job_applications ja
-     LEFT JOIN resumes r ON r.id = ja.resume_id
-     LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
-     WHERE ja.user_id = $1
-       AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
-       AND ja.next_action_at IS NOT NULL
-     ORDER BY ja.next_action_at ASC, ja.updated_at DESC LIMIT 100`,
-    [userId],
-  )
+  const [scheduled, unplanned] = await Promise.all([
+    query<JobApplication>(
+      `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
+       FROM job_applications ja
+       LEFT JOIN resumes r ON r.id = ja.resume_id
+       LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
+       WHERE ja.user_id = $1
+         AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
+         AND ja.next_action_at IS NOT NULL
+       ORDER BY ja.next_action_at ASC, ja.updated_at DESC LIMIT 100`,
+      [userId],
+    ),
+    query<JobApplication>(
+      `SELECT ja.*, r.name AS resume_name, rv.revision AS resume_version_revision
+       FROM job_applications ja
+       LEFT JOIN resumes r ON r.id = ja.resume_id
+       LEFT JOIN resume_versions rv ON rv.id = ja.resume_version_id
+       WHERE ja.user_id = $1
+         AND ja.status IN ('wishlist', 'applied', 'screening', 'interview')
+         AND ja.next_action_at IS NULL
+       ORDER BY ja.updated_at DESC, ja.id DESC LIMIT 100`,
+      [userId],
+    ),
+  ])
   const sevenDays = new Date(`${today}T12:00:00`)
   sevenDays.setDate(sevenDays.getDate() + 7)
   const until = todayDateOnly(sevenDays)
-  const center: JobApplicationActionCenter = { overdue: [], due_today: [], upcoming: [] }
-  for (const application of result.rows.map(toJobApplication)) {
+  const center: JobApplicationActionCenter = {
+    overdue: [], due_today: [], upcoming: [], unplanned: unplanned.rows.map(toJobApplication),
+  }
+  for (const application of scheduled.rows.map(toJobApplication)) {
     if (!application.next_action_at) continue
     if (application.next_action_at < today) center.overdue.push(application)
     else if (application.next_action_at === today) center.due_today.push(application)
@@ -236,13 +259,34 @@ export async function createJobApplicationEvent(
     const application = await getJobApplication(applicationId, userId, database)
     if (!application) throw new Error('求职申请不存在')
     if (input.expected_revision !== undefined && application.revision !== input.expected_revision) throw new JobApplicationConflictError()
-    if (input.next_action_at !== undefined) {
+    const nextStatus = input.next_status !== undefined && input.next_status !== application.status
+      ? input.next_status
+      : undefined
+    if (input.next_action_at !== undefined || nextStatus !== undefined) {
+      const fields: string[] = []
+      const values: unknown[] = []
+      if (input.next_action_at !== undefined) {
+        values.push(input.next_action_at)
+        fields.push(`next_action_at = $${values.length}`)
+      }
+      if (nextStatus !== undefined) {
+        values.push(nextStatus)
+        fields.push(`status = $${values.length}`, 'status_changed_at = NOW()')
+      }
+      fields.push('revision = revision + 1', 'updated_at = NOW()')
+      values.push(applicationId, userId, application.revision)
       const update = await database<JobApplication>(
-        `UPDATE job_applications SET next_action_at = $1, revision = revision + 1, updated_at = NOW()
-         WHERE id = $2 AND user_id = $3 AND revision = $4 RETURNING *`,
-        [input.next_action_at, applicationId, userId, application.revision],
+        `UPDATE job_applications SET ${fields.join(', ')}
+         WHERE id = $${values.length - 2} AND user_id = $${values.length - 1} AND revision = $${values.length}
+         RETURNING *`,
+        values,
       )
       if (!update.rows[0]) throw new JobApplicationConflictError()
+      if (nextStatus !== undefined) {
+        await insertApplicationEvent(database, applicationId, userId, 'status_changed', null, {
+          from: application.status, to: nextStatus,
+        })
+      }
     }
     return insertApplicationEvent(
       database, applicationId, userId, input.event_type, normalizedNull(input.content), input.metadata || {}, input.occurred_at,
