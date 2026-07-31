@@ -135,7 +135,7 @@ export default function ResumeVersionHistoryDrawer({
         open={Boolean(detail)}
         onCancel={() => setDetail(null)}
         footer={<Button aria-label="关闭版本预览" onClick={() => setDetail(null)}>关闭</Button>}
-        width={900}
+        width={860}
       >
         {detail && (() => {
           const preview = getPreviewConfig(detail.snapshot.content.preview_config)
