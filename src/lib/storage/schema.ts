@@ -84,6 +84,20 @@ CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at DESC, id
 CREATE INDEX IF NOT EXISTS idx_resumes_public_updated ON resumes(is_public, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_resumes_template ON resumes(template);
 
+-- 简历历史快照仅供所有者恢复使用，删除简历时一并清理。
+CREATE TABLE IF NOT EXISTS resume_versions (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
+    resume_id TEXT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+    label VARCHAR(100),
+    snapshot TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (resume_id, revision, source)
+);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_resume_created ON resume_versions(resume_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_auto_created ON resume_versions(resume_id, source, created_at DESC, id DESC);
+
 -- MCP Key 表
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
@@ -216,6 +230,19 @@ CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at DESC, id
 CREATE INDEX IF NOT EXISTS idx_resumes_public_updated ON resumes(is_public, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_resumes_public_slug ON resumes(public_slug) WHERE public_slug IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_resumes_template ON resumes(template);
+
+CREATE TABLE IF NOT EXISTS resume_versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    resume_id UUID NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+    label VARCHAR(100),
+    snapshot JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (resume_id, revision, source)
+);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_resume_created ON resume_versions(resume_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_auto_created ON resume_versions(resume_id, source, created_at DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

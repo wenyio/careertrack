@@ -74,6 +74,12 @@ export function useResumeEditorData(id: string) {
     },
   })
 
+  const applyRestoredResume = useCallback((restoredResume: NonNullable<typeof resume>) => {
+    initResume(buildResumeEditorInitialData(restoredResume))
+    revisionRef.current = restoredResume.revision
+    isInitializedRef.current = true
+  }, [initResume])
+
   // 清理
   useEffect(() => {
     return () => {
@@ -87,5 +93,6 @@ export function useResumeEditorData(id: string) {
     isLoading,
     triggerAutoSave,
     handleManualSave,
+    applyRestoredResume,
   }
 }

@@ -105,6 +105,20 @@ CREATE INDEX IF NOT EXISTS idx_resumes_user_updated ON resumes(user_id, updated_
 CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_resumes_public_updated ON resumes(is_public, updated_at DESC, id DESC);
 
+-- 简历历史快照：删除简历时级联清理，不能替代 resumes.revision 并发令牌
+CREATE TABLE IF NOT EXISTS resume_versions (
+    id TEXT PRIMARY KEY DEFAULT ...,
+    resume_id TEXT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+    label VARCHAR(100),
+    snapshot TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (resume_id, revision, source)
+);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_resume_created ON resume_versions(resume_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_resume_versions_auto_created ON resume_versions(resume_id, source, created_at DESC, id DESC);
+
 -- MCP Key 表
 CREATE TABLE IF NOT EXISTS mcp_keys (
     id TEXT PRIMARY KEY DEFAULT ...,
@@ -166,6 +180,8 @@ CREATE INDEX idx_registration_codes_status ON registration_codes(used_at, disabl
 - `004_consolidate_postgres_resume_config` 将旧 PostgreSQL 独立列
   `module_titles`、`basic_info_display`、`preview_config` 的非空数据合并到
   `content`；已有 `content` 键优先，完成后删除旧列，使双驱动恢复同一存储模型
+- `005_resume_versions` 创建 `resume_versions`；SQLite 使用 JSON 文本、PostgreSQL
+  使用 JSONB，来源约束、唯一键和列表索引保持相同语义
 - 如果旧库存在重复 `code_hash`，迁移会明确失败，要求先人工核对；不会静默删除或合并数据
 - SQLite 写事务使用独立连接和 `BEGIN IMMEDIATE`，并启用 WAL 与 5 秒 busy timeout
 
@@ -422,6 +438,33 @@ SQLite 与 PostgreSQL 均以 `content.module_titles`、
 只在 PostgreSQL 发现历史独立列时执行数据归并和删列，新建数据库不会再创建
 这些冗余列。
 
+### resume_versions 简历版本表
+
+版本记录是受控快照，不是 `resumes.revision` 的替代品。快照包含 `name`、
+`template`、`modules_config`、`modules_order` 和 `content`；公开状态不在快照中，
+所以恢复内容不会意外重新公开简历。
+
+```sql
+CREATE TABLE resume_versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    resume_id UUID NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+    label VARCHAR(100),
+    snapshot JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (resume_id, revision, source)
+);
+CREATE INDEX idx_resume_versions_resume_created ON resume_versions(resume_id, created_at DESC, id DESC);
+CREATE INDEX idx_resume_versions_auto_created ON resume_versions(resume_id, source, created_at DESC, id DESC);
+```
+
+自动快照至少间隔 10 分钟，每份简历只保留最近 30 条 `auto` 记录；自动清理不会
+删除 `manual`、`restore`、`application`。手动版本每份最多 100 条，到达上限会明确
+返回冲突。`(resume_id, revision, source)` 唯一键使同一逻辑快照幂等。恢复在一个
+事务中校验 `expected_revision`、更新简历、递增 revision 并写入新的 `restore` 快照；
+任何失败均会回滚，不会留下半恢复状态。
+
 ### mcp_keys MCP Key 表
 
 存储 MCP 服务的 API Key，用于 AI Agent 访问。
@@ -527,6 +570,7 @@ users (1) ──── (1) profiles
   ├──── (N) auth_sessions
   │
   ├──── (N) resumes
+  │       └──── (N) resume_versions
   │
   ├──── (N) mcp_keys
   │
@@ -538,6 +582,7 @@ users (1) ──── (1) profiles
 - 一个用户对应一份个人信息（1:1）
 - 一个用户可以有多个登录会话，且每个会话都可独立撤销（1:N）
 - 一个用户可以有多份简历（1:N）
+- 一份简历可以有多个受限版本快照（1:N），并随简历级联删除
 - 一个用户可以有多个 MCP Key（1:N）
 - 一个用户可以绑定多个 OAuth 账号（1:N）
 - 一个管理员可以创建多个注册码（1:N）
@@ -589,7 +634,7 @@ CREATE TABLE templates (
 
 SQLite 使用自动建表策略。首次启动时，`src/lib/storage/schema.ts` 中的 `initSchema()` 函数会自动执行 `CREATE TABLE IF NOT EXISTS` 创建所有表。
 
-无需手动执行迁移。
+无需手动执行迁移；已发布安装会按 `schema_migrations` 顺序补齐至迁移 005。
 
 ### PostgreSQL
 

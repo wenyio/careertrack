@@ -164,6 +164,44 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: '005_resume_versions',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        await query(
+          `CREATE TABLE IF NOT EXISTS resume_versions (
+             id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-' || '4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))),
+             resume_id TEXT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+             revision INTEGER NOT NULL,
+             source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+             label VARCHAR(100),
+             snapshot TEXT NOT NULL,
+             created_at TEXT NOT NULL DEFAULT (datetime('now')),
+             UNIQUE (resume_id, revision, source)
+           )`,
+        )
+      } else {
+        await query(
+          `CREATE TABLE IF NOT EXISTS resume_versions (
+             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+             resume_id UUID NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+             revision INTEGER NOT NULL,
+             source VARCHAR(20) NOT NULL CHECK (source IN ('auto', 'manual', 'restore', 'application')),
+             label VARCHAR(100),
+             snapshot JSONB NOT NULL,
+             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+             UNIQUE (resume_id, revision, source)
+           )`,
+        )
+      }
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_resume_versions_resume_created ON resume_versions(resume_id, created_at DESC, id DESC)',
+      )
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_resume_versions_auto_created ON resume_versions(resume_id, source, created_at DESC, id DESC)',
+      )
+    },
+  },
 ]
 
 export async function runMigrations(

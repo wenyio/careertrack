@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { usePrint } from '@/hooks/usePrint'
 import { useResumeEditorStore } from '@/stores/resume-editor'
 import { selectResumeEditorToolbar } from '@/stores/resume-editor-selectors'
 import EditorToolbar from './EditorToolbar'
+import ResumeVersionHistoryDrawer from './ResumeVersionHistoryDrawer'
+import type { Resume } from '@/types/resume'
 
 interface ResumeEditorToolbarProps {
   onSave: () => void
@@ -17,6 +19,8 @@ interface ResumeEditorToolbarProps {
   publicSlug?: string | null
   resumeId?: string
   hidePublic?: boolean
+  revision?: number
+  onResumeRestored?: (resume: Resume) => void
 }
 
 /**
@@ -35,6 +39,8 @@ export default function ResumeEditorToolbar({
   publicSlug,
   resumeId,
   hidePublic,
+  revision,
+  onResumeRestored,
 }: ResumeEditorToolbarProps) {
   const {
     resumeName,
@@ -45,6 +51,7 @@ export default function ResumeEditorToolbar({
   } = useResumeEditorStore(useShallow(selectResumeEditorToolbar))
 
   const { handlePrint } = usePrint({ resumeName })
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const handleNameChange = useCallback((name: string) => {
     setResumeName(name)
@@ -63,6 +70,7 @@ export default function ResumeEditorToolbar({
   )
 
   return (
+    <>
     <EditorToolbar
       resumeName={resumeName}
       saveStatus={saveStatus}
@@ -78,6 +86,17 @@ export default function ResumeEditorToolbar({
       onBack={onBack}
       onOpenSettings={onOpenSettings}
       hidePublic={hidePublic}
+      onOpenVersionHistory={resumeId && revision && onResumeRestored ? () => setHistoryOpen(true) : undefined}
     />
+    {resumeId && revision && onResumeRestored && (
+      <ResumeVersionHistoryDrawer
+        open={historyOpen}
+        resumeId={resumeId}
+        revision={revision}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={onResumeRestored}
+      />
+    )}
+    </>
   )
 }

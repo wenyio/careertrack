@@ -89,7 +89,6 @@ describe('versioned storage migrations', () => {
     const versions = database.prepare(
       'SELECT version FROM schema_migrations ORDER BY version',
     ).all().map((row) => row.version)
-    database.close()
 
     expect(migrated.otp_secret).toMatch(/^v1:/)
     expect(migrated.otp_secret).not.toContain('SZXVJNBX')
@@ -98,5 +97,12 @@ describe('versioned storage migrations', () => {
     expect(migrated.otp_recovery_codes).toBe('[]')
     expect(versions).toContain('003_encrypt_totp_and_recovery_codes')
     expect(versions).toContain('004_consolidate_postgres_resume_config')
+    expect(versions).toContain('005_resume_versions')
+
+    const versionTable = database.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",
+    ).get()
+    expect(versionTable).toBeTruthy()
+    database.close()
   })
 })

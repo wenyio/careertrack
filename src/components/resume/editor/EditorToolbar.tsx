@@ -16,6 +16,7 @@ import {
   SaveOutlined,
   SettingOutlined,
   LinkOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons'
 import PublicLinkPopover from '@/components/resume/PublicLinkPopover'
 import type { SaveStatus } from '@/stores/resume-editor'
@@ -36,6 +37,7 @@ interface EditorToolbarProps {
   onOpenSettings?: () => void
   /** 隐藏公开链接按钮（游客模式使用） */
   hidePublic?: boolean
+  onOpenVersionHistory?: () => void
 }
 
 const SAVE_STATUS_MAP: Record<SaveStatus, { text: string; color: string }> = {
@@ -62,6 +64,7 @@ export default function EditorToolbar({
   onBack,
   onOpenSettings,
   hidePublic = false,
+  onOpenVersionHistory,
 }: EditorToolbarProps) {
   const status = SAVE_STATUS_MAP[saveStatus]
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -141,6 +144,12 @@ export default function EditorToolbar({
             onClick={onOpenSettings}
             aria-label="模板与设置"
           />
+        </Tooltip>
+      )}
+
+      {onOpenVersionHistory && (
+        <Tooltip title="版本历史">
+          <Button type="text" icon={<HistoryOutlined />} onClick={onOpenVersionHistory} aria-label="版本历史" />
         </Tooltip>
       )}
 

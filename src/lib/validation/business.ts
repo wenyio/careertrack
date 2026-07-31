@@ -233,6 +233,20 @@ export const updateResumeBodySchema = z.object({
   revision?: number
 })
 
+export const createResumeVersionBodySchema = z.object({
+  label: z.string({ error: '版本标签必须是字符串' })
+    .trim()
+    .min(1, '版本标签不能为空')
+    .max(100, '版本标签不能超过 100 个字符')
+    .optional(),
+})
+
+export const restoreResumeVersionBodySchema = z.object({
+  expected_revision: z.number({ error: 'expected_revision 必须是整数' })
+    .int('expected_revision 必须是整数')
+    .positive('expected_revision 必须大于 0'),
+})
+
 export const publishResumeBodySchema = z.object({
   slug: z.string({ error: '公开链接不能为空' })
     .trim()

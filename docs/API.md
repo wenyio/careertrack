@@ -40,7 +40,7 @@ JSON 请求体按 UTF-8 实际字节流读取，默认上限为 1 MiB；超限�
 | `X-Total-Count` | 符合当前筛选条件的总记录数 |
 | `X-Total-Pages` | 总页数；空列表为 `0` |
 
-当前使用稳定的 offset pagination，并在业务排序字段后追加 `id` 作为确定性排序键。适用端点为 `/api/resumes`、`/api/admin/users`、`/api/admin/resumes`、`/api/admin/users/:id/resumes` 和 `/api/admin/registration-codes`。
+当前使用稳定的 offset pagination，并在业务排序字段后追加 `id` 作为确定性排序键。适用端点为 `/api/resumes`、`/api/resumes/:id/versions`、`/api/admin/users`、`/api/admin/resumes`、`/api/admin/users/:id/resumes` 和 `/api/admin/registration-codes`。
 
 所有 `/api/*` 响应都携带 `X-Request-ID`。入站请求中只包含字母、数字、点、下划线、冒号或连字符的 1–128 字符 ID 会被保留；其他情况由服务端生成 UUID。该 ID 同时传入 Route Handler，可用于日志和跨服务排查；它只用于关联请求，不应被视为经过认证的调用方身份。
 
@@ -471,6 +471,40 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 ### DELETE /api/resumes/:id
 
 删除简历（需认证）
+
+### GET /api/resumes/:id/versions
+
+获取当前用户简历的版本列表（需认证，支持通用分页）。响应只返回 `id`、
+`resume_id`、`revision`、`source`、`label`、`created_at` 元数据，绝不在列表中
+返回 `snapshot`。简历或版本不属于当前用户时一律返回 `404`。
+
+### POST /api/resumes/:id/versions
+
+创建手动版本（需认证）。请求体可为空，或提供可选的 `label`（1–100 字符）：
+
+```json
+{ "label": "投递前" }
+```
+
+同一简历、revision 与 `manual` 来源重复提交会返回已有逻辑版本；每份简历最多
+100 个手动版本，达到上限返回 `409 VERSION_LIMIT_REACHED`，不会静默删除数据。
+
+### GET /api/resumes/:id/versions/:versionId
+
+读取单个历史版本（需认证）。这是唯一返回完整 `snapshot` 的版本接口。快照至少
+包含 `name`、`template`、`modules_config`、`modules_order` 和 `content`。
+
+### POST /api/resumes/:id/versions/:versionId/restore
+
+恢复指定历史版本（需认证）：
+
+```json
+{ "expected_revision": 12 }
+```
+
+服务端在单个事务中校验所有权和当前 revision，覆盖快照字段并将当前简历 revision
+递增，再创建 `restore` 来源快照。当前简历已变化时返回 `409 CONFLICT`；恢复绝不
+让 revision 倒退，也不会恢复或改变公开状态。
 
 ### POST /api/resumes/:id/duplicate
 

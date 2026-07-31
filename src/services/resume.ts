@@ -13,6 +13,8 @@ import type {
   UpdateResumeRequest,
   PublishResumeRequest,
   PublicResume,
+  ResumeVersion,
+  ResumeVersionDetail,
 } from '@/types/resume'
 import type { PaginatedData } from '@/types/pagination'
 
@@ -125,5 +127,36 @@ export async function getPublicResume(slug: string): Promise<PublicResume> {
  */
 export async function getPreviewToken(id: string): Promise<{ token: string; expires_at: number; preview_url: string }> {
   const response = await api.post(`/resumes/${id}/preview-token`)
+  return response.data
+}
+
+export async function getResumeVersions(
+  id: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedData<ResumeVersion>> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  const response = await api.get<ResumeVersion[]>(`/resumes/${id}/versions?${params}`)
+  return parsePaginatedResponse(response, page, pageSize)
+}
+
+export async function getResumeVersion(id: string, versionId: string): Promise<ResumeVersionDetail> {
+  const response = await api.get<ResumeVersionDetail>(`/resumes/${id}/versions/${versionId}`)
+  return response.data
+}
+
+export async function createResumeVersion(id: string, label?: string): Promise<ResumeVersion> {
+  const response = await api.post<ResumeVersion>(`/resumes/${id}/versions`, label ? { label } : {})
+  return response.data
+}
+
+export async function restoreResumeVersion(
+  id: string,
+  versionId: string,
+  expectedRevision: number,
+): Promise<Resume> {
+  const response = await api.post<Resume>(`/resumes/${id}/versions/${versionId}/restore`, {
+    expected_revision: expectedRevision,
+  })
   return response.data
 }

@@ -41,6 +41,11 @@ export const idPathParamsSchema = z.object({
   id: uuidSchema,
 })
 
+export const resumeVersionPathParamsSchema = z.object({
+  id: uuidSchema,
+  versionId: uuidSchema,
+})
+
 export const userOAuthAccountPathParamsSchema = z.object({
   id: uuidSchema,
   oauthAccountId: uuidSchema,

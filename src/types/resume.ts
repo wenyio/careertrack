@@ -155,6 +155,31 @@ export interface Resume {
   updated_at: string
 }
 
+export type ResumeVersionSource = 'auto' | 'manual' | 'restore' | 'application'
+
+/** A historical copy deliberately excludes public state: restoring content must not republish it. */
+export interface ResumeVersionSnapshot {
+  name: string
+  template: ResumeTemplateId
+  modules_config: ModulesConfig
+  modules_order: ResumeModuleType[]
+  content: ResumeContent
+}
+
+/** 列表只返回元数据；快照仅由单版本接口读取。 */
+export interface ResumeVersion {
+  id: string
+  resume_id: string
+  revision: number
+  source: ResumeVersionSource
+  label: string | null
+  created_at: string
+}
+
+export interface ResumeVersionDetail extends ResumeVersion {
+  snapshot: ResumeVersionSnapshot
+}
+
 /** 公开简历 DTO：不包含内部用户或简历标识。 */
 export interface PublicResume {
   name: string

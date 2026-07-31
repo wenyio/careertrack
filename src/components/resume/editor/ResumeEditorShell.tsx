@@ -19,6 +19,7 @@ import ResumeModuleSidebar from './ResumeModuleSidebar'
 import ResumeFormPane from './ResumeFormPane'
 import ResumePreviewPane from './ResumePreviewPane'
 import type { Profile } from '@/types/profile'
+import type { Resume } from '@/types/resume'
 
 interface ResumeEditorShellProps {
   profile?: Profile | null
@@ -39,6 +40,8 @@ interface ResumeEditorShellProps {
   isPublic?: boolean
   publicSlug?: string | null
   resumeId?: string
+  revision?: number
+  onResumeRestored?: (resume: Resume) => void
 }
 
 export default function ResumeEditorShell({
@@ -53,6 +56,8 @@ export default function ResumeEditorShell({
   isPublic,
   publicSlug,
   resumeId,
+  revision,
+  onResumeRestored,
 }: ResumeEditorShellProps) {
   const router = useRouter()
 
@@ -121,6 +126,8 @@ export default function ResumeEditorShell({
         onBack={handleBack}
         onOpenSettings={handleOpenSettings}
         hidePublic={hidePublic}
+        revision={revision}
+        onResumeRestored={onResumeRestored}
       />
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

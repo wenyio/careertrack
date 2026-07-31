@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server'
 import { parseJsonBody, parseRouteParams } from '@/lib/api-validation'
 import { updateResumeBodySchema } from '@/lib/validation/business'
 import { idPathParamsSchema } from '@/lib/validation/params'
+import { createAutoResumeVersion } from '@/lib/services/resume-version'
 
 /**
  * 获取简历详情
@@ -50,6 +51,9 @@ export async function PUT(
 
     try {
       const resume = await updateResume(id, user.id, parsedBody.data)
+      // Autosave can be frequent; the version service coalesces these writes
+      // into at most one automatic checkpoint per ten-minute window.
+      await createAutoResumeVersion(id, user.id)
       return success(resume)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '更新失败'

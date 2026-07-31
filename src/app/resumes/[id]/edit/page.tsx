@@ -15,15 +15,17 @@ import { publishResume, unpublishResume } from '@/services/resume'
 import { useResumeEditorData } from '@/hooks/useResumeEditorData'
 import { useGuestEditorData } from '@/hooks/useGuestEditorData'
 import type { Profile } from '@/types/profile'
+import type { Resume } from '@/types/resume'
 import ResumeEditorShell from '@/components/resume/editor/ResumeEditorShell'
 
 /** 两种数据源的统一返回类型 */
 interface EditorData {
-  resume: { id: string; is_public?: boolean; public_slug?: string | null } | null | undefined
+  resume: { id: string; is_public?: boolean; public_slug?: string | null; revision?: number } | null | undefined
   profile: Profile | null | undefined
   isLoading: boolean
   triggerAutoSave: () => void
   handleManualSave: () => void
+  applyRestoredResume?: (resume: Resume) => void
 }
 
 /** 共享编辑器内容：解构 + 公开逻辑 + Shell 传参 */
@@ -44,6 +46,7 @@ function EditorContent({
     isLoading,
     triggerAutoSave,
     handleManualSave,
+    applyRestoredResume,
   } = data
 
   const queryClient = useQueryClient()
@@ -80,6 +83,8 @@ function EditorContent({
       isPublic={resume?.is_public}
       publicSlug={resume?.public_slug}
       resumeId={resume?.id}
+      revision={resume?.revision}
+      onResumeRestored={supportsPublic ? applyRestoredResume : undefined}
     />
   )
 }
