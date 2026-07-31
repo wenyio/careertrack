@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Drawer, Input, List, Modal, Space, Spin, Typography } from 'antd'
+import { App, Button, Drawer, Empty, Input, Modal, Space, Spin, Typography } from 'antd'
 import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import {
@@ -110,23 +110,36 @@ export default function ResumeVersionHistoryDrawer({
           </Button>
         </Space.Compact>
         {versions.isLoading ? <Spin aria-label="加载版本历史" /> : (
-          <List
-            dataSource={versions.data?.items || []}
-            locale={{ emptyText: '还没有版本记录' }}
-            renderItem={(version) => (
-              <List.Item
-                actions={[
-                  <Button key="view" type="link" onClick={() => loadDetail.mutate(version.id)}>查看</Button>,
-                  <Button key="restore" type="link" danger onClick={() => setRestoreCandidate(version)}>恢复</Button>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={`${sourceLabels[version.source]} · revision ${version.revision}`}
-                  description={`${formatTime(version.created_at)}${version.label ? ` · ${version.label}` : ''}`}
-                />
-              </List.Item>
-            )}
-          />
+          versions.data?.items.length ? (
+            <ul aria-label="版本记录" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {versions.data.items.map((version) => (
+                <li
+                  key={version.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    padding: '12px 0',
+                    borderBottom: '1px solid var(--ant-color-border-secondary)',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <Typography.Text strong>
+                      {sourceLabels[version.source]} · revision {version.revision}
+                    </Typography.Text>
+                    <Typography.Text type="secondary" style={{ display: 'block' }}>
+                      {formatTime(version.created_at)}{version.label ? ` · ${version.label}` : ''}
+                    </Typography.Text>
+                  </div>
+                  <Space size={0}>
+                    <Button type="link" onClick={() => loadDetail.mutate(version.id)}>查看</Button>
+                    <Button type="link" danger onClick={() => setRestoreCandidate(version)}>恢复</Button>
+                  </Space>
+                </li>
+              ))}
+            </ul>
+          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有版本记录" />
         )}
       </Drawer>
 
