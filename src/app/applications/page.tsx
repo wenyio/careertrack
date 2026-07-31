@@ -117,7 +117,7 @@ export default function ApplicationsPage() {
   if (!isAuthenticated) return null
 
   return <main style={{ maxWidth: 1120, margin: '0 auto', padding: '88px 20px 40px' }}>
-    <Space direction="vertical" size="large" style={{ display: 'flex' }}>
+    <Space orientation="vertical" size="large" style={{ display: 'flex' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div><Typography.Title level={2} style={{ margin: 0 }}>求职进展</Typography.Title><Typography.Text type="secondary">记录投递、跟进和实际使用的简历版本</Typography.Text></div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(null)}>创建申请</Button>
