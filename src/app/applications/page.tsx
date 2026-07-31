@@ -188,7 +188,7 @@ export default function ApplicationsPage() {
       {data && data.pagination.total_pages > 1 && <div><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</Button><span style={{ margin: '0 12px' }}>第 {page} / {data.pagination.total_pages} 页</span><Button disabled={page >= data.pagination.total_pages} onClick={() => setPage(page + 1)}>下一页</Button></div>}
       </>}
     </Space>
-    <ApplicationForm key={editing?.id || (editing === null ? 'new' : 'closed')} application={editing || null} open={editing !== undefined} onClose={() => setEditing(undefined)} />
-    <ApplicationDetailDrawer key={detail?.id || 'closed'} application={detail} open={Boolean(detail)} initialActivity={detailActivity} onClose={() => setDetail(null)} onEdit={(current) => { setEditing(current); setDetail(null) }} />
+    <ApplicationForm key={`application-form-${editing?.id || (editing === null ? 'new' : 'closed')}`} application={editing || null} open={editing !== undefined} onClose={() => setEditing(undefined)} />
+    <ApplicationDetailDrawer key={`application-detail-${detail?.id || 'closed'}`} application={detail} open={Boolean(detail)} initialActivity={detailActivity} onClose={() => setDetail(null)} onEdit={(current) => { setEditing(current); setDetail(null) }} />
   </main>
 }
