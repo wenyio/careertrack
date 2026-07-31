@@ -68,15 +68,15 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   const preview = snapshot.data ? getPreviewConfig(snapshot.data.snapshot.content.preview_config) : null
 
   return <Drawer
-    title={<Space direction="vertical" size={0}><Typography.Text strong>{current.company} · {current.position}</Typography.Text><Space size={6}><Tag color={APPLICATION_STATUS_COLORS[current.status]}>{APPLICATION_STATUS_LABELS[current.status]}</Tag>{current.next_action_at && <Typography.Text type="secondary">下一步：{current.next_action_at}</Typography.Text>}</Space></Space>}
+    title={<Space orientation="vertical" size={0}><Typography.Text strong>{current.company} · {current.position}</Typography.Text><Space size={6}><Tag color={APPLICATION_STATUS_COLORS[current.status]}>{APPLICATION_STATUS_LABELS[current.status]}</Tag>{current.next_action_at && <Typography.Text type="secondary">下一步：{current.next_action_at}</Typography.Text>}</Space></Space>}
     open={open}
     onClose={onClose}
-    width={760}
+    size={760}
     destroyOnHidden
     extra={<Space><Button icon={<EditOutlined />} onClick={() => onEdit(current)}>编辑</Button><Button danger loading={remove.isPending} onClick={() => remove.mutate(current.id, { onSuccess: onClose })}>删除</Button></Space>}
   >
     {detail.isFetching && <Typography.Text type="secondary">正在同步最新进展…</Typography.Text>}
-    {detail.isError && <Alert style={{ marginTop: 12 }} type="warning" showIcon message="最新资料加载失败，正在展示已缓存内容" action={<Button size="small" onClick={() => void detail.refetch()}>重试</Button>} />}
+    {detail.isError && <Alert style={{ marginTop: 12 }} type="warning" showIcon title="最新资料加载失败，正在展示已缓存内容" action={<Button size="small" onClick={() => void detail.refetch()}>重试</Button>} />}
     <Space wrap style={{ marginTop: 16 }}>
       <Button disabled={!previousApplicationStatus(current.status)} onClick={() => advance('previous')}>退回阶段</Button>
       <Button type="primary" disabled={!nextApplicationStatus(current.status)} loading={update.isPending} onClick={() => advance('next')}>推进至{nextApplicationStatus(current.status) ? APPLICATION_STATUS_LABELS[nextApplicationStatus(current.status)!] : ''}</Button>
@@ -109,8 +109,8 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     </Form>
     <Divider />
     <Tabs items={[
-      { key: 'timeline', label: '活动时间线', children: eventsError ? <Alert type="error" showIcon message="活动加载失败" action={<Button size="small" onClick={() => void refetchEvents()}>重试</Button>} /> : <ApplicationEventTimeline events={events || []} /> },
-      { key: 'resume', label: '投递快照', children: snapshot.isError ? <Alert type="error" showIcon message="投递快照加载失败" action={<Button size="small" onClick={() => void snapshot.refetch()}>重试</Button>} /> : snapshot.data && snapshot.data.id === current.resume_version_id && preview ? <div aria-label="投递简历只读预览" className="resume-a4-preview"><StandardResumePreview content={snapshot.data.snapshot.content} modulesConfig={snapshot.data.snapshot.modules_config} modulesOrder={snapshot.data.snapshot.modules_order} template={snapshot.data.snapshot.template} fontSize={preview.fontSize} lineHeight={preview.lineHeight} /></div> : snapshot.isLoading ? <Spin aria-label="加载投递快照" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未关联投递快照" /> },
+      { key: 'timeline', label: '活动时间线', children: eventsError ? <Alert type="error" showIcon title="活动加载失败" action={<Button size="small" onClick={() => void refetchEvents()}>重试</Button>} /> : <ApplicationEventTimeline events={events || []} /> },
+      { key: 'resume', label: '投递快照', children: snapshot.isError ? <Alert type="error" showIcon title="投递快照加载失败" action={<Button size="small" onClick={() => void snapshot.refetch()}>重试</Button>} /> : snapshot.data && snapshot.data.id === current.resume_version_id && preview ? <div aria-label="投递简历只读预览" className="resume-a4-preview"><StandardResumePreview content={snapshot.data.snapshot.content} modulesConfig={snapshot.data.snapshot.modules_config} modulesOrder={snapshot.data.snapshot.modules_order} template={snapshot.data.snapshot.template} fontSize={preview.fontSize} lineHeight={preview.lineHeight} /></div> : snapshot.isLoading ? <Spin aria-label="加载投递快照" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未关联投递快照" /> },
     ]} />
   </Drawer>
 }

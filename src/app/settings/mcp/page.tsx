@@ -86,6 +86,8 @@ export default function McpSettingsPage() {
         textarea.style.opacity = '0'
         document.body.appendChild(textarea)
         textarea.select()
+        // Clipboard API 的兼容降级，供不支持 navigator.clipboard 的旧浏览器使用。
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         document.execCommand('copy')
         document.body.removeChild(textarea)
       }

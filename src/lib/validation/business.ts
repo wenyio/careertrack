@@ -309,8 +309,8 @@ const applicationFieldsSchema = z.object({
   notes: optionalApplicationText(5000, '备注'),
   applied_at: applicationDateSchema,
   next_action_at: applicationDateSchema,
-  resume_id: z.string().uuid('简历 ID 格式错误').nullable().optional(),
-  resume_version_id: z.string().uuid('简历版本 ID 格式错误').nullable().optional(),
+  resume_id: z.uuid('简历 ID 格式错误').nullable().optional(),
+  resume_version_id: z.uuid('简历版本 ID 格式错误').nullable().optional(),
 })
 
 export const createJobApplicationBodySchema = applicationFieldsSchema.extend({
@@ -339,7 +339,7 @@ export const createJobApplicationEventBodySchema = z.object({
   event_type: z.enum(['follow_up', 'interview', 'note', 'offer']),
   content: optionalApplicationText(5000, '活动内容'),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  occurred_at: z.string().datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional(),
+  occurred_at: z.iso.datetime({ offset: true, error: '发生时间必须是 ISO 8601 时间' }).optional(),
   next_action_at: applicationDateSchema,
   expected_revision: z.number().int().positive().optional(),
 }).superRefine((body, context) => {

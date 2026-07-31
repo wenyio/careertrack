@@ -149,7 +149,7 @@ export default function ResumeVersionHistoryDrawer({
           <Alert
             type="error"
             showIcon
-            message="版本历史加载失败"
+            title="版本历史加载失败"
             action={<Button size="small" onClick={() => versions.refetch()}>重试</Button>}
           />
         ) : (

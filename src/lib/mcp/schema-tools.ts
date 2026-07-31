@@ -6,13 +6,14 @@ import {
 } from '@/config/resume-preview'
 import {
   getModuleLabel,
+  registerMcpTool,
   VALID_MODULES,
   VALID_TEMPLATES,
 } from './tool-config'
 
 /** 注册客户端生成参数表单时使用的只读元数据工具。 */
 export function registerSchemaTools(server: McpServer): void {
-  server.tool(
+  registerMcpTool(server,
     'schema_get',
     '获取简历数据结构定义，包括模块类型、字段配置、模板列表等元数据',
     {},

@@ -172,8 +172,7 @@ export function printHtml(bodyHtml: string, title: string): Promise<void> {
       return
     }
 
-    win.document.write(buildPrintHtml(bodyHtml, title))
-    win.document.close()
+    iframe.srcdoc = buildPrintHtml(bodyHtml, title)
 
     // 等待内容加载完成后触发打印
     iframe.onload = () => {

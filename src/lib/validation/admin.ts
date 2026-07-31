@@ -50,7 +50,6 @@ export const createRegistrationCodeBodySchema = z.object({
     .trim()
     .max(100, '标签不能超过 100 个字符')
     .optional(),
-  expires_at: z.string({ error: '过期时间必须是 ISO 8601 字符串' })
-    .datetime({ offset: true, message: '过期时间必须是 ISO 8601 字符串' })
+  expires_at: z.iso.datetime({ offset: true, error: '过期时间必须是 ISO 8601 字符串' })
     .optional(),
 })

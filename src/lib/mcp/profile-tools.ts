@@ -14,6 +14,7 @@ import {
 } from '@/lib/validation/business'
 import { textToDoc, validateRichTextDoc } from '@/utils/rich-text'
 import type { RichTextNode } from '@/types/resume'
+import { registerMcpTool } from './tool-config'
 
 const PROFILE_ARRAY_FIELDS = [
   'education',
@@ -32,7 +33,7 @@ export function registerProfileTools(
   userId: string,
   canWrite: boolean,
 ): void {
-  server.tool(
+  registerMcpTool(server,
     'profile_get',
     '获取当前用户的个人信息',
     {},
@@ -49,7 +50,7 @@ export function registerProfileTools(
 
   if (!canWrite) return
 
-  server.tool(
+  registerMcpTool(server,
     'profile_update',
     '局部更新个人信息。只传需要修改的字段即可，未传的字段保持不变。',
     {
@@ -99,7 +100,7 @@ export function registerProfileTools(
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'profile_add_entry',
     '向个人信息的数组字段添加新条目（如添加一条教育经历、工作经历等）。新条目会自动生成 id。',
     {
@@ -145,7 +146,7 @@ export function registerProfileTools(
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'profile_update_entry',
     '更新个人信息数组字段中的某个条目（按 id 匹配）。只传需要修改的字段，未传的保持不变。',
     {
@@ -190,7 +191,7 @@ export function registerProfileTools(
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'profile_delete_entry',
     '删除个人信息数组字段中的某个条目（按 id 匹配）。',
     {
@@ -224,7 +225,7 @@ export function registerProfileTools(
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'profile_update_rich_text',
     '更新个人信息数组字段中某个条目的富文本字段（如 description）。支持 plainText 和 doc 两种模式。',
     {

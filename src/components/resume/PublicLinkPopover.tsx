@@ -74,6 +74,8 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
       document.body.appendChild(textarea)
       textarea.focus()
       textarea.select()
+      // Clipboard API 的兼容降级，供不支持 navigator.clipboard 的旧浏览器使用。
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       const success = document.execCommand('copy')
       document.body.removeChild(textarea)
       return success

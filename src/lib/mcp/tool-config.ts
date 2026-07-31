@@ -1,4 +1,16 @@
+import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ZodRawShapeCompat } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import type { ResumeModuleType, ResumeTemplateId } from '@/types/resume'
+
+export function registerMcpTool<Args extends ZodRawShapeCompat>(
+  server: McpServer,
+  name: string,
+  description: string,
+  inputSchema: Args,
+  callback: ToolCallback<Args>,
+): void {
+  server.registerTool(name, { description, inputSchema }, callback)
+}
 
 /** MCP schema 与简历工具共用的合法模块。 */
 export const VALID_MODULES: ResumeModuleType[] = [

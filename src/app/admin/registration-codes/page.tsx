@@ -241,7 +241,7 @@ export default function RegistrationCodesPage() {
           type="success"
           showIcon
           style={{ marginBottom: 16 }}
-          message={
+          title={
             <div>
               <Text strong>注册码已生成，请立即复制！关闭后将无法再次查看明文。</Text>
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -271,8 +271,7 @@ export default function RegistrationCodesPage() {
               </div>
             </div>
           }
-          closable
-          afterClose={() => setNewCode(null)}
+          closable={{ afterClose: () => setNewCode(null) }}
         />
       )}
 

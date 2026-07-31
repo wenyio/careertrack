@@ -6,8 +6,7 @@ import {
   MAX_PAGE_SIZE,
 } from '@/lib/pagination'
 
-const uuidSchema = z.string({ error: '资源 ID 格式错误' })
-  .uuid('资源 ID 格式错误')
+const uuidSchema = z.uuid('资源 ID 格式错误')
 
 const searchTextSchema = z.string({ error: '搜索条件必须是字符串' })
   .trim()

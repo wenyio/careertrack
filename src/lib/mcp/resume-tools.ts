@@ -30,7 +30,7 @@ import type {
   ResumeTemplateId,
   RichTextNode,
 } from '@/types/resume'
-import { VALID_MODULES } from './tool-config'
+import { registerMcpTool, VALID_MODULES } from './tool-config'
 
 /** 注册 Resume 领域工具；写工具只对 read_write Key 可见。 */
 export function registerResumeTools(
@@ -43,7 +43,7 @@ export function registerResumeTools(
 }
 
 function registerResumeReadTools(server: McpServer, userId: string): void {
-  server.tool(
+  registerMcpTool(server,
     'resume_list',
     `获取当前用户最近更新的简历列表（最多 ${MAX_PAGE_SIZE} 份）`,
     {},
@@ -70,7 +70,7 @@ function registerResumeReadTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_get',
     '获取指定简历的完整详情，包括内容、模块配置、模板等',
     {
@@ -93,7 +93,7 @@ function registerResumeReadTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_preview_get',
     '获取简历的预览数据，包括解析后的模块内容和当前配置',
     {
@@ -136,7 +136,7 @@ function registerResumeReadTools(server: McpServer, userId: string): void {
 }
 
 function registerResumeWriteTools(server: McpServer, userId: string): void {
-  server.tool(
+  registerMcpTool(server,
     'resume_create',
     '创建一份新简历',
     {
@@ -170,7 +170,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_patch_content',
     '局部更新简历内容。只传需要修改的模块字段，支持 deep merge。数组字段（如 education、skills）会整体替换。',
     {
@@ -198,7 +198,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_update_metadata',
     '更新简历元数据（名称、模板）。不传的字段保持不变。',
     {
@@ -234,7 +234,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_update_rich_text_field',
     '更新简历中某个模块的富文本字段（description 或 summary）。支持 plainText 和 doc 两种输入模式。',
     {
@@ -293,7 +293,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_reorder_modules',
     '重新排列简历模块的显示顺序。必须包含所有合法模块且不能重复。',
     {
@@ -328,7 +328,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_toggle_module',
     '启用或禁用简历的某个模块。basic_info 不能被禁用。',
     {
@@ -361,7 +361,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_update_preview_config',
     '更新简历预览的字号和行距配置。不传的字段保持不变。',
     {
@@ -400,7 +400,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_rename_module',
     '为简历模块设置自定义标题。传空字符串可恢复默认标题。',
     {
@@ -431,7 +431,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_publish',
     '发布简历，设置公开链接。发布后可通过公开链接访问简历。',
     {
@@ -461,7 +461,7 @@ function registerResumeWriteTools(server: McpServer, userId: string): void {
     },
   )
 
-  server.tool(
+  registerMcpTool(server,
     'resume_unpublish',
     '取消发布简历，移除公开链接。取消后公开链接将无法访问。',
     {
