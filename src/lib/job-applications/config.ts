@@ -1,13 +1,18 @@
 import type { JobApplicationStatus } from '@/types/job-application'
 
 export const APPLICATION_STATUS_LABELS: Record<JobApplicationStatus, string> = {
-  wishlist: '心愿单', applied: '已投递', screening: '筛选中', interview: '面试中',
-  offer: '已获 Offer', rejected: '未通过', withdrawn: '已撤回',
+  wishlist: '心愿单', applied: '已投递', screening: '沟通中', interview: '面试中',
+  offer: 'Offer', rejected: '未通过', withdrawn: '已撤回',
 }
 
 export const APPLICATION_STATUS_COLORS: Record<JobApplicationStatus, string> = {
-  wishlist: 'default', applied: 'blue', screening: 'cyan', interview: 'purple',
+  wishlist: 'default', applied: 'blue', screening: 'gold', interview: 'purple',
   offer: 'green', rejected: 'red', withdrawn: 'orange',
+}
+
+export const APPLICATION_STATUS_PROGRESS_COLORS: Record<JobApplicationStatus, string> = {
+  wishlist: '#8c8c8c', applied: '#1677ff', screening: '#faad14', interview: '#722ed1',
+  offer: '#52c41a', rejected: '#ff4d4f', withdrawn: '#fa8c16',
 }
 
 export const APPLICATION_ACTIVE_STATUSES: JobApplicationStatus[] = ['wishlist', 'applied', 'screening', 'interview', 'offer']

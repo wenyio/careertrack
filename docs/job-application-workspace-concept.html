@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>职迹 · 求职进展交互静态稿</title>
+  <style>
+    :root { --blue:#1677ff; --blue-weak:#e6f4ff; --bg:#f5f5f5; --line:#f0f0f0; --ink:#141414; --muted:#666; --error:#ff4d4f; --warning:#faad14; --green:#52c41a; --purple:#722ed1; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; font-size:14px; }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.55; }
+    .header { height:56px; position:fixed; z-index:20; inset:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:#fff; border-bottom:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:10px; border:0; background:transparent; padding:0; color:#1f2937; font-size:16px; font-weight:600; }
+    .brand-mark { position:relative; display:grid; place-items:center; width:30px; height:30px; border-radius:8px; color:#fff; font-size:17px; font-weight:800; background:linear-gradient(135deg,#1677ff,#0958d9); overflow:hidden; }
+    .brand-mark::after { content:""; position:absolute; width:12px; height:2.5px; border-radius:4px; right:6px; bottom:4px; background:#ffffffd8; }
+    .nav { position:absolute; left:50%; transform:translateX(-50%); display:flex; height:56px; align-items:center; gap:4px; }
+    .nav button { position:relative; height:56px; padding:0 16px; border:0; background:transparent; color:#666; }
+    .nav button.active { color:var(--blue); font-weight:600; }
+    .nav button.active::after { content:""; position:absolute; width:20px; height:2.5px; border-radius:2px; bottom:-1px; left:calc(50% - 10px); background:var(--blue); }
+    .account { display:flex; align-items:center; gap:8px; padding:4px 12px; border:0; background:transparent; border-radius:8px; color:#333; }
+    .avatar { width:28px; height:28px; display:grid; place-items:center; border-radius:50%; color:#fff; background:var(--blue); font-size:12px; }
+    .page { max-width:1200px; min-height:calc(100vh - 56px); margin:0 auto; padding:88px 40px 32px; }
+    .page-title { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+    h1 { margin:0; font-size:30px; line-height:1.25; font-weight:600; }
+    h2 { margin:0; font-size:16px; line-height:24px; font-weight:600; }
+    .subtitle { display:block; margin-top:4px; color:#666; font-size:14px; }
+    .primary,.plain,.ghost,.icon-button { display:inline-flex; align-items:center; justify-content:center; height:32px; border-radius:6px; padding:0 12px; box-shadow:0 2px 0 #00000005; }
+    .primary { gap:7px; border:1px solid var(--blue); color:#fff; background:var(--blue); }
+    .plain { border:1px solid #d9d9d9; color:#262626; background:#fff; }
+    .ghost { border:1px solid transparent; color:var(--blue); background:transparent; box-shadow:none; }
+    .icon-button { width:32px; padding:0; border:1px solid #d9d9d9; color:#595959; background:#fff; font-size:18px; }
+    .primary .plus { font-size:18px; font-weight:300; line-height:0; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px #00000008; }
+    .grid { display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(300px, .9fr); gap:16px; align-items:start; }
+    .card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); }
+    .hint { color:var(--muted); font-size:13px; }
+    .link { border:0; background:transparent; color:var(--blue); font-size:13px; padding:0; }
+    .priority { padding:0 20px; }
+    .task { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; column-gap:12px; min-height:78px; border-bottom:1px solid var(--line); transition:background .16s ease; }
+    .task:hover,.application:hover { background:#fafafa; }
+    .task.is-done { color:#8c8c8c; }
+    .task.is-done .task-copy { text-decoration:line-through; }
+    .task:last-child { border-bottom:0; }
+    .company-avatar { display:grid; place-items:center; width:32px; height:32px; border-radius:6px; background:#f0f5ff; color:#2f54eb; font-weight:650; font-size:12px; }
+    .company-avatar.red { color:#cf1322; background:#fff1f0; }
+    .company-avatar.orange { color:#d46b08; background:#fff7e6; }
+    .company-avatar.green { color:#237804; background:#f6ffed; }
+    .task-main { min-width:0; }
+    .task-title { display:flex; align-items:center; gap:8px; min-width:0; }
+    .task-title strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+    .task-title span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#666; font-size:13px; }
+    .task-copy { margin-top:5px; color:#666; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .task-copy .danger { color:var(--error); }
+    .tag { display:inline-flex; align-items:center; height:22px; padding:0 7px; border-radius:4px; font-size:12px; font-style:normal; white-space:nowrap; border:1px solid transparent; }
+    .tag.red { color:#cf1322; background:#fff1f0; border-color:#ffccc7; }
+    .tag.blue { color:#0958d9; background:#e6f4ff; border-color:#91caff; }
+    .tag.gold { color:#ad6800; background:#fffbe6; border-color:#ffe58f; }
+    .tag.purple { color:#531dab; background:#f9f0ff; border-color:#d3adf7; }
+    .tag.green { color:#237804; background:#f6ffed; border-color:#b7eb8f; }
+    .task-action { height:30px; border:1px solid #d9d9d9; border-radius:6px; padding:0 10px; color:#262626; background:#fff; font-size:13px; }
+    .task-action.primary-action { color:#fff; background:var(--blue); border-color:var(--blue); }
+    .summary { padding:18px 20px 20px; }
+    .stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--line); padding-bottom:18px; }
+    .stat { border:0; border-right:1px solid var(--line); padding:0 8px 0 14px; text-align:left; background:transparent; }
+    .stat:first-child { padding-left:0; }
+    .stat:last-child { border-right:0; }
+    .stat label { display:block; color:#666; font-size:13px; pointer-events:none; }
+    .stat strong { display:block; margin-top:5px; font-size:28px; line-height:1; font-weight:600; pointer-events:none; }
+    .stat strong.red { color:var(--error); }
+    .status-list { display:grid; gap:12px; margin-top:18px; }
+    .status-line { display:grid; grid-template-columns:64px 1fr 22px; align-items:center; gap:8px; border:0; background:transparent; padding:0; text-align:left; font-size:13px; }
+    .status-line span { color:#666; }
+    .status-line b { color:#262626; font-weight:500; text-align:right; }
+    .bar { height:6px; overflow:hidden; border-radius:99px; background:#f0f0f0; }
+    .bar i { display:block; height:100%; border-radius:inherit; background:var(--blue); transition:width .2s ease; }
+    .bar.gold i { background:var(--warning); }.bar.purple i { background:var(--purple); }.bar.green i { background:var(--green); }
+    .full { margin-top:16px; }
+    .tabs { display:flex; align-items:center; gap:24px; height:48px; padding:0 20px; border-bottom:1px solid var(--line); }
+    .tabs button { height:48px; position:relative; padding:0; border:0; background:transparent; color:#666; }
+    .tabs button.active { color:var(--blue); font-weight:500; }
+    .tabs button.active::after { content:""; position:absolute; height:2px; background:var(--blue); left:0; right:0; bottom:-1px; }
+    .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 20px; border-bottom:1px solid var(--line); }
+    .search { width:min(320px,100%); height:32px; border:1px solid #d9d9d9; border-radius:6px; padding:0 11px; background:#fff; }
+    select { height:32px; border:1px solid #d9d9d9; border-radius:6px; padding:0 30px 0 10px; color:#262626; background:#fff; }
+    .toolbar-spacer { flex:1; }
+    .application-list { padding:4px 20px; }
+    .application { display:grid; grid-template-columns:32px minmax(170px,1.1fr) minmax(120px,1fr) 110px 126px 32px; align-items:center; gap:14px; min-height:64px; border-bottom:1px solid var(--line); transition:background .16s ease; }
+    .application:last-child { border-bottom:0; }
+    .application-name strong,.application-name span { display:block; }
+    .application-name strong { font-weight:600; }
+    .application-name span,.application-meta { color:#666; font-size:13px; margin-top:3px; }
+    .next { color:#595959; font-size:13px; }
+    .next.overdue { color:var(--error); font-weight:500; }
+    .empty { display:none; padding:36px 20px; text-align:center; color:#8c8c8c; }
+    .empty.show { display:block; }
+    .stage-board { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:16px 20px 20px; }
+    .stage { min-height:220px; border:1px solid var(--line); border-radius:8px; background:#fafafa; }
+    .stage-head { display:flex; justify-content:space-between; align-items:center; padding:12px; color:#262626; border-bottom:1px solid var(--line); }
+    .stage-head span { color:#8c8c8c; }
+    .stage-card { margin:10px; padding:11px; border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer; }
+    .stage-card strong,.stage-card span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .stage-card span { margin-top:4px; color:#666; font-size:13px; }
+    .note { display:flex; align-items:center; gap:8px; margin-top:16px; min-height:40px; padding:9px 12px; color:#0958d9; background:#e6f4ff; border:1px solid #91caff; border-radius:6px; font-size:13px; }
+    .note b { width:16px; height:16px; display:grid; place-items:center; border-radius:50%; color:#fff; background:var(--blue); font-size:11px; flex:0 0 auto; }
+    .drawer-mask { display:none; position:fixed; inset:0; z-index:30; background:#00000073; }
+    .drawer-mask.show { display:block; }
+    .drawer { position:absolute; top:0; right:0; width:min(560px,100vw); height:100%; background:#fff; box-shadow:-4px 0 18px #00000016; transform:translateX(100%); transition:transform .2s ease; }
+    .drawer-mask.show .drawer { transform:translateX(0); }
+    .drawer-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); }
+    .drawer-subtitle { display:block; margin-top:3px; color:#666; font-size:13px; }
+    .drawer-body { padding:20px; overflow:auto; height:calc(100% - 65px); }
+    .drawer-section { padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+    .drawer-section:last-child { border-bottom:0; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .field { display:grid; gap:6px; margin-bottom:14px; }
+    .field label { color:#595959; font-size:13px; }
+    .field input,.field select,.field textarea { width:100%; border:1px solid #d9d9d9; border-radius:6px; padding:7px 11px; background:#fff; }
+    .field textarea { min-height:84px; resize:vertical; }
+    .drawer-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .quick-actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 14px; }
+    .quick-actions button { height:28px; border:1px solid #d9d9d9; border-radius:6px; padding:0 9px; color:#595959; background:#fff; font-size:12px; }
+    .mini-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .danger-button { color:#cf1322; border-color:#ffccc7; background:#fff1f0; }
+    .source-link { justify-content:flex-start; height:auto; min-height:32px; padding:6px 10px; text-align:left; }
+    .activity { margin-top:2px; }
+    .activity-item { display:grid; grid-template-columns:8px 1fr; gap:10px; margin-top:13px; color:#595959; font-size:13px; }
+    .dot { width:8px; height:8px; margin-top:5px; border-radius:50%; background:var(--blue); }
+    .checkbox-line { display:flex; align-items:center; gap:8px; margin:2px 0 8px; color:#595959; font-size:13px; }
+    .checkbox-line input { width:14px; height:14px; }
+    .toast { position:fixed; z-index:50; top:72px; left:50%; transform:translate(-50%,-8px); min-width:220px; max-width:calc(100vw - 32px); padding:9px 14px; border-radius:6px; color:#237804; background:#f6ffed; border:1px solid #b7eb8f; box-shadow:0 4px 12px #00000012; opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media(max-width:900px) { .stage-board { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media(max-width:768px) {
+      .nav,.account span { display:none; }
+      .header { padding:0 16px; }
+      .page { padding:80px 16px 24px; }
+      .grid,.stage-board { grid-template-columns:1fr; }
+      .page-title { margin-bottom:18px; }
+      h1 { font-size:24px; }
+      .task { grid-template-columns:32px minmax(0,1fr); padding:12px 0; row-gap:10px; }
+      .task-action { grid-column:2; justify-self:start; }
+      .application { grid-template-columns:30px minmax(0,1fr) 32px; gap:10px; padding:11px 0; }
+      .application > .application-meta,.application > .next,.application > .tag { display:none; }
+      .stat-row { grid-template-columns:repeat(3,1fr); }
+      .summary { padding:16px; }
+      .card-head,.priority,.application-list,.toolbar,.tabs { padding-left:16px; padding-right:16px; }
+      .toolbar { align-items:stretch; }
+      .search,select { width:100%; }
+      .toolbar-spacer { display:none; }
+      .drawer { width:100vw; }
+      .two-col { grid-template-columns:1fr; gap:0; }
+      .toast { top:auto; bottom:16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <button class="brand" data-action="toast" data-message="回到职迹首页"><span class="brand-mark">职</span><span>职迹</span></button>
+    <nav class="nav"><button data-nav="resumes">我的简历</button><button class="active" data-nav="applications">求职进展</button></nav>
+    <button class="account" data-action="toast" data-message="账号菜单：这里后续接入设置、退出登录等操作"><span class="avatar">王</span><span>王小明</span></button>
+  </header>
+
+  <main class="page">
+    <div class="page-title">
+      <div><h1>求职进展</h1><span class="subtitle">聚焦下一步行动，掌握每一条申请的最新状态</span></div>
+      <button class="primary" data-action="open-create"><span class="plus">＋</span>新建申请</button>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <div class="card-head"><div><h2>优先处理</h2><span class="hint">按行动日期排序，完成后自动进入时间线</span></div><button class="link" data-action="show-all">查看全部</button></div>
+        <div class="priority" id="priorityList"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>进展概览</h2><button class="link" data-action="show-all">全部申请</button></div>
+        <div class="summary">
+          <div class="stat-row">
+            <button class="stat" data-summary="active"><label>进行中</label><strong id="activeCount">12</strong></button>
+            <button class="stat" data-summary="followup"><label>待跟进</label><strong class="red" id="followupCount">3</strong></button>
+            <button class="stat" data-summary="interview"><label>本周面试</label><strong id="interviewCount">2</strong></button>
+          </div>
+          <div class="status-list" id="statusBars"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card full">
+      <div class="tabs" id="tabs">
+        <button class="active" data-tab="recent">最近动态</button>
+        <button data-tab="all">全部申请</button>
+        <button data-tab="stage">阶段视图</button>
+      </div>
+      <div class="toolbar">
+        <input class="search" id="searchInput" placeholder="搜索公司、岗位、记录">
+        <select id="statusFilter" aria-label="阶段筛选">
+          <option value="all">全部阶段</option>
+          <option value="applied">已投递</option>
+          <option value="screening">沟通中</option>
+          <option value="interview">面试中</option>
+          <option value="offer">Offer</option>
+        </select>
+        <select id="sortSelect" aria-label="排序方式">
+          <option value="next">按下次行动</option>
+          <option value="company">按公司名称</option>
+          <option value="updated">按最近更新</option>
+        </select>
+        <span class="toolbar-spacer"></span>
+        <button class="plain" data-action="clear-filters">清空筛选</button>
+      </div>
+      <div class="application-list" id="applicationList"></div>
+      <div class="empty" id="emptyState">没有匹配的申请，换个关键词或阶段试试。</div>
+    </section>
+
+    <div class="note"><b>i</b> 这是一版基于当前项目视觉语言的交互静态稿：新建、查看、编辑和跟进统一使用右侧申请工作台，所有按钮与链接只模拟前端状态，不连接真实 API。</div>
+  </main>
+
+  <div class="drawer-mask" id="workspaceMask">
+    <aside class="drawer" role="dialog" aria-modal="true" aria-label="申请工作台">
+      <div class="drawer-head">
+        <div><h2 id="drawerTitle">申请详情</h2><span class="drawer-subtitle" id="drawerSubtitle">查看申请进展、记录跟进和调整下一步行动</span></div>
+        <button class="icon-button" data-action="close-workspace" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <h2>基础信息</h2>
+          <div class="two-col" style="margin-top:14px">
+            <div class="field"><label>公司</label><input id="workspaceCompany" placeholder="例如：腾讯"></div>
+            <div class="field"><label>岗位</label><input id="workspaceRole" placeholder="例如：产品经理"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label>来源</label><input id="workspaceSource" placeholder="官网投递 / 实际投递简历 · r12 / 内推"></div>
+            <div class="field"><label>投递链接</label><input id="workspaceLink" placeholder="https://careers.example.com/job"></div>
+          </div>
+          <button class="plain source-link" data-action="open-source">打开投递来源 / 简历版本</button>
+        </div>
+
+        <div class="drawer-section">
+          <h2>阶段与下一步</h2>
+          <div class="two-col" style="margin-top:14px">
+            <div class="field"><label>当前阶段</label><select id="workspaceStatus"></select></div>
+            <div class="field"><label>下次行动</label><input id="workspaceNextAction" placeholder="例如：8 月 6 日 · 跟进沟通结果"></div>
+          </div>
+          <label class="checkbox-line"><input id="workspacePriority" type="checkbox">加入优先处理</label>
+          <div class="mini-toolbar">
+            <button class="plain" data-action="advance-stage">推进到下一阶段</button>
+            <button class="plain" data-action="snooze-action">顺延 3 天</button>
+            <button class="plain danger-button" data-action="archive-application" id="workspaceArchiveAction">归档申请</button>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <h2>新增记录</h2>
+          <div class="quick-actions">
+            <button data-template="已邮件跟进 HR，等待回复">邮件跟进</button>
+            <button data-template="已完成面试复盘，补充关键问题和下一步准备">面试复盘</button>
+            <button data-template="已根据 JD 调整简历，并确认投递版本">更新简历版本</button>
+          </div>
+          <div class="field"><textarea id="workspaceNote" placeholder="记录这次沟通、面试反馈、材料更新或下一步判断"></textarea></div>
+          <div class="drawer-actions">
+            <button class="plain" data-action="close-workspace">取消</button>
+            <button class="primary" data-action="save-workspace" id="workspacePrimaryAction">保存记录</button>
+          </div>
+        </div>
+
+        <div class="drawer-section" id="timelineSection">
+          <h2>时间线</h2>
+          <div id="drawerTimeline"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const statusMeta = {
+      applied: { label: "已投递", tag: "blue", bar: "", stage: "已投递" },
+      screening: { label: "沟通中", tag: "gold", bar: "gold", stage: "沟通中" },
+      interview: { label: "面试中", tag: "red", bar: "purple", stage: "面试中" },
+      offer: { label: "Offer", tag: "green", bar: "green", stage: "Offer" }
+    };
+
+    let currentTab = "recent";
+    let selectedId = null;
+    let workspaceMode = "detail";
+    let toastTimer = null;
+    let applications = [
+      { id: 1, avatar: "字节", tone: "red", company: "字节跳动", role: "产品策略实习生", status: "interview", source: "实际投递简历 · r12", link: "resume://r12", last: "二面结束，等待结果", next: "下次行动：已逾期", nextAction: "已逾期 2 天 · 跟进面试结果，确认后续安排", priority: true, overdue: true, updated: 3, timeline: ["二面结束，等待结果", "完成一面复盘，补充案例说明", "7 月 26 日提交申请"] },
+      { id: 2, avatar: "小红", tone: "orange", company: "小红书", role: "增长产品经理", status: "screening", source: "官网投递 · 7 月 29 日", link: "https://career.xiaohongshu.example/jobs/pm", last: "HR 已查看投递材料", next: "下次行动：今天", nextAction: "今天 · 补充针对 JD 的项目说明，再发送给招聘方", priority: true, updated: 2, timeline: ["HR 已查看投递材料", "针对 JD 调整项目说明", "7 月 29 日官网投递"] },
+      { id: 3, avatar: "美团", tone: "", company: "美团", role: "商业分析师", status: "applied", source: "实际投递简历 · r10", link: "resume://r10", last: "已投递，待跟进", next: "下次行动：8 月 2 日", nextAction: "8 月 2 日 · 准备 HR 初筛可能涉及的问题", priority: true, updated: 1, timeline: ["已投递，待跟进", "关联简历版本 r10"] },
+      { id: 4, avatar: "腾讯", tone: "green", company: "腾讯", role: "用户研究员", status: "offer", source: "内推 · 7 月 20 日", link: "https://careers.tencent.example/referral", last: "口头 Offer，等待正式邮件", next: "下次行动：明天", nextAction: "明天 · 确认薪资与入职材料", priority: false, updated: 4, timeline: ["口头 Offer，等待正式邮件", "完成终面", "朋友完成内推"] }
+    ];
+
+    const byId = (id) => document.getElementById(id);
+    const tag = (status) => `<em class="tag ${statusMeta[status].tag}">${statusMeta[status].label}</em>`;
+
+    function showToast(message) {
+      const toast = byId("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function setTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll("#tabs button").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
+      renderApplications();
+    }
+
+    function getFilteredApplications() {
+      const keyword = byId("searchInput").value.trim().toLowerCase();
+      const status = byId("statusFilter").value;
+      const sort = byId("sortSelect").value;
+      return applications
+        .filter((item) => !item.archived)
+        .filter((item) => status === "all" || item.status === status)
+        .filter((item) => {
+          if (!keyword) return true;
+          return `${item.company} ${item.role} ${item.last} ${item.source}`.toLowerCase().includes(keyword);
+        })
+        .sort((a, b) => {
+          if (sort === "company") return a.company.localeCompare(b.company, "zh-CN");
+          if (sort === "updated") return b.updated - a.updated;
+          return Number(Boolean(b.overdue)) - Number(Boolean(a.overdue)) || a.updated - b.updated;
+        });
+    }
+
+    function renderPriority() {
+      const list = byId("priorityList");
+      const items = applications.filter((item) => item.priority).slice(0, 3);
+      list.innerHTML = items.map((item, index) => `
+        <article class="task ${item.done ? "is-done" : ""}" data-id="${item.id}">
+          <span class="company-avatar ${item.tone}">${item.avatar}</span>
+          <div class="task-main">
+            <div class="task-title"><strong>${item.company}</strong><span>${item.role}</span>${tag(item.status)}</div>
+            <div class="task-copy">${item.overdue ? "<span class=\"danger\">" + item.nextAction.split(" · ")[0] + "</span> · " + item.nextAction.split(" · ").slice(1).join(" · ") : item.nextAction}</div>
+          </div>
+          <button class="task-action ${index === 0 && !item.done ? "primary-action" : ""}" data-action="${item.done ? "open-detail" : index === 0 ? "record-followup" : "complete-task"}" data-id="${item.id}">${item.done ? "查看记录" : index === 0 ? "记录跟进" : "完成记录"}</button>
+        </article>
+      `).join("");
+    }
+
+    function renderSummary() {
+      const counts = applications.reduce((acc, item) => {
+        acc[item.status] = (acc[item.status] || 0) + 1;
+        return acc;
+      }, {});
+      const visible = applications.filter((item) => !item.archived);
+      byId("activeCount").textContent = visible.filter((item) => item.status !== "offer").length;
+      byId("followupCount").textContent = visible.filter((item) => item.priority && !item.done).length;
+      byId("interviewCount").textContent = visible.filter((item) => item.status === "interview").length;
+      const max = Math.max(...Object.values(counts), 1);
+      byId("statusBars").innerHTML = Object.entries(statusMeta).map(([status, meta]) => {
+        const count = counts[status] || 0;
+        return `<button class="status-line" data-filter-status="${status}"><span>${meta.label}</span><div class="bar ${meta.bar}"><i style="width:${count === 0 ? 0 : count / max * 100}%"></i></div><b>${count}</b></button>`;
+      }).join("");
+    }
+
+    function renderApplications() {
+      const empty = byId("emptyState");
+      const list = byId("applicationList");
+      const items = getFilteredApplications();
+      empty.classList.toggle("show", items.length === 0);
+      if (currentTab === "stage") {
+        renderStageBoard(items);
+        return;
+      }
+      list.className = "application-list";
+      list.innerHTML = items.map((item) => `
+        <article class="application" data-id="${item.id}">
+          <span class="company-avatar ${item.tone}">${item.avatar}</span>
+          <div class="application-name"><strong>${item.company} · ${item.role}</strong><span>最后记录：${item.last}</span></div>
+          <span class="application-meta">${item.source}</span>
+          ${tag(item.status)}
+          <span class="next ${item.overdue ? "overdue" : ""}">${item.next}</span>
+          <button class="icon-button" data-action="open-detail" data-id="${item.id}" aria-label="查看详情">›</button>
+        </article>
+      `).join("");
+    }
+
+    function renderStageBoard(items) {
+      const list = byId("applicationList");
+      list.className = "stage-board";
+      list.innerHTML = Object.entries(statusMeta).map(([status, meta]) => {
+        const stageItems = items.filter((item) => item.status === status);
+        return `<section class="stage">
+          <div class="stage-head"><strong>${meta.stage}</strong><span>${stageItems.length}</span></div>
+          ${stageItems.map((item) => `<div class="stage-card" data-action="open-detail" data-id="${item.id}"><strong>${item.company} · ${item.role}</strong><span>${item.next}</span></div>`).join("") || "<div class=\"stage-card\"><span>暂无申请</span></div>"}
+        </section>`;
+      }).join("");
+    }
+
+    function fillWorkspaceOptions(selectedStatus = "applied") {
+      byId("workspaceStatus").innerHTML = Object.entries(statusMeta).map(([value, meta]) => `<option value="${value}" ${value === selectedStatus ? "selected" : ""}>${meta.label}</option>`).join("");
+    }
+
+    function openCreateWorkspace() {
+      workspaceMode = "create";
+      selectedId = null;
+      byId("drawerTitle").textContent = "新建申请";
+      byId("drawerSubtitle").textContent = "先录入关键信息，创建后继续在同一侧栏补充记录";
+      byId("workspacePrimaryAction").textContent = "创建申请";
+      byId("workspaceArchiveAction").textContent = "放弃新建";
+      byId("workspaceCompany").value = "";
+      byId("workspaceRole").value = "";
+      byId("workspaceSource").value = "官网投递";
+      byId("workspaceLink").value = "";
+      byId("workspaceNextAction").value = "";
+      byId("workspacePriority").checked = true;
+      byId("workspaceNote").value = "";
+      fillWorkspaceOptions("applied");
+      byId("timelineSection").style.display = "none";
+      byId("workspaceMask").classList.add("show");
+      setTimeout(() => byId("workspaceCompany").focus(), 120);
+    }
+
+    function openDrawer(id, focusNote = false) {
+      const item = applications.find((app) => app.id === Number(id));
+      if (!item) return;
+      workspaceMode = "detail";
+      selectedId = item.id;
+      byId("drawerTitle").textContent = `${item.company} · ${item.role}`;
+      byId("drawerSubtitle").textContent = `${statusMeta[item.status].label} · ${item.source}`;
+      byId("workspacePrimaryAction").textContent = "保存记录";
+      byId("workspaceArchiveAction").textContent = "归档申请";
+      byId("workspaceCompany").value = item.company;
+      byId("workspaceRole").value = item.role;
+      byId("workspaceSource").value = item.source;
+      byId("workspaceLink").value = item.link || "";
+      byId("workspaceNextAction").value = item.nextAction;
+      byId("workspacePriority").checked = Boolean(item.priority);
+      byId("workspaceNote").value = "";
+      fillWorkspaceOptions(item.status);
+      byId("drawerTimeline").innerHTML = item.timeline.map((text) => `<div class="activity-item"><span class="dot"></span><span>${text}</span></div>`).join("");
+      byId("timelineSection").style.display = "";
+      byId("workspaceMask").classList.add("show");
+      if (focusNote) setTimeout(() => byId("workspaceNote").focus(), 120);
+    }
+
+    function closeWorkspace() {
+      byId("workspaceMask").classList.remove("show");
+      selectedId = null;
+      workspaceMode = "detail";
+    }
+
+    function syncItemFromWorkspace(item) {
+      item.company = byId("workspaceCompany").value.trim() || item.company;
+      item.role = byId("workspaceRole").value.trim() || item.role;
+      item.source = byId("workspaceSource").value.trim() || item.source;
+      item.link = byId("workspaceLink").value.trim();
+      item.status = byId("workspaceStatus").value;
+      item.nextAction = byId("workspaceNextAction").value.trim() || item.nextAction;
+      item.next = item.nextAction.includes("·") ? `下次行动：${item.nextAction.split("·")[0].trim()}` : "下次行动：待确认";
+      item.priority = byId("workspacePriority").checked;
+      item.avatar = item.company.slice(0, 2);
+      const note = byId("workspaceNote").value.trim();
+      if (note) {
+        item.last = note;
+        item.timeline.unshift(note);
+      }
+      item.overdue = false;
+      item.updated = Date.now();
+    }
+
+    function saveWorkspace() {
+      if (workspaceMode === "create") {
+        createApplication();
+        return;
+      }
+      const item = applications.find((app) => app.id === selectedId);
+      if (!item) return;
+      syncItemFromWorkspace(item);
+      renderAll();
+      closeWorkspace();
+      showToast("记录已保存，概览和列表已同步更新");
+    }
+
+    function completeTask(id) {
+      const item = applications.find((app) => app.id === Number(id));
+      if (!item) return;
+      item.done = true;
+      item.priority = false;
+      item.timeline.unshift("完成一次跟进记录");
+      item.last = "完成一次跟进记录";
+      renderAll();
+      showToast(`${item.company} 的待办已完成`);
+    }
+
+    function createApplication() {
+      const company = byId("workspaceCompany").value.trim();
+      const role = byId("workspaceRole").value.trim();
+      if (!company || !role) {
+        showToast("公司和岗位需要先填一下");
+        return;
+      }
+      const source = byId("workspaceSource").value;
+      const nextAction = byId("workspaceNextAction").value.trim() || "待确认 · 补充下一步行动";
+      const note = byId("workspaceNote").value.trim();
+      const item = {
+        id: Math.max(...applications.map((app) => app.id)) + 1,
+        avatar: company.slice(0, 2),
+        tone: "",
+        company,
+        role,
+        status: byId("workspaceStatus").value,
+        source,
+        link: byId("workspaceLink").value.trim(),
+        last: "新建申请",
+        next: nextAction.includes("·") ? `下次行动：${nextAction.split("·")[0].trim()}` : "下次行动：待确认",
+        nextAction,
+        priority: byId("workspacePriority").checked,
+        updated: Date.now(),
+        timeline: note ? [note, "新建申请"] : ["新建申请"]
+      };
+      if (note) item.last = note;
+      applications.unshift(item);
+      byId("searchInput").value = "";
+      byId("statusFilter").value = "all";
+      byId("sortSelect").value = "next";
+      setTab("all");
+      renderAll();
+      closeWorkspace();
+      showToast("新申请已加入列表和优先处理");
+    }
+
+    function advanceStage() {
+      const order = Object.keys(statusMeta);
+      const current = byId("workspaceStatus").value;
+      const next = order[Math.min(order.indexOf(current) + 1, order.length - 1)];
+      byId("workspaceStatus").value = next;
+      showToast(`阶段已预填为：${statusMeta[next].label}`);
+    }
+
+    function snoozeAction() {
+      const field = byId("workspaceNextAction");
+      field.value = "3 天后 · 重新检查进展并跟进";
+      byId("workspacePriority").checked = true;
+      showToast("下次行动已顺延 3 天，并保留在优先处理");
+    }
+
+    function archiveApplication() {
+      if (workspaceMode === "create") {
+        closeWorkspace();
+        showToast("已放弃本次新建");
+        return;
+      }
+      const item = applications.find((app) => app.id === selectedId);
+      if (!item) return;
+      item.archived = true;
+      item.priority = false;
+      item.timeline.unshift("已归档申请");
+      renderAll();
+      closeWorkspace();
+      showToast(`${item.company} 已归档，列表中暂不展示`);
+    }
+
+    function renderAll() {
+      renderPriority();
+      renderSummary();
+      renderApplications();
+    }
+
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("button,[data-action],[data-filter-status],.application,.stage-card");
+      if (!target) return;
+      const action = target.dataset.action;
+      if (target.dataset.nav) {
+        document.querySelectorAll(".nav button").forEach((button) => button.classList.toggle("active", button === target));
+        showToast(target.dataset.nav === "resumes" ? "导航到我的简历：静态稿中仅做选中反馈" : "已停留在求职进展");
+      }
+      if (target.dataset.filterStatus) {
+        byId("statusFilter").value = target.dataset.filterStatus;
+        setTab("all");
+        showToast(`已筛选：${statusMeta[target.dataset.filterStatus].label}`);
+      }
+      if (target.dataset.summary === "followup") {
+        byId("statusFilter").value = "all";
+        byId("sortSelect").value = "next";
+        setTab("all");
+        showToast("已切到待跟进优先的列表");
+      }
+      if (target.dataset.summary === "active") {
+        byId("statusFilter").value = "all";
+        byId("sortSelect").value = "next";
+        setTab("all");
+        showToast("已展示进行中的申请，Offer 和归档会在真实实现中单独收起");
+      }
+      if (target.dataset.summary === "interview") {
+        byId("statusFilter").value = "interview";
+        setTab("all");
+        showToast("已筛选本周面试相关申请");
+      }
+      if (action === "toast") showToast(target.dataset.message || "操作已响应");
+      if (action === "show-all") setTab("all");
+      if (action === "open-create") openCreateWorkspace();
+      if (action === "record-followup") openDrawer(target.dataset.id, true);
+      if (action === "complete-task") completeTask(target.dataset.id);
+      if (action === "open-detail" || target.classList.contains("application") || target.classList.contains("stage-card")) openDrawer(target.dataset.id);
+      if (action === "close-workspace") closeWorkspace();
+      if (action === "save-workspace") saveWorkspace();
+      if (action === "advance-stage") advanceStage();
+      if (action === "snooze-action") snoozeAction();
+      if (action === "archive-application") archiveApplication();
+      if (action === "open-source") {
+        const link = byId("workspaceLink").value.trim();
+        showToast(link ? `打开来源：${link}` : "暂无来源链接，真实实现中可跳转简历版本或外部投递页");
+      }
+      if (target.dataset.template) {
+        byId("workspaceNote").value = target.dataset.template;
+        byId("workspaceNote").focus();
+      }
+      if (action === "clear-filters") {
+        byId("searchInput").value = "";
+        byId("statusFilter").value = "all";
+        byId("sortSelect").value = "next";
+        renderApplications();
+        showToast("筛选已清空");
+      }
+    });
+
+    document.addEventListener("input", (event) => {
+      if (event.target.id === "searchInput") renderApplications();
+    });
+
+    document.addEventListener("change", (event) => {
+      if (["statusFilter", "sortSelect"].includes(event.target.id)) renderApplications();
+    });
+
+    byId("tabs").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-tab]");
+      if (button) setTab(button.dataset.tab);
+    });
+
+    byId("workspaceMask").addEventListener("click", (event) => {
+      if (event.target.id === "workspaceMask") closeWorkspace();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeWorkspace();
+      }
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
