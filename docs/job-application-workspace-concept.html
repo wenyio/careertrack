@@ -59,8 +59,9 @@
     .tag.gold { color:#ad6800; background:#fffbe6; border-color:#ffe58f; }
     .tag.purple { color:#531dab; background:#f9f0ff; border-color:#d3adf7; }
     .tag.green { color:#237804; background:#f6ffed; border-color:#b7eb8f; }
-    .task-action { height:30px; border:1px solid #d9d9d9; border-radius:6px; padding:0 10px; color:#262626; background:#fff; font-size:13px; }
-    .task-action.primary-action { color:#fff; background:var(--blue); border-color:var(--blue); }
+    .task-action { display:flex; justify-content:flex-end; gap:8px; }
+    .task-action button { height:30px; border:1px solid #d9d9d9; border-radius:6px; padding:0 10px; color:#262626; background:#fff; font-size:13px; }
+    .task-action .primary-action { color:#fff; background:var(--blue); border-color:var(--blue); }
     .summary { padding:18px 20px 20px; }
     .stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--line); padding-bottom:18px; }
     .stat { border:0; border-right:1px solid var(--line); padding:0 8px 0 14px; text-align:left; background:transparent; }
@@ -279,14 +280,20 @@
     let workspaceMode = "detail";
     let toastTimer = null;
     let applications = [
-      { id: 1, avatar: "字节", tone: "red", company: "字节跳动", role: "产品策略实习生", status: "interview", source: "实际投递简历 · r12", link: "resume://r12", last: "二面结束，等待结果", next: "下次行动：已逾期", nextAction: "已逾期 2 天 · 跟进面试结果，确认后续安排", priority: true, overdue: true, updated: 3, timeline: ["二面结束，等待结果", "完成一面复盘，补充案例说明", "7 月 26 日提交申请"] },
-      { id: 2, avatar: "小红", tone: "orange", company: "小红书", role: "增长产品经理", status: "screening", source: "官网投递 · 7 月 29 日", link: "https://career.xiaohongshu.example/jobs/pm", last: "HR 已查看投递材料", next: "下次行动：今天", nextAction: "今天 · 补充针对 JD 的项目说明，再发送给招聘方", priority: true, updated: 2, timeline: ["HR 已查看投递材料", "针对 JD 调整项目说明", "7 月 29 日官网投递"] },
-      { id: 3, avatar: "美团", tone: "", company: "美团", role: "商业分析师", status: "applied", source: "实际投递简历 · r10", link: "resume://r10", last: "已投递，待跟进", next: "下次行动：8 月 2 日", nextAction: "8 月 2 日 · 准备 HR 初筛可能涉及的问题", priority: true, updated: 1, timeline: ["已投递，待跟进", "关联简历版本 r10"] },
+      { id: 1, avatar: "字节", tone: "red", company: "字节跳动", role: "产品策略实习生", status: "interview", source: "实际投递简历 · r12", link: "resume://r12", last: "二面结束，等待结果", next: "下次行动：已逾期", nextAction: "已逾期 2 天 · 跟进面试结果，确认后续安排", priority: true, priorityBucket: "overdue", overdue: true, updated: 3, timeline: ["二面结束，等待结果", "完成一面复盘，补充案例说明", "7 月 26 日提交申请"] },
+      { id: 2, avatar: "小红", tone: "orange", company: "小红书", role: "增长产品经理", status: "screening", source: "官网投递 · 7 月 29 日", link: "https://career.xiaohongshu.example/jobs/pm", last: "HR 已查看投递材料", next: "下次行动：今天", nextAction: "今天 · 补充针对 JD 的项目说明，再发送给招聘方", priority: true, priorityBucket: "due_today", updated: 2, timeline: ["HR 已查看投递材料", "针对 JD 调整项目说明", "7 月 29 日官网投递"] },
+      { id: 3, avatar: "美团", tone: "", company: "美团", role: "商业分析师", status: "applied", source: "实际投递简历 · r10", link: "resume://r10", last: "已投递，待跟进", next: "下次行动：8 月 2 日", nextAction: "8 月 2 日 · 准备 HR 初筛可能涉及的问题", priority: true, priorityBucket: "upcoming", updated: 1, timeline: ["已投递，待跟进", "关联简历版本 r10"] },
       { id: 4, avatar: "腾讯", tone: "green", company: "腾讯", role: "用户研究员", status: "offer", source: "内推 · 7 月 20 日", link: "https://careers.tencent.example/referral", last: "口头 Offer，等待正式邮件", next: "下次行动：明天", nextAction: "明天 · 确认薪资与入职材料", priority: false, updated: 4, timeline: ["口头 Offer，等待正式邮件", "完成终面", "朋友完成内推"] }
     ];
 
     const byId = (id) => document.getElementById(id);
     const tag = (status) => `<em class="tag ${statusMeta[status].tag}">${statusMeta[status].label}</em>`;
+    const priorityPolicy = (item) => {
+      if (item.priorityBucket === "unplanned") return { label: "安排下一步", action: "record-followup" };
+      if (item.status === "interview") return { label: "记录面试", action: "record-followup" };
+      if (item.priorityBucket === "overdue" || item.priorityBucket === "due_today") return { label: "处理", action: "record-followup" };
+      return { label: "记录进展", action: "record-followup" };
+    };
 
     function showToast(message) {
       const toast = byId("toast");
@@ -330,7 +337,10 @@
             <div class="task-title"><strong>${item.company}</strong><span>${item.role}</span>${tag(item.status)}</div>
             <div class="task-copy">${item.overdue ? "<span class=\"danger\">" + item.nextAction.split(" · ")[0] + "</span> · " + item.nextAction.split(" · ").slice(1).join(" · ") : item.nextAction}</div>
           </div>
-          <button class="task-action ${index === 0 && !item.done ? "primary-action" : ""}" data-action="${item.done ? "open-detail" : index === 0 ? "record-followup" : "complete-task"}" data-id="${item.id}">${item.done ? "查看记录" : index === 0 ? "记录跟进" : "完成记录"}</button>
+          <div class="task-action">
+            <button class="${index === 0 && !item.done ? "primary-action" : "plain"}" data-action="${priorityPolicy(item).action}" data-id="${item.id}">${priorityPolicy(item).label}</button>
+            <button class="plain" data-action="open-detail" data-id="${item.id}">详情</button>
+          </div>
         </article>
       `).join("");
     }

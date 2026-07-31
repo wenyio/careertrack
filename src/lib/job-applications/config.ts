@@ -1,5 +1,15 @@
 import type { JobApplicationStatus } from '@/types/job-application'
 
+export type PriorityBucket = 'overdue' | 'due_today' | 'upcoming' | 'unplanned'
+export type PriorityActivity = 'follow_up' | 'interview'
+export type PriorityNextActionMode = 'keep' | 'date' | 'snooze' | 'clear'
+
+export interface PriorityActionPolicy {
+  primaryLabel: string
+  activity: PriorityActivity
+  initialNextActionMode: PriorityNextActionMode
+}
+
 export const APPLICATION_STATUS_LABELS: Record<JobApplicationStatus, string> = {
   wishlist: '心愿单', applied: '已投递', screening: '沟通中', interview: '面试中',
   offer: 'Offer', rejected: '未通过', withdrawn: '已撤回',
@@ -28,4 +38,36 @@ export function nextApplicationStatus(status: JobApplicationStatus): JobApplicat
 export function previousApplicationStatus(status: JobApplicationStatus): JobApplicationStatus | null {
   const index = APPLICATION_STAGE_ORDER.indexOf(status)
   return index > 0 ? APPLICATION_STAGE_ORDER[index - 1] : null
+}
+
+export function getPriorityActionPolicy(bucket: PriorityBucket, status: JobApplicationStatus): PriorityActionPolicy {
+  if (bucket === 'unplanned') {
+    return {
+      primaryLabel: '安排下一步',
+      activity: 'follow_up',
+      initialNextActionMode: 'date',
+    }
+  }
+
+  if (status === 'interview') {
+    return {
+      primaryLabel: '记录面试',
+      activity: 'interview',
+      initialNextActionMode: bucket === 'upcoming' ? 'keep' : 'date',
+    }
+  }
+
+  if (bucket === 'overdue' || bucket === 'due_today') {
+    return {
+      primaryLabel: '处理',
+      activity: 'follow_up',
+      initialNextActionMode: 'date',
+    }
+  }
+
+  return {
+    primaryLabel: '记录进展',
+    activity: 'follow_up',
+    initialNextActionMode: 'keep',
+  }
 }

@@ -11,7 +11,8 @@ import { useResumes } from '@/hooks/useResume'
 import { getResumeVersions } from '@/services/resume'
 import type { CreateJobApplicationRequest, JobApplication, JobApplicationSort, JobApplicationStatus } from '@/types/job-application'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
-import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS as STATUS_COLORS, APPLICATION_STATUS_LABELS as STATUS_LABELS } from '@/lib/job-applications/config'
+import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS as STATUS_COLORS, APPLICATION_STATUS_LABELS as STATUS_LABELS, getPriorityActionPolicy } from '@/lib/job-applications/config'
+import type { PriorityBucket, PriorityNextActionMode } from '@/lib/job-applications/config'
 import { appTodayDateOnly } from '@/lib/app-time'
 import { ApplicationDetailDrawer } from '@/components/applications/ApplicationDetailDrawer'
 import PageContainer from '@/components/layout/PageContainer'
@@ -146,6 +147,13 @@ function ApplicationForm({ application, open, onClose, nested = false }: { appli
 
 type ApplicationView = 'recent' | 'all'
 type ActivityType = 'follow_up' | 'interview' | 'note'
+type PriorityItem = {
+  item: JobApplication
+  bucket: PriorityBucket
+  tone: 'error' | 'warning' | 'processing' | 'default'
+  label: string
+  description: string
+}
 
 export default function ApplicationsPage() {
   const router = useRouter()
@@ -161,6 +169,7 @@ export default function ApplicationsPage() {
   const [detail, setDetail] = useState<JobApplication | null>(null)
   const [detailActivity, setDetailActivity] = useState<ActivityType>('follow_up')
   const [detailRecorderOpen, setDetailRecorderOpen] = useState(false)
+  const [detailNextActionMode, setDetailNextActionMode] = useState<PriorityNextActionMode>('keep')
   const [showAllActions, setShowAllActions] = useState(false)
   const priorityRef = useRef<HTMLDivElement>(null)
 
@@ -173,7 +182,7 @@ export default function ApplicationsPage() {
   }), [page, q, sort, status, view])
   const { data, isLoading, isError, refetch } = useJobApplications(queryOptions)
   const { data: summary, isError: isSummaryError, refetch: refetchSummary } = useJobApplicationSummary()
-  const { data: actions, isError: isActionsError, refetch: refetchActions } = useJobApplicationActions()
+  const { data: actions, isError: isActionsError, isLoading: isActionsLoading, refetch: refetchActions } = useJobApplicationActions()
   const { remove } = useJobApplicationMutations()
 
   useEffect(() => {
@@ -191,11 +200,11 @@ export default function ApplicationsPage() {
   const filters = useMemo(() => JOB_APPLICATION_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })), [])
   const today = appTodayDateOnly()
   const isActionable = (item: JobApplication) => APPLICATION_STAGE_ORDER.slice(0, 4).includes(item.status)
-  const allPriorityItems = [
-    ...(actions?.overdue.items || []).map((item) => ({ item, tone: 'error' as const, label: '已逾期', description: `原定 ${item.next_action_at}`, kind: 'scheduled' as const })),
-    ...(actions?.due_today.items || []).map((item) => ({ item, tone: 'warning' as const, label: '今天', description: '今天需要完成跟进', kind: 'scheduled' as const })),
-    ...(actions?.upcoming.items || []).map((item) => ({ item, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理`, kind: 'scheduled' as const })),
-    ...(actions?.unplanned.items || []).map((item) => ({ item, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动', kind: 'unplanned' as const })),
+  const allPriorityItems: PriorityItem[] = [
+    ...(actions?.overdue.items || []).map((item) => ({ item, bucket: 'overdue' as const, tone: 'error' as const, label: '已逾期', description: `原定 ${item.next_action_at}` })),
+    ...(actions?.due_today.items || []).map((item) => ({ item, bucket: 'due_today' as const, tone: 'warning' as const, label: '今天', description: '今天需要完成跟进' })),
+    ...(actions?.upcoming.items || []).map((item) => ({ item, bucket: 'upcoming' as const, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理` })),
+    ...(actions?.unplanned.items || []).map((item) => ({ item, bucket: 'unplanned' as const, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动' })),
   ]
   const totalPriorityItems = actions
     ? actions.overdue.total + actions.due_today.total + actions.upcoming.total + actions.unplanned.total
@@ -204,9 +213,10 @@ export default function ApplicationsPage() {
 
   if (!sessionReady || !isAuthenticated) return null
 
-  const openDetail = (item: JobApplication, activity: ActivityType = 'follow_up', recorderOpen = false) => {
+  const openDetail = (item: JobApplication, activity: ActivityType = 'follow_up', recorderOpen = false, nextActionMode: PriorityNextActionMode = 'keep') => {
     setDetailActivity(activity)
     setDetailRecorderOpen(recorderOpen)
+    setDetailNextActionMode(nextActionMode)
     setDetail(item)
   }
   const changeView = (nextView: ApplicationView) => {
@@ -286,16 +296,18 @@ export default function ApplicationsPage() {
             extra={totalPriorityItems > 4 && <Button type="link" onClick={() => setShowAllActions((value) => !value)}>{showAllActions ? '收起' : `查看全部 ${totalPriorityItems}`}</Button>}
             styles={{ body: { paddingTop: priorityItems.length ? 0 : 24 } }}
           >
-            {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办，当前申请都已安排妥当" style={{ margin: '12px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, tone, label, description, kind }, index) => <div key={item.id} className={styles.priorityRow}>
+            {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : !actions && isActionsLoading ? <div style={{ textAlign: 'center', padding: 32 }} aria-label="正在加载优先处理"><Spin /></div> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办，当前申请都已安排妥当" style={{ margin: '12px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, bucket, tone, label, description }, index) => {
+              const actionPolicy = getPriorityActionPolicy(bucket, item.status)
+              return <div key={item.id} className={styles.priorityRow}>
               <Space orientation="vertical" size={4}>
                 <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag><Tag color={tone}>{label}</Tag></Space>
                 <Typography.Text type={tone === 'error' ? 'danger' : 'secondary'}><ClockCircleOutlined /> {description}</Typography.Text>
               </Space>
               <div className={styles.priorityActions}>
-                <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, 'follow_up', true)}>{kind === 'unplanned' ? '安排下一步' : '记录进展'}</Button>
-                {kind !== 'unplanned' && <Button size="small" onClick={() => openDetail(item, 'interview', true)}>面试</Button>}
+                <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, actionPolicy.activity, true, actionPolicy.initialNextActionMode)}>{actionPolicy.primaryLabel}</Button>
+                <Button size="small" onClick={() => openDetail(item)}>详情</Button>
               </div>
-            </div>)}</div>}
+            </div>})}</div>}
           </Card>
         </div>
 
@@ -303,7 +315,7 @@ export default function ApplicationsPage() {
           {summary ? <div className={styles.overviewBody}>
             <div className={styles.overviewStats} aria-label="求职申请概览">
               <button type="button" className={styles.statButton} onClick={() => filterByStatus('all')}><Statistic title="进行中" value={summary.active} /></button>
-              <button type="button" className={styles.statButton} onClick={() => { setShowAllActions(true); priorityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><Statistic title="待跟进" value={summary.due_today + summary.overdue} styles={summary.overdue ? { content: { color: '#ff4d4f' } } : undefined} /></button>
+              <button type="button" className={styles.statButton} onClick={() => { priorityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><Statistic title="待跟进" value={summary.due_today + summary.overdue} styles={summary.overdue ? { content: { color: '#ff4d4f' } } : undefined} /></button>
               <button type="button" className={styles.statButton} onClick={() => filterByStatus('interview')}><Statistic title="面试中" value={summary.interview} /></button>
             </div>
             <div className={styles.pipeline} aria-label="申请阶段分布">
@@ -332,7 +344,7 @@ export default function ApplicationsPage() {
         {view === 'all' && data && data.pagination.total_pages > 1 && <div className={styles.pagination}><Pagination current={page} pageSize={data.pagination.page_size} total={data.pagination.total} showSizeChanger={false} showTotal={(total) => `共 ${total} 条申请`} onChange={setPage} /></div>}
       </Card>
     </Space>
-    <ApplicationDetailDrawer key={`application-detail-${detail?.id || 'closed'}-${detailActivity}-${detailRecorderOpen ? 'recorder' : 'summary'}`} application={detail} open={Boolean(detail)} initialActivity={detailActivity} initialRecorderOpen={detailRecorderOpen} onClose={() => setDetail(null)} onEdit={setEditing}>
+    <ApplicationDetailDrawer key={`application-detail-${detail?.id || 'closed'}-${detailActivity}-${detailNextActionMode}-${detailRecorderOpen ? 'recorder' : 'summary'}`} application={detail} open={Boolean(detail)} initialActivity={detailActivity} initialRecorderOpen={detailRecorderOpen} initialNextActionMode={detailNextActionMode} onClose={() => setDetail(null)} onEdit={setEditing}>
       {detail && <ApplicationForm key={`nested-application-form-${editing?.id || 'closed'}`} application={editing || null} open={editing !== undefined} onClose={() => setEditing(undefined)} nested />}
     </ApplicationDetailDrawer>
     {!detail && <ApplicationForm key={`application-form-${editing?.id || (editing === null ? 'new' : 'closed')}`} application={editing || null} open={editing !== undefined} onClose={() => setEditing(undefined)} />}

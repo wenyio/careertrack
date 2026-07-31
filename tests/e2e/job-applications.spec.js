@@ -3,6 +3,20 @@ const { createResumeByApi, createUserByApi, goto, loginByUi, registerHooks } = r
 
 registerHooks(test)
 
+function appDateOnlyAfter(days) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = Number(parts.find((part) => part.type === 'year').value)
+  const month = Number(parts.find((part) => part.type === 'month').value)
+  const day = Number(parts.find((part) => part.type === 'day').value)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return date.toISOString().slice(0, 10)
+}
+
 test.describe('求职申请跟踪', () => {
   test('会话水合后直接访问和刷新 applications，提供空状态与响应式表单', async ({ page, request }) => {
     const account = await createUserByApi(request, 'applications-session')
@@ -27,6 +41,74 @@ test.describe('求职申请跟踪', () => {
     await page.getByRole('button', { name: '新建申请' }).click()
     await expect(page.getByRole('dialog', { name: /新建申请/ })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()
+  })
+
+  test('优先处理按真实分桶决定按钮和记录器默认行为', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'app-priority')
+    const headers = { Cookie: account.token }
+    const yesterday = appDateOnlyAfter(-1)
+    const today = appDateOnlyAfter(0)
+    const tomorrow = appDateOnlyAfter(1)
+    const later = appDateOnlyAfter(2)
+    const records = [
+      { company: '逾期普通公司', position: '工程师', status: 'applied', next_action_at: yesterday },
+      { company: '今日面试公司', position: '工程师', status: 'interview', next_action_at: today },
+      { company: '未来普通公司', position: '工程师', status: 'applied', next_action_at: tomorrow },
+      { company: '未来面试公司', position: '工程师', status: 'interview', next_action_at: later },
+      { company: '待规划公司', position: '工程师', status: 'applied' },
+    ]
+    for (const data of records) {
+      const created = await request.post('/api/job-applications', { headers, data })
+      expect(created.status(), await created.text()).toBe(201)
+    }
+
+    await loginByUi(page, account.username, account.password)
+    await page.route('**/api/job-applications/actions', async (route) => {
+      await page.waitForTimeout(1500)
+      await route.continue()
+    }, { times: 1 })
+    await page.goto('/applications', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: '求职进展' })).toBeVisible()
+    await expect(page.getByText('暂无待办，当前申请都已安排妥当')).toBeHidden()
+    await expect(page.getByLabel('正在加载优先处理')).toBeVisible()
+
+    const priority = page.getByLabel('优先处理申请')
+    await expect(priority).toBeVisible()
+    const row = (company) => priority.locator('[class*="priorityRow"]', { hasText: company })
+    await expect(row('逾期普通公司').getByRole('button', { name: /处\s*理/ })).toBeVisible()
+    await expect(row('今日面试公司').getByRole('button', { name: '记录面试' })).toBeVisible()
+    await expect(row('未来普通公司').getByRole('button', { name: '记录进展' })).toBeVisible()
+    await expect(row('未来面试公司').getByRole('button', { name: '记录面试' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
+
+    await page.getByLabel('求职申请概览').locator('button', { hasText: '待跟进' }).click()
+    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
+    await expect(row('待规划公司')).toHaveCount(0)
+
+    await page.getByRole('button', { name: '查看全部 5' }).click()
+    await expect(page.getByRole('button', { name: /收\s*起/ })).toBeVisible()
+    const unplanned = row('待规划公司')
+    await expect(unplanned.getByRole('button', { name: '安排下一步' })).toBeVisible()
+    await expect(unplanned.getByRole('button', { name: /详\s*情/ })).toBeVisible()
+    await expect(unplanned.getByRole('button', { name: '面试' })).toHaveCount(0)
+    await page.getByRole('button', { name: /收\s*起/ }).click()
+    await expect(page.getByRole('button', { name: '查看全部 5' })).toBeVisible()
+    await page.getByRole('button', { name: '查看全部 5' }).click()
+
+    await unplanned.getByRole('button', { name: /详\s*情/ }).click()
+    await expect(page.getByRole('dialog', { name: /待规划公司/ })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: '记录一次进展' })).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: /待规划公司/ })).toBeHidden()
+
+    await unplanned.getByRole('button', { name: '安排下一步' }).click()
+    const recorder = page.getByRole('dialog', { name: '记录一次进展' })
+    await expect(recorder).toBeVisible()
+    await expect(recorder.locator('.ant-segmented-item-selected', { hasText: '指定日期' })).toBeVisible()
+    await recorder.getByLabel('记录跟进').fill('准备明确下一次跟进时间')
+    await recorder.getByRole('button', { name: '保存跟进' }).click()
+    await expect(recorder.getByText('请选择提醒日期')).toBeVisible()
+    await recorder.getByRole('button', { name: '取消记录进展' }).click()
   })
 
   test('页面创建、进展联动阶段、职位链接、投递快照和删除', async ({ page, request }) => {

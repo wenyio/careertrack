@@ -17,13 +17,14 @@ import { appDateOnlyAfterDays } from '@/lib/app-time'
 import { getPreviewConfig } from '@/utils/resume-preview'
 import type { JobApplication } from '@/types/job-application'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
+import type { PriorityNextActionMode } from '@/lib/job-applications/config'
 import type { ResumeVersion } from '@/types/resume'
 import { DEFAULT_MODULES_ORDER } from '@/config/modules'
 import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 import styles from './ApplicationDetailDrawer.module.css'
 
 type ActivityType = 'follow_up' | 'interview' | 'note'
-type NextActionMode = 'keep' | 'date' | 'snooze' | 'clear'
+type NextActionMode = PriorityNextActionMode
 type EventValues = {
   content?: string
   next_action_at?: dayjs.Dayjs
@@ -110,13 +111,14 @@ function FitToWidthPreview({ children, compact }: { children: ReactNode; compact
   </div>
 }
 
-export function ApplicationDetailDrawer({ application, open, onClose, onEdit, initialActivity = 'follow_up', initialRecorderOpen = false, children }: {
+export function ApplicationDetailDrawer({ application, open, onClose, onEdit, initialActivity = 'follow_up', initialRecorderOpen = false, initialNextActionMode = 'keep', children }: {
   application: JobApplication | null
   open: boolean
   onClose: () => void
   onEdit: (application: JobApplication) => void
   initialActivity?: ActivityType
   initialRecorderOpen?: boolean
+  initialNextActionMode?: NextActionMode
   children?: ReactNode
 }) {
   const detail = useJobApplication(application?.id, open)
@@ -182,16 +184,16 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   if (!current) return null
   const copy = activityCopy(activityType)
   const nextStage = nextApplicationStatus(current.status)
-  const resetRecorder = (type: ActivityType, status = current.status) => {
+  const resetRecorder = (type: ActivityType, status = current.status, nextActionModeValue: NextActionMode = initialNextActionMode) => {
     setActivityType(type)
     form.resetFields()
     form.setFieldsValue({
-      next_action_mode: 'keep',
+      next_action_mode: nextActionModeValue,
       next_status: suggestedStatus(type, status),
     })
   }
-  const focusRecorder = (type: ActivityType) => {
-    resetRecorder(type)
+  const focusRecorder = (type: ActivityType, nextActionModeValue: NextActionMode = 'keep') => {
+    resetRecorder(type, current.status, nextActionModeValue)
     setActiveTab('progress')
     setRecorderOpen(true)
   }
@@ -416,7 +418,7 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   const recorderContent = <>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 14 }}>一次提交可以同时记录过程、调整阶段并安排下一步提醒。</Typography.Paragraph>
       <Segmented value={activityType} options={activityOptions} onChange={(value) => resetRecorder(value as ActivityType)} />
-      <Form form={form} layout="vertical" preserve={false} initialValues={{ next_action_mode: 'keep', next_status: suggestedStatus(initialActivity, current.status) }} style={{ marginTop: 16 }}>
+      <Form form={form} layout="vertical" preserve={false} initialValues={{ next_action_mode: initialNextActionMode, next_status: suggestedStatus(initialActivity, current.status) }} style={{ marginTop: 16 }}>
         <Form.Item label={copy.title} name="content" rules={[{ required: activityType !== 'interview', message: '请输入活动内容' }, { max: 5000, message: '内容最多 5000 字' }]} style={{ marginBottom: 8 }}>
           <Input.TextArea rows={3} maxLength={5000} showCount placeholder={copy.placeholder} />
         </Form.Item>
