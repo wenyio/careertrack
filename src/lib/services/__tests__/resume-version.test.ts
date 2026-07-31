@@ -11,6 +11,7 @@ import {
   getResumeVersion,
   listResumeVersions,
   MANUAL_VERSION_LIMIT,
+  parseVersionCreatedAt,
   restoreResumeVersion,
   ResumeVersionConflictError,
   ResumeVersionLimitError,
@@ -44,6 +45,12 @@ afterEach(() => {
 })
 
 describe('resume version service', () => {
+  it('parses PostgreSQL Date and SQLite timestamp values consistently', () => {
+    const timestamp = Date.parse('2026-07-31T03:00:00.000Z')
+    expect(parseVersionCreatedAt(new Date(timestamp))).toBe(timestamp)
+    expect(parseVersionCreatedAt('2026-07-31 03:00:00')).toBe(timestamp)
+  })
+
   it('enforces ownership, returns metadata without snapshot, and creates manual versions idempotently', async () => {
     await expect(createManualResumeVersion(resumeId, otherUserId)).rejects.toThrow('简历不存在')
     const first = await createManualResumeVersion(resumeId, userId, '投递前')

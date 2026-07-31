@@ -84,6 +84,15 @@ function toDetail(row: VersionRow): ResumeVersionDetail | null {
   return snapshot ? { ...toMetadata(row), snapshot } : null
 }
 
+/** PostgreSQL decodes TIMESTAMPTZ as Date while SQLite returns TEXT. */
+export function parseVersionCreatedAt(value: unknown): number {
+  if (value instanceof Date) return value.getTime()
+  if (typeof value !== 'string') return NaN
+  return Date.parse(
+    value.includes('T') ? value : `${value.replace(' ', 'T')}Z`,
+  )
+}
+
 async function getOwnedResume(
   database: DatabaseQuery,
   resumeId: string,
@@ -235,16 +244,13 @@ export async function createAutoResumeVersion(
     const sameRevision = await findVersion(database, resume.id, resume.revision, 'auto')
     if (sameRevision) return sameRevision
 
-    const latest = await database<{ created_at: string }>(
+    const latest = await database<{ created_at: unknown }>(
       `SELECT created_at FROM resume_versions
        WHERE resume_id = $1 AND source = 'auto'
        ORDER BY created_at DESC, id DESC LIMIT 1`,
       [resume.id],
     )
-    const latestCreatedAt = latest.rows[0]?.created_at
-    const latestMs = latestCreatedAt
-      ? Date.parse(latestCreatedAt.includes('T') ? latestCreatedAt : `${latestCreatedAt.replace(' ', 'T')}Z`)
-      : NaN
+    const latestMs = parseVersionCreatedAt(latest.rows[0]?.created_at)
     if (Number.isFinite(latestMs) && now - latestMs < AUTO_VERSION_WINDOW_MS) {
       return null
     }

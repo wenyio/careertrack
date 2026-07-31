@@ -53,7 +53,14 @@ export async function PUT(
       const resume = await updateResume(id, user.id, parsedBody.data)
       // Autosave can be frequent; the version service coalesces these writes
       // into at most one automatic checkpoint per ten-minute window.
-      await createAutoResumeVersion(id, user.id)
+      try {
+        await createAutoResumeVersion(id, user.id)
+      } catch (snapshotError) {
+        // The resume write already committed. Reporting a failed checkpoint as
+        // a failed save would make clients retry a stale revision and mask the
+        // successful edit; retain the server-side signal without changing it.
+        console.error('[resume-version] 自动快照创建失败', snapshotError)
+      }
       return success(resume)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '更新失败'
