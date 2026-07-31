@@ -58,6 +58,16 @@ function ApplicationForm({ application, open, onClose }: { application: JobAppli
     const values = await form.validateFields()
     const payload = toPayload(values)
     if (application) {
+      // Keep an existing application snapshot immutable during ordinary edits.
+      // Re-sending the unchanged IDs would needlessly re-run ownership checks
+      // and makes an unrelated status/date update depend on historical links.
+      if (
+        payload.resume_id === application.resume_id
+        && payload.resume_version_id === application.resume_version_id
+      ) {
+        delete payload.resume_id
+        delete payload.resume_version_id
+      }
       update.mutate({ id: application.id, data: { ...payload, expected_revision: application.revision } }, { onSuccess: onClose })
     } else {
       create.mutate(payload, { onSuccess: onClose })
