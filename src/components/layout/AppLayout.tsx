@@ -184,7 +184,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   whiteSpace: 'nowrap',
                   position: 'relative',
                   border: 0,
-                  font: 'inherit',
+                  fontFamily: 'inherit',
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) e.currentTarget.style.color = '#333'
@@ -233,7 +233,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               height: 40,
               border: 0,
               background: 'transparent',
-              font: 'inherit',
+              fontFamily: 'inherit',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#f5f5f5'
