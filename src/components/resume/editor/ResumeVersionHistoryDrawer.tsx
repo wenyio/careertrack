@@ -84,7 +84,7 @@ export default function ResumeVersionHistoryDrawer({
         title="版本历史"
         open={open}
         onClose={onClose}
-        width={460}
+        size={460}
         destroyOnHidden
       >
         <Typography.Paragraph type="secondary">
