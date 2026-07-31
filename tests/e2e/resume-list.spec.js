@@ -18,6 +18,11 @@ test.describe('简历列表页', () => {
     await loginByUi(page, account.username, account.password)
     await goto(page, '/resumes')
 
+    // 列表 DTO 保持轻量；首屏卡片进入视口后才按需读取详情并渲染真实缩略图。
+    await expect.poll(async () => (
+      await page.locator('[data-preview-mode="live"]').count()
+    )).toBeGreaterThan(0)
+
     // 验证列表
     await expect(page.getByRole('heading', { name: '我的简历' })).toBeVisible()
     await expect(page.getByText(name1)).toBeVisible()
@@ -36,5 +41,31 @@ test.describe('简历列表页', () => {
     await expect(page).toHaveURL(/\/resumes/)
     await expect(page.getByText(name2)).toBeVisible()
     await screenshot(page, '简历列表', '返回列表页')
+  })
+
+  test('真实缩略图按视口延迟读取详情', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'list-lazy-preview')
+    const resumes = await Promise.all(Array.from({ length: 12 }, (_, index) => (
+      createResumeByApi(request, account.token, `E2E_TEST_延迟预览_${index}_${Date.now()}`)
+    )))
+    const requestedResumeIds = new Set()
+
+    await page.setViewportSize({ width: 1280, height: 300 })
+    page.on('request', (networkRequest) => {
+      if (networkRequest.method() !== 'GET') return
+      const match = new URL(networkRequest.url()).pathname.match(/^\/api\/resumes\/([\w-]+)$/)
+      if (match) requestedResumeIds.add(match[1])
+    })
+
+    await loginByUi(page, account.username, account.password)
+    await goto(page, '/resumes')
+
+    await expect.poll(() => requestedResumeIds.size).toBeGreaterThan(0)
+    expect(requestedResumeIds.size).toBeLessThan(resumes.length)
+
+    const deferredResume = resumes.find(({ id }) => !requestedResumeIds.has(id))
+    expect(deferredResume).toBeDefined()
+    await page.getByRole('link', { name: `编辑 ${deferredResume.name}` }).scrollIntoViewIfNeeded()
+    await expect.poll(() => requestedResumeIds.has(deferredResume.id)).toBe(true)
   })
 })

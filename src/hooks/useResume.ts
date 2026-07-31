@@ -40,13 +40,16 @@ export function useResumes(page = 1, pageSize = 20, options?: { enabled?: boolea
 }
 
 /**
- * 获取简历详情 Hook
+ * 获取单份简历详情。
+ *
+ * `enabled` 允许列表等非编辑入口在真正需要正文时再发起请求，同时仍复用
+ * 编辑器已写入的同一份 Query 缓存。
  */
-export function useResume(id: string) {
+export function useResume(id: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: resumeQueryKey(id),
     queryFn: () => getResume(id),
-    enabled: !!id,
+    enabled: !!id && (options.enabled ?? true),
   })
 }
 

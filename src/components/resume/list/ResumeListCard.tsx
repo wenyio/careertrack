@@ -7,6 +7,7 @@
 
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { Card, Button, Tag, Popover, Typography } from 'antd'
 import {
   EditOutlined,
@@ -20,6 +21,7 @@ import ResumeMiniPreview from '@/components/resume/ResumeMiniPreview'
 import ResumeSummaryThumbnail from '@/components/resume/ResumeSummaryThumbnail'
 import PublicLinkPopover from '@/components/resume/PublicLinkPopover'
 import { formatDate } from '@/utils/format'
+import { useResume } from '@/hooks/useResume'
 import { DEFAULT_MODULES_ORDER } from '@/types/resume'
 import type { ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import type { Profile } from '@/types/profile'
@@ -54,6 +56,36 @@ interface ResumeListCardProps {
   onPopoverChange: (resumeId: string | null) => void
 }
 
+/**
+ * 只在缩略图接近视口时读取正文。列表接口保持轻量，滚动到卡片时才用真实
+ * A4 预览替换结构摘要；不支持 IntersectionObserver 的旧环境则安全降级为读取。
+ */
+function usePreviewInViewport() {
+  const targetRef = useRef<HTMLDivElement>(null)
+  const [isInViewport, setIsInViewport] = useState(
+    () => typeof IntersectionObserver === 'undefined',
+  )
+
+  useEffect(() => {
+    const target = targetRef.current
+    if (!target) return
+
+    if (!('IntersectionObserver' in window)) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        setIsInViewport(true)
+        observer.disconnect()
+      }
+    }, { rootMargin: '160px 0px' })
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [])
+
+  return { targetRef, isInViewport }
+}
+
 export default function ResumeListCard({
   resume,
   profile,
@@ -68,6 +100,16 @@ export default function ResumeListCard({
   onTogglePublic,
   onPopoverChange,
 }: ResumeListCardProps) {
+  const hasInlinePreview = Boolean(resume.content && resume.modules_config)
+  const { targetRef, isInViewport } = usePreviewInViewport()
+  const { data: previewResume } = useResume(resume.id, {
+    // 游客数据已经在内存中；正式用户只在卡片接近视口时按需取详情。
+    enabled: !hasInlinePreview && isInViewport,
+  })
+  const livePreview = hasInlinePreview
+    ? resume
+    : previewResume
+
   return (
     <Card
       hoverable
@@ -81,16 +123,18 @@ export default function ResumeListCard({
       <div style={{ display: 'flex', padding: 16, gap: 16 }}>
         {/* 左侧：缩略图预览 */}
         <div
+          ref={targetRef}
+          data-preview-mode={livePreview ? 'live' : 'summary'}
           style={{ flexShrink: 0, cursor: 'pointer' }}
           onClick={() => onEdit(resume.id)}
           aria-hidden="true"
         >
-          {resume.content && resume.modules_config ? (
+          {livePreview?.content && livePreview.modules_config ? (
             <ResumeMiniPreview
-              content={resume.content}
-              modulesConfig={resume.modules_config}
-              modulesOrder={resume.modules_order || DEFAULT_MODULES_ORDER}
-              template={resume.template || 'classic'}
+              content={livePreview.content}
+              modulesConfig={livePreview.modules_config}
+              modulesOrder={livePreview.modules_order || DEFAULT_MODULES_ORDER}
+              template={livePreview.template || 'classic'}
               profile={profile ?? undefined}
               width={120}
             />
