@@ -28,6 +28,7 @@ const DATABASE_PATH = process.env.SQLITE_DB_PATH
 // 绕过 API 注册流程。
 
 let _adminSession = null
+const antdDeprecationWarnings = new WeakMap()
 
 function testIp(seed) {
   const digest = crypto.createHash('sha256').update(`${RUN_ID}:${seed}`).digest()
@@ -202,12 +203,16 @@ function registerHooks(test) {
   })
 
   test.beforeEach(async ({ page }, testInfo) => {
+    const warnings = []
+    antdDeprecationWarnings.set(page, warnings)
+
     page.on('console', (msg) => {
       if (['error', 'warning'].includes(msg.type())) {
         const location = msg.location()
         append(CONSOLE_LOG, `[${testInfo.title}] ${msg.type().toUpperCase()} ${msg.text()} ${location.url || ''}:${location.lineNumber || ''}`)
         writeJsonLine({ type: 'console', level: msg.type(), test: testInfo.title, text: msg.text(), location })
       }
+      if (msg.type() === 'warning' && msg.text().includes('[antd:')) warnings.push(msg.text())
     })
 
     page.on('pageerror', (error) => {
@@ -225,6 +230,8 @@ function registerHooks(test) {
   })
 
   test.afterEach(async ({ page }, testInfo) => {
+    expect(antdDeprecationWarnings.get(page), `Ant Design 弃用警告：${antdDeprecationWarnings.get(page)?.join('\n')}`).toEqual([])
+
     if (testInfo.status !== testInfo.expectedStatus) {
       const shot = await screenshot(page, '失败截图', testInfo.title).catch(() => null)
       if (shot) {

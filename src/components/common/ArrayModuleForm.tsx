@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Form, Input, Select, DatePicker, Modal, Checkbox, List, Empty, Button, Space, Tooltip } from 'antd'
+import { Form, Input, Select, DatePicker, Modal, Checkbox, Empty, Button, Space, Tooltip } from 'antd'
 import { ImportOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ModuleFieldConfig } from '@/config/module-fields'
@@ -284,10 +284,10 @@ export default function ArrayModuleForm<T extends { id?: string }>({
               onChange={(values) => setSelectedIndices(values as number[])}
               style={{ width: '100%' }}
             >
-              <List
-                dataSource={availableImportItems}
-                renderItem={({ item, index, isDuplicate }) => (
-                  <List.Item
+              <div aria-label={importConfig.modalTitle}>
+                {availableImportItems.map(({ item, index, isDuplicate }) => (
+                  <div
+                    key={index}
                     style={{
                       opacity: isDuplicate ? 0.45 : 1,
                       padding: '8px 0',
@@ -310,9 +310,9 @@ export default function ArrayModuleForm<T extends { id?: string }>({
                         )}
                       </div>
                     </Checkbox>
-                  </List.Item>
-                )}
-              />
+                  </div>
+                ))}
+              </div>
             </Checkbox.Group>
           )}
         </Modal>
