@@ -67,13 +67,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
   padding: 16px 0;
   border-bottom: 1px solid #f0f0f0;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
 }
 
 .priorityRow:last-child {
   border-bottom: 0;
+}
+
+.priorityRow:hover,
+.priorityRow:focus-visible,
+.applicationRow:hover,
+.applicationRow:focus-visible {
+  background: #fafafa;
+  outline: none;
+}
+
+.priorityRow:focus-visible,
+.applicationRow:focus-visible {
+  box-shadow: 0 0 0 2px #1677ff inset;
+}
+
+.priorityMain {
+  min-width: 0;
+  flex: 1;
 }
 
 .priorityActions,
@@ -128,8 +149,13 @@
 .applicationRow {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
-  padding: 18px 0;
+  gap: 12px;
+  margin: 0 -8px;
+  padding: 18px 8px;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -141,6 +167,49 @@
   margin: 0 -24px;
   padding: 18px 24px;
   background: #fff2f0;
+}
+
+.companyAvatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.companyAvatarTone0 {
+  background: #f0f5ff;
+  color: #2f54eb;
+}
+
+.companyAvatarTone1 {
+  background: #fff1f0;
+  color: #cf1322;
+}
+
+.companyAvatarTone2 {
+  background: #fff7e6;
+  color: #d46b08;
+}
+
+.companyAvatarTone3 {
+  background: #f6ffed;
+  color: #237804;
+}
+
+.companyAvatarTone4 {
+  background: #f9f0ff;
+  color: #531dab;
+}
+
+.companyAvatarTone5 {
+  background: #e6fffb;
+  color: #006d75;
 }
 
 .applicationMain {
@@ -222,12 +291,16 @@
 
   .priorityRow,
   .applicationRow {
-    align-items: stretch;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 10px;
+    row-gap: 10px;
   }
 
   .priorityActions,
   .applicationActions {
+    grid-column: 2;
     justify-content: flex-start;
   }
 
