@@ -293,24 +293,23 @@ test.describe('简历编辑表单', () => {
     })
 
     test('列表退出后退格不会在预览保留尾部空行', async ({ page, request }) => {
-      const account = await createUserByApi(request, 'list-backspace')
-      const resume = await createResumeByApi(request, account.token, `E2E_TEST_列表退格_${Date.now()}`)
-      await loginByUi(page, account.username, account.password)
-
-      await goto(page, `/resumes/${resume.id}/edit`)
-      await expect(page.locator('.resume-a4-preview')).toBeVisible()
-
-      const workSection = page.locator('div').filter({ hasText: /^工作经历$/ }).first()
-      await workSection.click()
-
       const cases = [
-        { button: '无序列表', tag: 'UL', items: ['职责一', '职责二'] },
-        { button: '有序列表', tag: 'OL', items: ['步骤一', '步骤二'] },
+        { name: 'bullet', button: '无序列表', tag: 'UL', items: ['职责一', '职责二'] },
+        { name: 'ordered', button: '有序列表', tag: 'OL', items: ['步骤一', '步骤二'] },
       ]
 
       for (const item of cases) {
+        const account = await createUserByApi(request, `lb-${item.name}`)
+        const resume = await createResumeByApi(request, account.token, `E2E_TEST_列表退格_${item.name}_${Date.now()}`)
+        await loginByUi(page, account.username, account.password)
+
+        await goto(page, `/resumes/${resume.id}/edit`)
+        await expect(page.locator('.resume-a4-preview')).toBeVisible()
+
+        const workSection = page.locator('div').filter({ hasText: /^工作经历$/ }).first()
+        await workSection.click()
         await page.getByRole('button', { name: /添加工作经历/ }).click()
-        const editor = page.locator('.tiptap').last()
+        const editor = page.locator('.tiptap:visible').last()
         await editor.click()
 
         await page.getByRole('button', { name: item.button }).first().click()
@@ -328,6 +327,12 @@ test.describe('简历编辑表单', () => {
         expect(childTags).toEqual([item.tag])
         await expect(previewDesc).toContainText(item.items[0])
         await expect(previewDesc).toContainText(item.items[1])
+
+        await page.locator('div').filter({ hasText: /^项目经历$/ }).first().click()
+        const childTagsAfterBlur = await previewDesc.evaluate((element) => (
+          Array.from(element.children).map((child) => child.tagName)
+        ))
+        expect(childTagsAfterBlur).toEqual([item.tag])
       }
     })
 

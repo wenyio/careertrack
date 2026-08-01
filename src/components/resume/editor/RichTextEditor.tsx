@@ -168,6 +168,9 @@ export default function RichTextEditor({
         code: false,
         blockquote: false,
         horizontalRule: false,
+        trailingNode: {
+          notAfter: ['bulletList', 'orderedList'],
+        },
         // link 和 underline 已内置于 StarterKit，通过配置项自定义
         link: {
           openOnClick: false,
