@@ -194,6 +194,48 @@ describe('business request validation', () => {
     }).success).toBe(false)
   })
 
+  it('normalizes nullable profile clearable fields from legacy payloads', () => {
+    const parsed = profileUpdateBodySchema.parse({
+      summary: null,
+      basic_info: {
+        avatar: null,
+        other: {
+          website: null,
+          github: null,
+        },
+      },
+      projects: [{
+        id: 'project-1',
+        name: 'Legacy Project',
+        link: null,
+        description: null,
+      }],
+      portfolio: [{
+        id: 'portfolio-1',
+        name: 'Legacy Portfolio',
+        link: null,
+        image: null,
+        description: null,
+      }],
+      skills: [{
+        id: 'skill-1',
+        name: 'TypeScript',
+        description: null,
+      }],
+    })
+
+    expect(parsed.summary).toBe('')
+    expect(parsed.basic_info?.avatar).toBe('')
+    expect(parsed.basic_info?.other?.website).toBe('')
+    expect(parsed.basic_info?.other?.github).toBe('')
+    expect(parsed.projects?.[0].link).toBe('')
+    expect(parsed.projects?.[0].description).toBe('')
+    expect(parsed.portfolio?.[0].link).toBe('')
+    expect(parsed.portfolio?.[0].image).toBe('')
+    expect(parsed.portfolio?.[0].description).toBe('')
+    expect(parsed.skills?.[0].description).toBe('')
+  })
+
   it('validates resume preview configuration consistently with editor controls', () => {
     expect(updateResumeBodySchema.safeParse({
       content: {

@@ -252,7 +252,7 @@ browser 作业通过后，可把自动化门禁视为正式闭环；若进入多
 
 项目已经依赖 Zod，但主要用于 MCP。REST route 多数直接消费 `request.json()`：缺少字段长度、枚举、数组形状、slug 规则、批量上限和 body 大小限制。部分错误响应还会直接带出底层错误文本。
 
-**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 8 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码、分页和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举、重复查询参数、超大或结构异常 JSON 均有单元和真实接口 E2E。REST 与 MCP 现已共用 TipTap 节点层级、mark/样式属性、富文本预算和外链协议白名单；通用错误 envelope 已按 HTTP 语义使用稳定错误码，全部 API 响应携带 request ID，后续只需继续细化少数业务专用码。
+**v1.0.3 整改状态：主体已关闭。** 目前 19 个 JSON 写接口、18 个动态 API 路由和 8 组查询参数均通过共享解析器和按领域拆分的 Zod schema 校验，覆盖 auth、profile、resume、publish、MCP Key、OAuth、注册码、分页和后台筛选/批量操作；损坏 JSON、非法 UUID/slug/枚举、重复查询参数、超大或结构异常 JSON 均有单元和真实接口 E2E。REST 与 MCP 现已共用 TipTap 节点层级、mark/样式属性、富文本预算和外链协议白名单；profile 更新对历史 `null` 清空值做空字符串归一化，避免旧数据阻断保存，同时仍保留危险 URL 协议拒绝；通用错误 envelope 已按 HTTP 语义使用稳定错误码，全部 API 响应携带 request ID，后续只需继续细化少数业务专用码。
 
 建议建立共享 schema 层，覆盖：
 

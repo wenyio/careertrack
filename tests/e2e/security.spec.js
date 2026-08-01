@@ -58,6 +58,32 @@ test.describe('业务请求 Schema', () => {
     })
     expect(invalidProfile.status()).toBe(400)
 
+    const nullableProfileFields = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        summary: null,
+        basic_info: {
+          avatar: null,
+          other: {
+            website: null,
+            github: null,
+          },
+        },
+        projects: [{
+          name: '历史项目',
+          link: null,
+          description: null,
+        }],
+        portfolio: [{
+          name: '历史作品',
+          link: null,
+          image: null,
+          description: null,
+        }],
+      },
+    })
+    expect(nullableProfileFields.status(), await nullableProfileFields.text()).toBe(200)
+
     const unsafeProfileUrl = await request.put('/api/profile', {
       headers: { Cookie: account.token },
       data: {

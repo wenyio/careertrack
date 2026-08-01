@@ -21,8 +21,9 @@ import {
 } from '@/config/resume-preview'
 
 const jsonObjectSchema = z.record(z.string(), z.unknown())
+const emptyStringWhenNull = (value: unknown) => value === null ? '' : value
 
-export const safeWebUrlSchema = z.string()
+const safeWebUrlValueSchema = z.string()
   .max(
     MAX_RICH_TEXT_URL_LENGTH,
     `URL 不能超过 ${MAX_RICH_TEXT_URL_LENGTH} 个字符`,
@@ -31,6 +32,10 @@ export const safeWebUrlSchema = z.string()
     (value) => !value.trim() || isSafeWebUrl(value),
     'URL 仅支持 http、https 或相对路径',
   )
+export const safeWebUrlSchema = z.preprocess(
+  emptyStringWhenNull,
+  safeWebUrlValueSchema,
+)
 
 export const richTextDocSchema = jsonObjectSchema.superRefine((doc, context) => {
   const result = validateRichTextDoc(doc)
@@ -71,10 +76,13 @@ const legacyRichTextStringSchema = z.string().superRefine((value, context) => {
   }
 })
 
-export const descriptionFieldSchema = z.union([
-  legacyRichTextStringSchema,
-  richTextDocSchema,
-]).transform((description) => description as DescriptionField)
+export const descriptionFieldSchema = z.preprocess(
+  emptyStringWhenNull,
+  z.union([
+    legacyRichTextStringSchema,
+    richTextDocSchema,
+  ]),
+).transform((description) => description as DescriptionField)
 
 export const profileEntrySchema = z.object({
   description: descriptionFieldSchema.optional(),
