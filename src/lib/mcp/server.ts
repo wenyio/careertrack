@@ -21,7 +21,7 @@ export interface McpAuthContext {
 export function createMcpServerForUser(auth: McpAuthContext): McpServer {
   const server = new McpServer({
     name: 'CareerTrack',
-    version: '1.0.4',
+    version: '1.0.5',
   })
   const canWrite = auth.scope === 'read_write'
 
