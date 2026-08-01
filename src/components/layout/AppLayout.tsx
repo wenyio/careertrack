@@ -19,8 +19,8 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useLogout } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { useGravatarUrl } from '@/utils/avatar'
-import { getAppNavigationMode, isAdminRoute, isSettingsRoute } from '@/utils/navigation'
-import { MAIN_NAV_ITEMS, SETTINGS_NAV_ITEMS, USER_MENU_ITEMS } from '@/config/navigation'
+import { getAppNavigationMode, isAdminRoute } from '@/utils/navigation'
+import { ACCOUNT_NAV_ITEMS, MAIN_NAV_ITEMS, USER_MENU_ITEMS } from '@/config/navigation'
 import HeaderBrand from './HeaderBrand'
 import GuestHeader from './GuestHeader'
 
@@ -41,7 +41,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const navMode = getAppNavigationMode(pathname, isAuthenticated)
   const isAdminPage = isAdminRoute(pathname)
-  const isSettingsPage = isSettingsRoute(pathname)
   const isAdmin = user?.role === 'admin'
 
   // 不显示任何全局导航
@@ -90,10 +89,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
     },
   ]
 
-  // 移动端菜单项：根据当前页面显示不同的导航组
-  const activeNavItems = isSettingsPage ? SETTINGS_NAV_ITEMS : filterByRole(MAIN_NAV_ITEMS)
+  const mainNavItems = filterByRole(MAIN_NAV_ITEMS)
+  const accountNavItems = filterByRole(ACCOUNT_NAV_ITEMS)
+
+  // 移动端菜单项：高频工作区保持在前，低频配置收进账号设置区
   const mobileMenuItems = [
-    ...activeNavItems.map((item) => ({
+    ...mainNavItems.map((item) => ({
       key: item.key,
       label: item.label,
       onClick: () => {
@@ -101,18 +102,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
         setMobileMenuOpen(false)
       },
     })),
-    ...(!isSettingsPage ? [
-      { type: 'divider' as const },
-      {
-        key: '/settings/profile',
-        icon: <UserOutlined />,
-        label: '个人信息',
-        onClick: () => {
-          router.push('/settings/profile')
-          setMobileMenuOpen(false)
-        },
+    { type: 'divider' as const },
+    ...accountNavItems.map((item) => ({
+      key: item.key,
+      icon: item.icon ? <item.icon /> : undefined,
+      label: item.label,
+      onClick: () => {
+        router.push(item.href)
+        setMobileMenuOpen(false)
       },
-    ] : []),
+    })),
     { type: 'divider' as const },
     {
       key: 'logout',
@@ -165,13 +164,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           className="header-nav-tabs"
           style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, minWidth: 0 }}
         >
-          {(isSettingsPage ? SETTINGS_NAV_ITEMS : filterByRole(MAIN_NAV_ITEMS)).map((item) => {
+          {mainNavItems.map((item) => {
             const isActive = item.match ? item.match(pathname) : pathname === item.key
             return (
               <button
                 type="button"
                 key={item.key}
-                onClick={() => router.push(item.key)}
+                onClick={() => router.push(item.href)}
                 aria-current={isActive ? 'page' : undefined}
                 style={{
                   padding: '6px 16px',

@@ -3,7 +3,7 @@
  */
 
 const { test, expect } = require('playwright/test')
-const { registerHooks, goto, screenshot } = require('./helpers')
+const { registerHooks, goto, screenshot, createUserByApi, loginByUi } = require('./helpers')
 
 registerHooks(test)
 
@@ -32,11 +32,35 @@ test.describe('页面访问与导航', () => {
     await goto(page, '/settings/profile')
     await expect(page).toHaveURL(/\/auth\/login/)
 
+    await goto(page, '/profile')
+    await expect(page).toHaveURL(/\/auth\/login/)
+
     const missingPublicResponse = await page.goto('/resume/not-exists-e2e', {
       waitUntil: 'domcontentloaded',
     })
     expect(missingPublicResponse?.status()).toBe(404)
     await expect(page.locator('body')).toContainText(/404|This page could not be found/)
     await screenshot(page, '异常场景', '不存在公开简历')
+  })
+
+  test('登录后高频入口保留在主导航，低频配置收进账号菜单', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'navigation')
+    await loginByUi(page, account.username, account.password)
+
+    await expect(page.getByRole('button', { name: '我的简历' })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: '求职进展' })).toBeVisible()
+    const profileNav = page.getByRole('button', { name: '个人信息', exact: true })
+    await expect(profileNav).toBeVisible()
+
+    await profileNav.click()
+    await expect(page).toHaveURL(/\/profile/)
+    await expect(page.getByText('个人信息管理')).toBeVisible()
+    await expect(profileNav).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: '我的简历' })).toBeVisible()
+
+    await page.getByRole('button', { name: /用户菜单/ }).click()
+    await expect(page.getByRole('menuitem', { name: '账号安全' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'MCP 服务' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '个人信息' })).toHaveCount(0)
   })
 })

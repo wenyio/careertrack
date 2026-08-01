@@ -1,7 +1,7 @@
 /**
  * 导航项集中配置
  *
- * 桌面主导航、移动端 Drawer、用户菜单、设置页导航、后台侧栏
+ * 桌面主导航、移动端 Drawer、用户菜单、后台侧栏
  * 统一从此处派生，避免重复定义。
  */
 
@@ -28,7 +28,7 @@ export interface NavItem {
   match?: (pathname: string) => boolean
 }
 
-// ─── 主导航（桌面 Header 中部 tabs + 移动端 Drawer） ───
+// ─── 主导航（高频工作区：桌面 Header 中部 tabs + 移动端 Drawer） ───
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
   {
@@ -45,6 +45,13 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     match: (p) => p.startsWith('/applications'),
   },
   {
+    key: '/profile',
+    label: '个人信息',
+    href: '/profile',
+    icon: UserOutlined,
+    match: (p) => p === '/profile' || p === '/settings/profile',
+  },
+  {
     key: '/admin',
     label: '管理后台',
     href: '/admin',
@@ -53,25 +60,21 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   },
 ]
 
-// ─── 设置一级导航（全局 Header 设置模式 tabs） ───
+// ─── 账号菜单导航（低频配置：头像下拉 + 移动端 Drawer） ───
 
-export const SETTINGS_NAV_ITEMS: NavItem[] = [
-  {
-    key: '/settings/profile',
-    label: '个人信息',
-    href: '/settings/profile',
-    match: (p) => p === '/settings/profile',
-  },
+export const ACCOUNT_NAV_ITEMS: NavItem[] = [
   {
     key: '/settings/security',
     label: '账号安全',
     href: '/settings/security',
+    icon: SafetyOutlined,
     match: (p) => p === '/settings/security',
   },
   {
     key: '/settings/mcp',
     label: 'MCP 服务',
     href: '/settings/mcp',
+    icon: ApiOutlined,
     match: (p) => p === '/settings/mcp',
   },
 ]
@@ -112,29 +115,5 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
 // ─── 用户下拉菜单（不含退出登录，退出登录由 AppLayout 单独处理） ───
 
 export const USER_MENU_ITEMS: NavItem[] = [
-  {
-    key: '/admin',
-    label: '管理后台',
-    href: '/admin',
-    icon: DashboardOutlined,
-    roles: ['admin'],
-  },
-  {
-    key: '/settings/profile',
-    label: '个人信息',
-    href: '/settings/profile',
-    icon: UserOutlined,
-  },
-  {
-    key: '/settings/security',
-    label: '账号安全',
-    href: '/settings/security',
-    icon: SafetyOutlined,
-  },
-  {
-    key: '/settings/mcp',
-    label: 'MCP 服务',
-    href: '/settings/mcp',
-    icon: ApiOutlined,
-  },
+  ...ACCOUNT_NAV_ITEMS,
 ]

@@ -49,9 +49,10 @@ CareerTrack/
 │   │   │   ├── mcp-keys/       # MCP Key 管理
 │   │   │   └── admin/          # 后台管理
 │   │   ├── auth/               # 登录/注册/迁移页面
+│   │   ├── profile/            # 个人信息页面（主导航入口）
 │   │   ├── resumes/            # 简历页面
 │   │   ├── admin/              # 后台管理页面
-│   │   ├── settings/           # 设置页面（个人信息、安全、MCP、头像）
+│   │   ├── settings/           # 设置页面（安全、MCP、头像，兼容旧个人信息入口）
 │   │   └── resume/             # 公开简历和预览页面
 │   ├── components/             # 可复用组件
 │   │   └── resume/             # 简历相关组件（编辑器、预览、模板）

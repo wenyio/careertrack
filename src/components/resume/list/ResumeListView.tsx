@@ -198,7 +198,7 @@ export default function ResumeListView({
             <Button
               icon={<UserOutlined />}
               style={{ marginBottom: 12 }}
-              onClick={() => router.push('/settings/profile')}
+              onClick={() => router.push('/profile')}
             >
               先完善个人信息
             </Button>

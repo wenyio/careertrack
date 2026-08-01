@@ -23,11 +23,13 @@ test.describe('关键交互可访问性', () => {
 
     const resumeNav = page.getByRole('button', { name: '我的简历' })
     await expect(resumeNav).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: '个人信息', exact: true })).toBeVisible()
 
     const userMenu = page.getByRole('button', { name: /用户菜单/ })
     await userMenu.focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('menuitem', { name: '个人信息' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '账号安全' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'MCP 服务' })).toBeVisible()
   })
 
   test('编辑器核心操作具备名称并支持键盘激活', async ({ page, request }) => {

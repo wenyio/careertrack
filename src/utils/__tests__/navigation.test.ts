@@ -75,6 +75,9 @@ describe('shouldUseGuestHeader', () => {
   it('returns false for /settings/profile when not authenticated', () => {
     expect(shouldUseGuestHeader('/settings/profile', false)).toBe(false)
   })
+  it('returns false for /profile when not authenticated', () => {
+    expect(shouldUseGuestHeader('/profile', false)).toBe(false)
+  })
   it('returns false for /admin when not authenticated', () => {
     expect(shouldUseGuestHeader('/admin', false)).toBe(false)
   })
@@ -87,6 +90,7 @@ describe('shouldHideAppNavigation', () => {
   it('hides for /resume/some-slug', () => expect(shouldHideAppNavigation('/resume/some-slug')).toBe(true))
   it('hides for /resume/preview/123', () => expect(shouldHideAppNavigation('/resume/preview/123')).toBe(true))
   it('does NOT hide for /resumes', () => expect(shouldHideAppNavigation('/resumes')).toBe(false))
+  it('does NOT hide for /profile', () => expect(shouldHideAppNavigation('/profile')).toBe(false))
   it('does NOT hide for /settings/profile', () => expect(shouldHideAppNavigation('/settings/profile')).toBe(false))
   it('does NOT hide for /admin', () => expect(shouldHideAppNavigation('/admin')).toBe(false))
 })
@@ -110,6 +114,9 @@ describe('getAppNavigationMode', () => {
   })
   it('returns full for /resumes when authenticated', () => {
     expect(getAppNavigationMode('/resumes', true)).toBe('full')
+  })
+  it('returns full for /profile when authenticated', () => {
+    expect(getAppNavigationMode('/profile', true)).toBe('full')
   })
   it('returns full for /settings/* when authenticated', () => {
     expect(getAppNavigationMode('/settings/profile', true)).toBe('full')
