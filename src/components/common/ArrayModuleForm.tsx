@@ -25,6 +25,8 @@ import DateRangeField from '@/components/common/DateRangeField'
 import { FormGrid, FormGridNormal, FormGridWide, FormGridFull } from '@/components/common/FormGrid'
 import { generateId, deepClone } from '@/utils/format'
 
+type EntrySyncMode = ProfileEntrySyncMode | 'pull'
+
 interface ArrayModuleFormProps<T extends { id?: string }> {
   items: Partial<T>[]
   fields: ModuleFieldConfig[]
@@ -74,7 +76,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
   const [syncModalOpen, setSyncModalOpen] = useState(false)
   const [syncItemIndex, setSyncItemIndex] = useState<number | null>(null)
-  const [syncMode, setSyncMode] = useState<ProfileEntrySyncMode>('create')
+  const [syncMode, setSyncMode] = useState<EntrySyncMode>('create')
   const [syncTargetId, setSyncTargetId] = useState<string | undefined>()
 
   // 构建已有条目的去重签名集合
@@ -149,8 +151,37 @@ export default function ArrayModuleForm<T extends { id?: string }>({
     setSyncModalOpen(true)
   }
 
+  const handlePullFromProfile = () => {
+    if (syncItemIndex === null || !syncTargetId || !importItems) return
+    const source = importItems.find((item) => item.id === syncTargetId)
+    if (!source) return
+
+    const currentItem = items[syncItemIndex] as Record<string, unknown>
+    const nextItem = deepClone(source) as Record<string, unknown>
+    const currentId = currentItem.id
+    const hiddenFields = currentItem._hidden_fields
+
+    nextItem.id = typeof currentId === 'string' && currentId ? currentId : generateId()
+    if (Array.isArray(hiddenFields) && hiddenFields.length > 0) {
+      nextItem._hidden_fields = [...hiddenFields]
+    } else {
+      delete nextItem._hidden_fields
+    }
+
+    const nextItems = [...items]
+    nextItems[syncItemIndex] = nextItem as Partial<T>
+    onChange(nextItems)
+    setSyncModalOpen(false)
+    setSyncItemIndex(null)
+    setSyncTargetId(undefined)
+  }
+
   const handleConfirmSync = async () => {
     if (!profileSyncField || syncItemIndex === null) return
+    if (syncMode === 'pull') {
+      handlePullFromProfile()
+      return
+    }
     if (syncMode === 'replace' && !syncTargetId) return
 
     await syncProfileEntry({
@@ -303,10 +334,10 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           index={index}
           onRemove={() => handleRemove(index)}
           actions={canSyncToProfile && (
-            <Tooltip title="同步到个人信息">
+            <Tooltip title="同步记录">
               <Button
                 type="text"
-                aria-label={`同步第 ${index + 1} 项到个人信息`}
+                aria-label={`同步第 ${index + 1} 项记录`}
                 icon={<SyncOutlined />}
                 onClick={() => handleOpenSync(index)}
               />
@@ -390,37 +421,40 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 
       {canSyncToProfile && (
         <Modal
-          title="同步到个人信息"
+          title="同步记录"
           open={syncModalOpen}
           onOk={handleConfirmSync}
           onCancel={() => setSyncModalOpen(false)}
-          okText="同步"
+          okText={syncMode === 'pull' ? '更新当前记录' : '同步'}
           cancelText="取消"
           confirmLoading={isSyncingProfileEntry}
           okButtonProps={{
-            disabled: syncMode === 'replace' && !syncTargetId,
+            disabled: (syncMode === 'replace' || syncMode === 'pull') && !syncTargetId,
           }}
         >
           <Radio.Group
             value={syncMode}
-            onChange={(event) => setSyncMode(event.target.value)}
+            onChange={(event) => setSyncMode(event.target.value as EntrySyncMode)}
             style={{ display: 'grid', gap: 12, width: '100%' }}
           >
             <Radio value="create">新增为个人信息记录</Radio>
             <Radio value="replace" disabled={profileTargetOptions.length === 0}>
               覆盖已有记录
             </Radio>
+            <Radio value="pull" disabled={profileTargetOptions.length === 0}>
+              从个人信息更新当前记录
+            </Radio>
           </Radio.Group>
 
-          {syncMode === 'replace' && (
+          {(syncMode === 'replace' || syncMode === 'pull') && (
             <div style={{ marginTop: 12 }}>
               {profileTargetOptions.length === 0 ? (
-                <Empty description="个人信息中暂无可覆盖记录" />
+                <Empty description="个人信息中暂无可用记录" />
               ) : (
                 <Select
                   value={syncTargetId}
                   onChange={setSyncTargetId}
-                  placeholder="选择要覆盖的个人信息记录"
+                  placeholder={syncMode === 'pull' ? '选择用于更新当前记录的个人信息记录' : '选择要覆盖的个人信息记录'}
                   options={profileTargetOptions}
                   style={{ width: '100%' }}
                   showSearch={{ optionFilterProp: 'label' }}
