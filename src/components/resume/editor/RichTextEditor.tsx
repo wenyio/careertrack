@@ -9,6 +9,9 @@
 'use client'
 
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
+import { TextSelection } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
+import { skipTrailingNodeMeta } from '@tiptap/extensions/trailing-node'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -52,6 +55,47 @@ const Indent = Extension.create({
     ]
   },
 })
+
+function isEmptyParagraphNode(node: { type: { name: string }, content: { size: number } }) {
+  return node.type.name === 'paragraph' && node.content.size === 0
+}
+
+function isListNode(node: { type: { name: string } }) {
+  return node.type.name === 'bulletList' || node.type.name === 'orderedList'
+}
+
+function removeTrailingListExitParagraphs(view: EditorView): boolean {
+  const { state } = view
+  const { selection, doc } = state
+  const { $from } = selection
+
+  if (!selection.empty || $from.depth !== 1) {
+    return false
+  }
+  if (!isEmptyParagraphNode($from.parent)) return false
+
+  const index = $from.index(0)
+  let listIndex = index - 1
+  while (listIndex >= 0 && isEmptyParagraphNode(doc.child(listIndex))) {
+    listIndex -= 1
+  }
+  if (listIndex < 0 || !isListNode(doc.child(listIndex))) return false
+
+  for (let i = listIndex + 1; i < doc.childCount; i += 1) {
+    if (!isEmptyParagraphNode(doc.child(i))) return false
+  }
+
+  let deleteFrom = 0
+  for (let i = 0; i <= listIndex; i += 1) {
+    deleteFrom += doc.child(i).nodeSize
+  }
+  const tr = state.tr.delete(deleteFrom, doc.content.size)
+  tr.setMeta(skipTrailingNodeMeta, true)
+  const selectionPos = Math.max(0, deleteFrom - 1)
+  tr.setSelection(TextSelection.near(tr.doc.resolve(selectionPos), -1))
+  view.dispatch(tr.scrollIntoView())
+  return true
+}
 
 // ============ 工具函数 ============
 
@@ -149,6 +193,14 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         style: `min-height: ${minHeight}px; outline: none; font-size: 14px; line-height: 1.6; padding: 8px 11px;`,
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key !== 'Backspace' || event.altKey || event.ctrlKey || event.metaKey) {
+          return false
+        }
+        const handled = removeTrailingListExitParagraphs(view)
+        if (handled) event.preventDefault()
+        return handled
       },
     },
     onUpdate: ({ editor: ed }) => {

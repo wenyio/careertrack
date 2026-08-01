@@ -292,6 +292,45 @@ test.describe('简历编辑表单', () => {
       await screenshot(page, '富文本', '有序列表预览同步')
     })
 
+    test('列表退出后退格不会在预览保留尾部空行', async ({ page, request }) => {
+      const account = await createUserByApi(request, 'list-backspace')
+      const resume = await createResumeByApi(request, account.token, `E2E_TEST_列表退格_${Date.now()}`)
+      await loginByUi(page, account.username, account.password)
+
+      await goto(page, `/resumes/${resume.id}/edit`)
+      await expect(page.locator('.resume-a4-preview')).toBeVisible()
+
+      const workSection = page.locator('div').filter({ hasText: /^工作经历$/ }).first()
+      await workSection.click()
+
+      const cases = [
+        { button: '无序列表', tag: 'UL', items: ['职责一', '职责二'] },
+        { button: '有序列表', tag: 'OL', items: ['步骤一', '步骤二'] },
+      ]
+
+      for (const item of cases) {
+        await page.getByRole('button', { name: /添加工作经历/ }).click()
+        const editor = page.locator('.tiptap').last()
+        await editor.click()
+
+        await page.getByRole('button', { name: item.button }).first().click()
+        await page.keyboard.type(item.items[0])
+        await page.keyboard.press('Enter')
+        await page.keyboard.type(item.items[1])
+        await page.keyboard.press('Enter')
+        await page.keyboard.press('Enter')
+        await page.keyboard.press('Backspace')
+
+        const previewDesc = page.locator('.resume-a4-preview .resume-desc').last()
+        const childTags = await previewDesc.evaluate((element) => (
+          Array.from(element.children).map((child) => child.tagName)
+        ))
+        expect(childTags).toEqual([item.tag])
+        await expect(previewDesc).toContainText(item.items[0])
+        await expect(previewDesc).toContainText(item.items[1])
+      }
+    })
+
     test('富文本斜体和下划线功能', async ({ page, request }) => {
       const account = await createUserByApi(request, 'italic')
       const resume = await createResumeByApi(request, account.token, `E2E_TEST_斜体_${Date.now()}`)
