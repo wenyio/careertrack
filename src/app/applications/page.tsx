@@ -271,6 +271,17 @@ export default function ApplicationsPage() {
     return <div
       key={item.id}
       className={`${styles.applicationRow} ${overdue ? styles.applicationRowOverdue : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`查看详情 ${item.company}`}
+      onClick={() => openDetail(item)}
+      onKeyDown={(event) => {
+        if (event.currentTarget !== event.target) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openDetail(item)
+        }
+      }}
     >
       <span className={avatarClassName} aria-hidden="true">{companyAvatarText(item.company)}</span>
       <Space orientation="vertical" size={5} className={styles.applicationMain}>
@@ -286,12 +297,12 @@ export default function ApplicationsPage() {
           {item.channel && <span>渠道：{item.channel}</span>}
           {item.applied_at && <span>投递：{item.applied_at}</span>}
           {item.next_action_at ? <Typography.Text strong={overdue}><CalendarOutlined /> 下一步：{item.next_action_at}</Typography.Text> : <Typography.Text type="secondary">尚未安排下一步</Typography.Text>}
-          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`}>职位链接 <ExportOutlined /></a>}
+          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`} onClick={(event) => event.stopPropagation()}>职位链接 <ExportOutlined /></a>}
           {item.resume_id && <span>简历：{item.resume_name || '已删除'}{item.resume_version_revision ? ` · r${item.resume_version_revision}` : ''}</span>}
         </Space>
         {item.notes && <Typography.Text type="secondary" className={styles.applicationNotes}>{item.notes}</Typography.Text>}
       </Space>
-      <div className={styles.applicationActions}>
+      <div className={styles.applicationActions} onClick={(event) => event.stopPropagation()}>
         <Button type="primary" size="small" icon={<MessageOutlined />} aria-label={`记录 ${item.company} 的进展`} onClick={() => openDetail(item, 'follow_up', true)}>记录进展</Button>
         <Button size="small" aria-label={`查看申请详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
         <Dropdown menu={{
@@ -324,13 +335,24 @@ export default function ApplicationsPage() {
               return <div
                 key={item.id}
                 className={styles.priorityRow}
+                role="button"
+                tabIndex={0}
+                aria-label={`查看详情 ${item.company}`}
+                onClick={() => openDetail(item)}
+                onKeyDown={(event) => {
+                  if (event.currentTarget !== event.target) return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    openDetail(item)
+                  }
+                }}
               >
               <span className={`${styles.companyAvatar} ${styles[`companyAvatarTone${companyAvatarTone(item.company)}`]}`} aria-hidden="true">{companyAvatarText(item.company)}</span>
               <Space orientation="vertical" size={4} className={styles.priorityMain}>
                 <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag><Tag color={tone}>{label}</Tag></Space>
                 <Typography.Text type={tone === 'error' ? 'danger' : 'secondary'}><ClockCircleOutlined /> {description}</Typography.Text>
               </Space>
-              <div className={styles.priorityActions}>
+              <div className={styles.priorityActions} onClick={(event) => event.stopPropagation()}>
                 <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, actionPolicy.activity, true, actionPolicy.initialNextActionMode)}>{actionPolicy.primaryLabel}</Button>
                 <Button size="small" aria-label={`查看优先事项详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
               </div>
