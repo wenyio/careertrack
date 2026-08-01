@@ -194,6 +194,52 @@ describe('business request validation', () => {
     }).success).toBe(false)
   })
 
+  it('accepts editor-emitted profile skills lists with empty text style attrs', () => {
+    expect(profileUpdateBodySchema.safeParse({
+      skills: [{
+        id: 'skill-java',
+        name: 'Java',
+        description: {
+          type: 'doc',
+          content: [{
+            type: 'bulletList',
+            content: [{
+              type: 'listItem',
+              attrs: { indent: 0, textAlign: null },
+              content: [{
+                type: 'paragraph',
+                attrs: { indent: 0, textAlign: null },
+                content: [{
+                  type: 'text',
+                  text: '熟悉 Java 编程语言',
+                  marks: [{
+                    type: 'textStyle',
+                    attrs: { color: '', fontSize: '14px', lineHeight: '' },
+                  }],
+                }],
+              }],
+            }],
+          }, {
+            type: 'orderedList',
+            attrs: { start: 1, type: null },
+            content: [{
+              type: 'listItem',
+              attrs: { textAlign: null, indent: 0 },
+              content: [{
+                type: 'paragraph',
+                attrs: { textAlign: null, indent: 0 },
+                content: [{ type: 'text', text: '第一点' }],
+              }],
+            }],
+          }, {
+            type: 'paragraph',
+            attrs: { textAlign: null, indent: 0 },
+          }],
+        },
+      }],
+    }).success).toBe(true)
+  })
+
   it('normalizes nullable profile clearable fields from legacy payloads', () => {
     const parsed = profileUpdateBodySchema.parse({
       summary: null,

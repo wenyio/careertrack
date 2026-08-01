@@ -62,13 +62,21 @@ describe('rich-text security and semantics', () => {
         },
         {
           type: 'orderedList',
-          attrs: { start: 2, type: 'a' },
+          attrs: { start: 2, type: null },
           content: [{
             type: 'listItem',
             attrs: { textAlign: null, indent: 0 },
             content: [{
               type: 'paragraph',
-              content: [{ type: 'text', text: '第一项' }],
+              attrs: { textAlign: null, indent: 0 },
+              content: [{
+                type: 'text',
+                text: '第一项',
+                marks: [{
+                  type: 'textStyle',
+                  attrs: { color: '', fontSize: '14px', lineHeight: '' },
+                }],
+              }],
             }],
           }],
         },

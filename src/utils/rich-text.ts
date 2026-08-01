@@ -328,6 +328,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
+function isInvalidOptionalTextStyleValue(
+  value: unknown,
+  validate: (value: string) => boolean,
+): boolean {
+  return typeof value !== 'string' || (value.trim() !== '' && !validate(value))
+}
+
 function findUnknownKey(
   value: Record<string, unknown>,
   allowedKeys: ReadonlySet<string>,
@@ -465,21 +472,21 @@ function validateMark(
     if (
       color !== undefined
       && color !== null
-      && (typeof color !== 'string' || !isValidColor(color))
+      && isInvalidOptionalTextStyleValue(color, isValidColor)
     ) {
       return invalidRichText(`${path}.attrs.color: 颜色格式无效`)
     }
     if (
       fontSize !== undefined
       && fontSize !== null
-      && (typeof fontSize !== 'string' || !isValidFontSize(fontSize))
+      && isInvalidOptionalTextStyleValue(fontSize, isValidFontSize)
     ) {
       return invalidRichText(`${path}.attrs.fontSize: 字号必须在 8-48px 之间`)
     }
     if (
       lineHeight !== undefined
       && lineHeight !== null
-      && (typeof lineHeight !== 'string' || !isValidLineHeight(lineHeight))
+      && isInvalidOptionalTextStyleValue(lineHeight, isValidLineHeight)
     ) {
       return invalidRichText(`${path}.attrs.lineHeight: 行高必须在 1-3 之间`)
     }
