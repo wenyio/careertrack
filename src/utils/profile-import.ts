@@ -1,6 +1,6 @@
 import type { ArrayModuleImportConfig } from '@/config/profile-import'
 
-function normalizeSignature(signature: string): string {
+export function normalizeSignature(signature: string): string {
   return signature.trim()
 }
 

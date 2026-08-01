@@ -16,9 +16,10 @@ interface PortfolioFormProps {
   onChange: (value: Partial<Portfolio>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function PortfolioForm({ value, defaultValue, onChange, mode }: PortfolioFormProps) {
+export default function PortfolioForm({ value, defaultValue, onChange, mode, canSyncProfile }: PortfolioFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function PortfolioForm({ value, defaultValue, onChange, mode }: P
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.portfolio : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'portfolio' : undefined}
     />
   )
 }

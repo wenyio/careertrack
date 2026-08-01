@@ -6,9 +6,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { App } from 'antd'
-import { getProfile, updateProfile } from '@/services/profile'
+import { getProfile, updateProfile, syncProfileEntry } from '@/services/profile'
 import { getErrorMessage } from '@/utils/error'
-import type { Profile } from '@/types/profile'
+import type { Profile, SyncProfileEntryRequest } from '@/types/profile'
 
 /**
  * 查询 key 常量
@@ -45,6 +45,26 @@ export function useUpdateProfile(options?: { silent?: boolean }) {
     },
     onError: (error: Error) => {
       if (!silent) message.error(getErrorMessage(error, '保存失败'))
+    },
+  })
+}
+
+/**
+ * 将简历条目同步到个人信息
+ */
+export function useSyncProfileEntry(options?: { silent?: boolean }) {
+  const queryClient = useQueryClient()
+  const { message } = App.useApp()
+  const silent = options?.silent ?? false
+
+  return useMutation({
+    mutationFn: (data: SyncProfileEntryRequest) => syncProfileEntry(data),
+    onSuccess: (data) => {
+      queryClient.setQueryData(PROFILE_QUERY_KEY, data)
+      if (!silent) message.success('已同步到个人信息')
+    },
+    onError: (error: Error) => {
+      if (!silent) message.error(getErrorMessage(error, '同步失败'))
     },
   })
 }

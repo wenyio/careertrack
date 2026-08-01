@@ -14,6 +14,7 @@ import TemplateSelector from './TemplateSelector'
 
 interface ResumeFormPaneProps {
   profile?: Profile
+  canSyncProfile?: boolean
   showSettings: boolean
   onTemplateChange: (template: ResumeTemplateId) => void
   onContentChange: (module: ResumeModuleType, value: unknown) => void
@@ -30,6 +31,7 @@ interface ResumeFormPaneProps {
 /** 表单区只订阅渲染表单所需的编辑器状态。 */
 export default function ResumeFormPane({
   profile,
+  canSyncProfile,
   showSettings,
   onTemplateChange,
   onContentChange,
@@ -83,6 +85,7 @@ export default function ResumeFormPane({
         expandedModules={expandedModules}
         content={content}
         profile={profile}
+        canSyncProfile={canSyncProfile}
         onChange={onContentChange}
         onExpand={onExpandModules}
         onDisplayConfigChange={onDisplayConfigChange}

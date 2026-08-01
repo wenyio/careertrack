@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   addProfileEntry,
+  addProfileEntryFromResume,
   getProfile,
   patchProfileBasicInfo,
   patchProfileFields,
+  replaceProfileEntryFromResume,
   updateProfileEntry,
 } from '@/lib/services/profile'
 import { transaction } from '@/lib/storage/sqlite'
@@ -119,6 +121,67 @@ describe('profile service concurrency', () => {
       id: 'entry-1',
       school: 'New',
       city: 'Beijing',
+    }])
+  })
+
+  it('adds a resume entry with a new profile id and without resume-only fields', async () => {
+    let entries: Record<string, unknown>[] = []
+    const database: DatabaseQuery = async (sql, params) => {
+      if (sql.startsWith('SELECT')) {
+        return { rows: [createProfile(structuredClone(entries))], rowCount: 1 }
+      }
+
+      entries = JSON.parse(String(params?.[0])) as Record<string, unknown>[]
+      return { rows: [createProfile(entries)], rowCount: 1 }
+    }
+
+    await addProfileEntryFromResume(
+      'user-1',
+      'projects',
+      {
+        id: 'resume-entry-1',
+        _hidden_fields: ['city'],
+        name: '优化后的项目',
+      },
+      database,
+    )
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ name: '优化后的项目' })
+    expect(entries[0].id).not.toBe('resume-entry-1')
+    expect(entries[0]).not.toHaveProperty('_hidden_fields')
+  })
+
+  it('replaces a target profile entry while preserving the target id', async () => {
+    let entries: Record<string, unknown>[] = [{
+      id: 'profile-entry-1',
+      school: '旧学校',
+      city: '旧城市',
+    }]
+    const database: DatabaseQuery = async (sql, params) => {
+      if (sql.startsWith('SELECT')) {
+        return { rows: [createProfile(structuredClone(entries))], rowCount: 1 }
+      }
+
+      entries = JSON.parse(String(params?.[0])) as typeof entries
+      return { rows: [createProfile(entries)], rowCount: 1 }
+    }
+
+    await replaceProfileEntryFromResume(
+      'user-1',
+      'education',
+      'profile-entry-1',
+      {
+        id: 'resume-entry-1',
+        school: '新学校',
+        _hidden_fields: ['degree'],
+      },
+      database,
+    )
+
+    expect(entries).toEqual([{
+      id: 'profile-entry-1',
+      school: '新学校',
     }])
   })
 

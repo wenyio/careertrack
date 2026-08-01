@@ -16,9 +16,10 @@ interface OtherExperienceFormProps {
   onChange: (value: Partial<OtherExperience>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function OtherExperienceForm({ value, defaultValue, onChange, mode }: OtherExperienceFormProps) {
+export default function OtherExperienceForm({ value, defaultValue, onChange, mode, canSyncProfile }: OtherExperienceFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function OtherExperienceForm({ value, defaultValue, onChange, mod
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.other_experience : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'other_experience' : undefined}
     />
   )
 }

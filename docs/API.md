@@ -369,6 +369,43 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 服务端会按空字符串保存。富文本兼容编辑器产出的列表和空字符串样式属性；URL 字段仍只允许
 `http`、`https` 或相对路径。
 
+### POST /api/profile/sync-entry
+
+从简历编辑页将单条数组模块记录同步到当前用户个人信息（需认证）。支持新增记录或覆盖指定
+个人信息记录；服务端会忽略请求中的条目 `id` 和简历展示专属字段 `_hidden_fields`。
+
+**请求体:**
+```json
+{
+  "field": "projects",
+  "mode": "create",
+  "entry": {
+    "name": "项目名称",
+    "role": "负责人",
+    "description": "项目描述"
+  }
+}
+```
+
+覆盖已有记录时：
+
+```json
+{
+  "field": "projects",
+  "mode": "replace",
+  "target_id": "profile-entry-id",
+  "entry": {
+    "name": "项目名称",
+    "role": "负责人",
+    "description": "更新后的项目描述"
+  }
+}
+```
+
+- `field` 支持 `education`、`skills`、`work_experience`、`projects`、`portfolio`、`awards`、`other_experience`、`research`。
+- `mode=create` 会生成新的个人信息条目 id；`mode=replace` 会保留 `target_id` 对应的 profile 条目 id，并用请求条目覆盖其它字段。
+- 条目内容复用个人信息更新的富文本与 URL 校验规则；目标条目不存在返回 `404`，并发冲突重试失败返回 `409`。
+
 ---
 
 ## 求职申请跟踪

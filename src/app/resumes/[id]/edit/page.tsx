@@ -78,6 +78,7 @@ function EditorContent({
       isLoading={isLoading}
       resumeNotFound={showNotFound && !resume}
       hidePublic={!supportsPublic}
+      canSyncProfile={supportsPublic}
       backPath="/resumes"
       onSave={handleManualSave}
       triggerAutoSave={triggerAutoSave}

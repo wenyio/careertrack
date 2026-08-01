@@ -127,6 +127,26 @@ export interface Research {
   description: DescriptionField   // 详情
 }
 
+/** 个人信息中的数组模块字段 */
+export type ProfileArrayField =
+  | 'education'
+  | 'skills'
+  | 'work_experience'
+  | 'projects'
+  | 'portfolio'
+  | 'awards'
+  | 'other_experience'
+  | 'research'
+
+export type ProfileEntrySyncMode = 'create' | 'replace'
+
+export interface SyncProfileEntryRequest {
+  field: ProfileArrayField
+  mode: ProfileEntrySyncMode
+  target_id?: string
+  entry: Record<string, unknown>
+}
+
 /** 完整个人信息 */
 export interface Profile {
   id: string

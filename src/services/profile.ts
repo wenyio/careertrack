@@ -5,7 +5,7 @@
  */
 
 import api from './api'
-import type { Profile } from '@/types/profile'
+import type { Profile, SyncProfileEntryRequest } from '@/types/profile'
 
 /**
  * 获取个人信息
@@ -25,5 +25,13 @@ export async function getProfile(): Promise<Profile> {
  */
 export async function updateProfile(profile: Partial<Profile>): Promise<Profile> {
   const response = await api.put<Profile>('/profile', profile)
+  return response.data
+}
+
+/**
+ * 将简历编辑页中的单条模块记录同步到个人信息
+ */
+export async function syncProfileEntry(data: SyncProfileEntryRequest): Promise<Profile> {
+  const response = await api.post<Profile>('/profile/sync-entry', data)
   return response.data
 }

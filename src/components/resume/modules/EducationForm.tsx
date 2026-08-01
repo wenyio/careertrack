@@ -16,9 +16,10 @@ interface EducationFormProps {
   onChange: (value: Partial<Education>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function EducationForm({ value, defaultValue, onChange, mode }: EducationFormProps) {
+export default function EducationForm({ value, defaultValue, onChange, mode, canSyncProfile }: EducationFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function EducationForm({ value, defaultValue, onChange, mode }: E
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.education : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'education' : undefined}
     />
   )
 }

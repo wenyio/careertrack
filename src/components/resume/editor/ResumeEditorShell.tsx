@@ -28,6 +28,8 @@ interface ResumeEditorShellProps {
   resumeNotFound?: boolean
   /** 工具栏隐藏公开链接按钮 */
   hidePublic?: boolean
+  /** 是否允许从简历条目同步到账号个人信息 */
+  canSyncProfile?: boolean
   /** 返回路径 */
   backPath: string
   /** 手动保存回调 */
@@ -50,6 +52,7 @@ export default function ResumeEditorShell({
   isLoading,
   resumeNotFound,
   hidePublic,
+  canSyncProfile,
   backPath,
   onSave,
   triggerAutoSave,
@@ -142,6 +145,7 @@ export default function ResumeEditorShell({
         <div style={{ flex: 1, display: 'flex', overflow: 'auto' }}>
           <ResumeFormPane
             profile={profile ?? undefined}
+            canSyncProfile={canSyncProfile}
             showSettings={showSettings}
             onTemplateChange={handleTemplateChange}
             onContentChange={handleContentChange}

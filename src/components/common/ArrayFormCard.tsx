@@ -7,7 +7,7 @@
 
 'use client'
 
-import { Button, Card } from 'antd'
+import { Button, Card, Space } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 
 interface ArrayFormItemCardProps {
@@ -19,6 +19,8 @@ interface ArrayFormItemCardProps {
   index: number
   /** 删除回调 */
   onRemove: () => void
+  /** 删除按钮前的附加操作 */
+  actions?: React.ReactNode
 }
 
 /**
@@ -26,18 +28,21 @@ interface ArrayFormItemCardProps {
  *
  * 统一了所有数组类表单的卡片样式和删除按钮
  */
-export function ArrayFormItemCard({ children, id, index, onRemove }: ArrayFormItemCardProps) {
+export function ArrayFormItemCard({ children, id, index, onRemove, actions }: ArrayFormItemCardProps) {
   return (
     <Card
       key={id || index}
       style={{ marginBottom: 16 }}
       extra={
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={onRemove}
-        />
+        <Space size={4}>
+          {actions}
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={onRemove}
+          />
+        </Space>
       }
     >
       {children}

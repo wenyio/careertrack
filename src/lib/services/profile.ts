@@ -7,12 +7,9 @@
 import { query } from '@/lib/db'
 import { randomBytes } from 'node:crypto'
 import type { DatabaseQuery } from '@/lib/storage/types'
-import type { Profile } from '@/types/profile'
+import type { Profile, ProfileArrayField } from '@/types/profile'
 
-/** 个人信息中的数组字段 */
-export type ProfileArrayField =
-  | 'education' | 'skills' | 'work_experience' | 'projects'
-  | 'portfolio' | 'awards' | 'other_experience' | 'research'
+export type { ProfileArrayField } from '@/types/profile'
 
 type ProfileJsonField = 'basic_info' | ProfileArrayField
 
@@ -159,7 +156,7 @@ export async function addProfileEntry(
   entry: Record<string, unknown>,
   database: DatabaseQuery = query,
 ): Promise<Profile> {
-  const newEntry = { id: generateId(), ...entry }
+  const newEntry = { ...entry, id: generateId() }
   return mutateJsonProfileField<Record<string, unknown>[]>(
     userId,
     field,
@@ -167,6 +164,16 @@ export async function addProfileEntry(
     (entries) => [...entries, newEntry],
     database,
   )
+}
+
+/** 从简历条目同步新增到个人信息：丢弃简历条目 id 与展示专属字段。 */
+export async function addProfileEntryFromResume(
+  userId: string,
+  field: ProfileArrayField,
+  entry: Record<string, unknown>,
+  database: DatabaseQuery = query,
+): Promise<Profile> {
+  return addProfileEntry(userId, field, sanitizeResumeEntryForProfile(entry), database)
 }
 
 /** 更新数组字段中的某个条目（按 id 匹配，局部 merge） */
@@ -195,6 +202,35 @@ export async function updateProfileEntry(
   )
 }
 
+/** 使用简历条目覆盖个人信息中的指定条目：保留 profile 条目 id。 */
+export async function replaceProfileEntryFromResume(
+  userId: string,
+  field: ProfileArrayField,
+  entryId: string,
+  entry: Record<string, unknown>,
+  database: DatabaseQuery = query,
+): Promise<Profile> {
+  return mutateJsonProfileField<Record<string, unknown>[]>(
+    userId,
+    field,
+    [],
+    (entries) => {
+      const index = entries.findIndex((item) => item.id === entryId)
+      if (index === -1) {
+        throw new Error(`未找到 ${field} 中 id 为 ${entryId} 的条目`)
+      }
+
+      const updatedEntries = [...entries]
+      updatedEntries[index] = {
+        ...sanitizeResumeEntryForProfile(entry),
+        id: entryId,
+      }
+      return updatedEntries
+    },
+    database,
+  )
+}
+
 /** 删除数组字段中的某个条目（按 id 匹配） */
 export async function deleteProfileEntry(
   userId: string,
@@ -215,6 +251,11 @@ export async function deleteProfileEntry(
     },
     database,
   )
+}
+
+function sanitizeResumeEntryForProfile(entry: Record<string, unknown>): Record<string, unknown> {
+  const { id: _, _hidden_fields: __, ...rest } = entry // eslint-disable-line @typescript-eslint/no-unused-vars
+  return rest
 }
 
 /**

@@ -16,9 +16,10 @@ interface AwardsFormProps {
   onChange: (value: Partial<Award>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function AwardsForm({ value, defaultValue, onChange, mode }: AwardsFormProps) {
+export default function AwardsForm({ value, defaultValue, onChange, mode, canSyncProfile }: AwardsFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function AwardsForm({ value, defaultValue, onChange, mode }: Awar
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.awards : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'awards' : undefined}
     />
   )
 }

@@ -9,14 +9,16 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Form, Input, Select, DatePicker, Modal, Checkbox, Empty, Button, Space, Tooltip } from 'antd'
-import { ImportOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
+import { Form, Input, Select, DatePicker, Modal, Checkbox, Empty, Button, Space, Tooltip, Radio } from 'antd'
+import { ImportOutlined, EyeOutlined, EyeInvisibleOutlined, SyncOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ModuleFieldConfig } from '@/config/module-fields'
 import type { ArrayModuleImportConfig } from '@/config/profile-import'
 import type { DescriptionField } from '@/types/resume'
+import type { ProfileArrayField, ProfileEntrySyncMode } from '@/types/profile'
 import { isFieldHiddenOnItem, toggleHiddenFieldOnItem } from '@/utils/resume-preview'
-import { buildExistingImportSignatures, isDuplicateImportItem } from '@/utils/profile-import'
+import { buildExistingImportSignatures, isDuplicateImportItem, normalizeSignature } from '@/utils/profile-import'
+import { useSyncProfileEntry } from '@/hooks/useProfile'
 import RichTextEditor from '@/components/resume/editor/RichTextEditor'
 import { ArrayFormItemCard, AddItemButton } from '@/components/common/ArrayFormCard'
 import DateRangeField from '@/components/common/DateRangeField'
@@ -35,6 +37,8 @@ interface ArrayModuleFormProps<T extends { id?: string }> {
   importConfig?: ArrayModuleImportConfig<T>
   /** profile 模式不显示隐藏开关和导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  /** 登录用户的简历编辑模式可同步单条记录到个人信息 */
+  profileSyncField?: ProfileArrayField
 }
 
 function getGridSpan(span?: string) {
@@ -54,8 +58,11 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   importItems,
   importConfig,
   mode,
+  profileSyncField,
 }: ArrayModuleFormProps<T>) {
   const isResumeMode = mode === 'resume'
+  const canSyncToProfile = isResumeMode && !!profileSyncField
+  const { mutateAsync: syncProfileEntry, isPending: isSyncingProfileEntry } = useSyncProfileEntry()
 
   /** 切换某条目某字段的隐藏状态 */
   const handleToggleHidden = useCallback((index: number, field: string) => {
@@ -65,6 +72,10 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   }, [items, onChange])
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
+  const [syncModalOpen, setSyncModalOpen] = useState(false)
+  const [syncItemIndex, setSyncItemIndex] = useState<number | null>(null)
+  const [syncMode, setSyncMode] = useState<ProfileEntrySyncMode>('create')
+  const [syncTargetId, setSyncTargetId] = useState<string | undefined>()
 
   // 构建已有条目的去重签名集合
   const existingSignatures = useMemo(() => {
@@ -79,6 +90,22 @@ export default function ArrayModuleForm<T extends { id?: string }>({
       return { item, index, isDuplicate }
     })
   }, [importItems, importConfig, existingSignatures])
+
+  const profileTargetOptions = useMemo(() => {
+    if (!importItems || !importConfig) return []
+    return importItems
+      .filter((item) => item.id)
+      .map((item) => {
+        const subtitle = importConfig.getItemSubtitle?.(item)
+        return {
+          value: item.id as string,
+          label: [
+            importConfig.getItemTitle(item),
+            subtitle,
+          ].filter(Boolean).join(' · '),
+        }
+      })
+  }, [importItems, importConfig])
 
   const handleAdd = () => {
     onChange([...items, createItem()])
@@ -103,6 +130,39 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   const handleOpenImport = () => {
     setSelectedIndices([])
     setImportModalOpen(true)
+  }
+
+  const findBestProfileTargetId = (item: Partial<T>) => {
+    if (!importItems || !importConfig) return undefined
+    const signature = normalizeSignature(importConfig.getSignature(item as T))
+    if (!signature) return undefined
+    return importItems.find((profileItem) =>
+      normalizeSignature(importConfig.getSignature(profileItem)) === signature
+    )?.id
+  }
+
+  const handleOpenSync = (index: number) => {
+    const targetId = findBestProfileTargetId(items[index])
+    setSyncItemIndex(index)
+    setSyncTargetId(targetId)
+    setSyncMode(targetId ? 'replace' : 'create')
+    setSyncModalOpen(true)
+  }
+
+  const handleConfirmSync = async () => {
+    if (!profileSyncField || syncItemIndex === null) return
+    if (syncMode === 'replace' && !syncTargetId) return
+
+    await syncProfileEntry({
+      field: profileSyncField,
+      mode: syncMode,
+      target_id: syncMode === 'replace' ? syncTargetId : undefined,
+      entry: items[syncItemIndex] as Record<string, unknown>,
+    })
+
+    setSyncModalOpen(false)
+    setSyncItemIndex(null)
+    setSyncTargetId(undefined)
   }
 
   const handleConfirmImport = () => {
@@ -242,6 +302,16 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           id={item.id}
           index={index}
           onRemove={() => handleRemove(index)}
+          actions={canSyncToProfile && (
+            <Tooltip title="同步到个人信息">
+              <Button
+                type="text"
+                aria-label={`同步第 ${index + 1} 项到个人信息`}
+                icon={<SyncOutlined />}
+                onClick={() => handleOpenSync(index)}
+              />
+            </Tooltip>
+          )}
         >
           <Form layout="vertical">
             <FormGrid>
@@ -314,6 +384,49 @@ export default function ArrayModuleForm<T extends { id?: string }>({
                 ))}
               </div>
             </Checkbox.Group>
+          )}
+        </Modal>
+      )}
+
+      {canSyncToProfile && (
+        <Modal
+          title="同步到个人信息"
+          open={syncModalOpen}
+          onOk={handleConfirmSync}
+          onCancel={() => setSyncModalOpen(false)}
+          okText="同步"
+          cancelText="取消"
+          confirmLoading={isSyncingProfileEntry}
+          okButtonProps={{
+            disabled: syncMode === 'replace' && !syncTargetId,
+          }}
+        >
+          <Radio.Group
+            value={syncMode}
+            onChange={(event) => setSyncMode(event.target.value)}
+            style={{ display: 'grid', gap: 12, width: '100%' }}
+          >
+            <Radio value="create">新增为个人信息记录</Radio>
+            <Radio value="replace" disabled={profileTargetOptions.length === 0}>
+              覆盖已有记录
+            </Radio>
+          </Radio.Group>
+
+          {syncMode === 'replace' && (
+            <div style={{ marginTop: 12 }}>
+              {profileTargetOptions.length === 0 ? (
+                <Empty description="个人信息中暂无可覆盖记录" />
+              ) : (
+                <Select
+                  value={syncTargetId}
+                  onChange={setSyncTargetId}
+                  placeholder="选择要覆盖的个人信息记录"
+                  options={profileTargetOptions}
+                  style={{ width: '100%' }}
+                  showSearch={{ optionFilterProp: 'label' }}
+                />
+              )}
+            </div>
           )}
         </Modal>
       )}

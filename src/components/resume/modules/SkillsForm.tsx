@@ -16,9 +16,10 @@ interface SkillsFormProps {
   onChange: (value: Partial<Skill>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function SkillsForm({ value, defaultValue, onChange, mode }: SkillsFormProps) {
+export default function SkillsForm({ value, defaultValue, onChange, mode, canSyncProfile }: SkillsFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function SkillsForm({ value, defaultValue, onChange, mode }: Skil
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.skills : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'skills' : undefined}
     />
   )
 }

@@ -16,9 +16,10 @@ interface ResearchFormProps {
   onChange: (value: Partial<Research>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function ResearchForm({ value, defaultValue, onChange, mode }: ResearchFormProps) {
+export default function ResearchForm({ value, defaultValue, onChange, mode, canSyncProfile }: ResearchFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function ResearchForm({ value, defaultValue, onChange, mode }: Re
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.research : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'research' : undefined}
     />
   )
 }

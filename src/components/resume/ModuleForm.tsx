@@ -36,6 +36,7 @@ interface ModuleFormProps {
   expandedModules: Set<ResumeModuleType>
   content: ResumeContent
   profile?: Profile
+  canSyncProfile?: boolean
   onChange: (module: ResumeModuleType, value: unknown) => void
   onExpand: (modules: Set<ResumeModuleType>) => void
   /** 基本信息展示配置变更 */
@@ -53,6 +54,7 @@ function renderModuleForm(
   module: ResumeModuleType,
   content: ResumeContent,
   profile: Profile | undefined,
+  canSyncProfile: boolean | undefined,
   onChange: (module: ResumeModuleType, value: unknown) => void,
   onDisplayConfigChange?: (config: BasicInfoDisplayConfig) => void,
 ) {
@@ -74,6 +76,7 @@ function renderModuleForm(
           defaultValue={profile?.education}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'skills':
@@ -83,6 +86,7 @@ function renderModuleForm(
           defaultValue={profile?.skills}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'work_experience':
@@ -92,6 +96,7 @@ function renderModuleForm(
           defaultValue={profile?.work_experience}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'projects':
@@ -101,6 +106,7 @@ function renderModuleForm(
           defaultValue={profile?.projects}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'portfolio':
@@ -110,6 +116,7 @@ function renderModuleForm(
           defaultValue={profile?.portfolio}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'awards':
@@ -119,6 +126,7 @@ function renderModuleForm(
           defaultValue={profile?.awards}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'other_experience':
@@ -128,6 +136,7 @@ function renderModuleForm(
           defaultValue={profile?.other_experience}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'research':
@@ -137,6 +146,7 @@ function renderModuleForm(
           defaultValue={profile?.research}
           onChange={(value) => onChange(module, value)}
           mode="resume"
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'summary':
@@ -293,6 +303,7 @@ export default function ModuleForm({
   expandedModules,
   content,
   profile,
+  canSyncProfile,
   onChange,
   onExpand,
   onDisplayConfigChange,
@@ -322,7 +333,7 @@ export default function ModuleForm({
           onDelete={() => onDeleteModule?.(module)}
         />
       ),
-      children: renderModuleForm(module, content, profile, onChange, onDisplayConfigChange),
+      children: renderModuleForm(module, content, profile, canSyncProfile, onChange, onDisplayConfigChange),
       id: `module-panel-${module}`,
     }
   })

@@ -16,9 +16,10 @@ interface WorkExperienceFormProps {
   onChange: (value: Partial<WorkExperience>[]) => void
   /** profile 模式不显示导入按钮，resume 模式显示 */
   mode?: 'profile' | 'resume'
+  canSyncProfile?: boolean
 }
 
-export default function WorkExperienceForm({ value, defaultValue, onChange, mode }: WorkExperienceFormProps) {
+export default function WorkExperienceForm({ value, defaultValue, onChange, mode, canSyncProfile }: WorkExperienceFormProps) {
   const isResumeMode = mode === 'resume'
   const items = isResumeMode ? (value || []) : (value || defaultValue || [])
 
@@ -34,6 +35,7 @@ export default function WorkExperienceForm({ value, defaultValue, onChange, mode
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.work_experience : undefined}
       onChange={onChange}
       mode={mode}
+      profileSyncField={isResumeMode && canSyncProfile ? 'work_experience' : undefined}
     />
   )
 }

@@ -151,6 +151,51 @@ export const profileArrayEntrySchemas = {
   research: profileEntrySchema,
 } as const
 
+const profileArrayFieldSchema = z.enum([
+  'education',
+  'skills',
+  'work_experience',
+  'projects',
+  'portfolio',
+  'awards',
+  'other_experience',
+  'research',
+])
+
+const profileEntrySyncModeSchema = z.enum(['create', 'replace'])
+
+export const profileEntrySyncBodySchema = z.object({
+  field: profileArrayFieldSchema,
+  mode: profileEntrySyncModeSchema,
+  target_id: z.string({ error: 'target_id 必须是字符串' })
+    .trim()
+    .min(1, '覆盖已有记录时必须选择目标记录')
+    .max(100, 'target_id 不能超过 100 个字符')
+    .optional(),
+  entry: z.record(z.string(), z.unknown()),
+}).superRefine((body, context) => {
+  if (body.mode === 'replace' && !body.target_id) {
+    context.addIssue({
+      code: 'custom',
+      path: ['target_id'],
+      message: '覆盖已有记录时必须选择目标记录',
+    })
+  }
+
+  const entrySchema = profileArrayEntrySchemas[body.field]
+  const entryResult = entrySchema.safeParse(body.entry)
+  if (!entryResult.success) {
+    context.addIssue({
+      code: 'custom',
+      path: ['entry'],
+      message: entryResult.error.issues[0]?.message || '同步条目格式无效',
+    })
+  }
+}).transform((body) => ({
+  ...body,
+  entry: profileArrayEntrySchemas[body.field].parse(body.entry),
+}))
+
 const resumeModuleSchema = z.enum([
   'basic_info',
   'education',
