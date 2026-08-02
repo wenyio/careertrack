@@ -99,7 +99,7 @@ export function SubItem({
   return (
     <div
       className="preview-subitem resume-subitem"
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', breakInside: 'avoid', pageBreakInside: 'avoid' }}
     >
       <SubItemActions
         canMoveUp={index > 0}
