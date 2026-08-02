@@ -44,4 +44,29 @@ test.describe('个人信息管理', () => {
     await expect(page.getByPlaceholder('请输入邮箱')).toHaveValue('e2e@test.com')
     await screenshot(page, '个人信息', '刷新后数据持久化')
   })
+
+  test('自我评价支持多条保存与刷新持久化', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'profile-evaluations')
+    await loginByUi(page, account.username, account.password)
+
+    await goto(page, '/settings/profile')
+    await page.getByText('自我评价', { exact: true }).click()
+    await page.getByPlaceholder('默认自我评价').fill('技术岗位版本')
+    await page.locator('.tiptap, [contenteditable="true"], .ProseMirror').first().fill('面向技术岗位')
+    await page.getByRole('button', { name: '添加自我评价' }).click()
+    await page.getByPlaceholder('例如：产品岗位版本、技术岗位版本').fill('产品岗位版本')
+    await page.locator('.tiptap, [contenteditable="true"], .ProseMirror').nth(1).fill('面向产品岗位')
+
+    const profileResponse = page.waitForResponse((r) => r.url().includes('/api/profile') && r.request().method() === 'PUT')
+    await page.getByRole('button', { name: /保存更改/ }).click()
+    expect((await profileResponse).ok()).toBeTruthy()
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
+    await page.getByText('自我评价', { exact: true }).click()
+    await expect(page.getByPlaceholder('默认自我评价')).toHaveValue('技术岗位版本')
+    await expect(page.getByPlaceholder('例如：产品岗位版本、技术岗位版本')).toHaveValue('产品岗位版本')
+    await expect(page.getByText('面向技术岗位')).toBeVisible()
+    await expect(page.getByText('面向产品岗位')).toBeVisible()
+  })
 })

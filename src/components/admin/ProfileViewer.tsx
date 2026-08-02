@@ -8,7 +8,7 @@
 'use client'
 
 import { Descriptions, Tag, Typography, Card, Collapse } from 'antd'
-import type { Profile, Education, WorkExperience, Project, Skill } from '@/types/profile'
+import type { Profile, Education, WorkExperience, Project, Skill, SelfEvaluation } from '@/types/profile'
 import { formatDate } from '@/utils/format'
 import { desc } from '@/utils/resume-preview'
 
@@ -104,6 +104,20 @@ function SkillList({ items }: { items: Skill[] }) {
           <Tag>{item.name}</Tag>
           {item.description && <DescriptionView value={item.description} />}
         </div>
+      ))}
+    </div>
+  )
+}
+
+function SelfEvaluationList({ items }: { items: SelfEvaluation[] }) {
+  if (!items.length) return <Text type="secondary">暂无</Text>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {items.map((item, index) => (
+        <Card key={item.id || index} size="small">
+          <Text strong>{item.title || `自我评价 ${index + 1}`}</Text>
+          {item.description && <div style={{ marginTop: 4 }}><DescriptionView value={item.description} /></div>}
+        </Card>
       ))}
     </div>
   )
@@ -256,9 +270,9 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
 
   return (
     <div>
-      {profile.summary && (
-        <Card size="small" title="个人简介" style={{ marginBottom: 16 }}>
-          <DescriptionView value={profile.summary} />
+      {(profile.self_evaluations?.length || profile.summary) && (
+        <Card size="small" title="自我评价" style={{ marginBottom: 16 }}>
+          <SelfEvaluationList items={profile.self_evaluations || []} />
         </Card>
       )}
       <Collapse defaultActiveKey={['basic', 'intention']} items={collapseItems} />

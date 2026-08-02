@@ -8,12 +8,26 @@ import { query } from '@/lib/db'
 import { randomBytes } from 'node:crypto'
 import type { DatabaseQuery } from '@/lib/storage/types'
 import type { Profile, ProfileArrayField } from '@/types/profile'
+import {
+  getPrimarySelfEvaluationDescription,
+  normalizeSelfEvaluations,
+  serializeDescriptionForTextColumn,
+} from '@/utils/self-evaluation'
 
 export type { ProfileArrayField } from '@/types/profile'
 
 type ProfileJsonField = 'basic_info' | ProfileArrayField
 
 const MAX_JSON_FIELD_UPDATE_ATTEMPTS = 3
+
+function normalizeProfile(row: unknown): Profile {
+  const profile = row as Profile
+  profile.self_evaluations = normalizeSelfEvaluations(
+    (profile as unknown as Record<string, unknown>).self_evaluations,
+    profile.summary,
+  )
+  return profile
+}
 
 /** 获取个人信息（不存在则自动创建空 Profile） */
 export async function getProfile(
@@ -41,7 +55,7 @@ export async function getProfile(
     throw new Error('个人信息创建失败')
   }
 
-  return result.rows[0] as unknown as Profile
+  return normalizeProfile(result.rows[0])
 }
 
 /** 获取指定用户的个人信息（不自动创建，不存在返回 null，管理员用） */
@@ -53,7 +67,7 @@ export async function getProfileByUserId(
     'SELECT * FROM profiles WHERE user_id = $1',
     [userId]
   )
-  return (result.rows[0] as unknown as Profile) || null
+  return result.rows[0] ? normalizeProfile(result.rows[0]) : null
 }
 
 /** 更新个人信息（局部更新，仅覆盖传入的字段） */
@@ -65,20 +79,29 @@ export async function updateProfile(
   const fields = [
     'basic_info', 'education', 'skills', 'work_experience',
     'projects', 'portfolio', 'awards', 'other_experience',
-    'research', 'summary',
+    'research', 'self_evaluations', 'summary',
   ]
+  const normalizedUpdates = { ...updates }
+
+  if (normalizedUpdates.self_evaluations !== undefined && normalizedUpdates.summary === undefined) {
+    normalizedUpdates.summary = serializeDescriptionForTextColumn(
+      getPrimarySelfEvaluationDescription(
+        normalizedUpdates.self_evaluations as Profile['self_evaluations'],
+      ),
+    )
+  }
 
   const setClauses: string[] = []
   const values: unknown[] = []
   let paramIndex = 1
 
   for (const field of fields) {
-    if (updates[field] !== undefined) {
+    if (normalizedUpdates[field] !== undefined) {
       setClauses.push(`${field} = $${paramIndex}`)
       values.push(
-        typeof updates[field] === 'object'
-          ? JSON.stringify(updates[field])
-          : updates[field]
+        typeof normalizedUpdates[field] === 'object'
+          ? JSON.stringify(normalizedUpdates[field])
+          : normalizedUpdates[field]
       )
       paramIndex++
     }
@@ -104,7 +127,7 @@ export async function updateProfile(
     throw new Error('个人信息不存在')
   }
 
-  return result.rows[0] as unknown as Profile
+  return normalizeProfile(result.rows[0])
 }
 
 /** 深度合并基本信息，并在并发写入时基于最新值重试。 */
@@ -284,8 +307,13 @@ async function mutateJsonProfileField<T>(
       userId,
       JSON.stringify(current),
     ]
-    const summaryClause = summary === undefined ? '' : ', summary = $4'
-    if (summary !== undefined) values.push(summary)
+    const syncedSummary = summary === undefined && field === 'self_evaluations'
+      ? serializeDescriptionForTextColumn(
+        getPrimarySelfEvaluationDescription(updated as Profile['self_evaluations']),
+      )
+      : summary
+    const summaryClause = syncedSummary === undefined ? '' : ', summary = $4'
+    if (syncedSummary !== undefined) values.push(syncedSummary)
 
     const result = await database(
       `UPDATE profiles
@@ -296,7 +324,7 @@ async function mutateJsonProfileField<T>(
     )
 
     if (result.rows.length > 0) {
-      return result.rows[0] as unknown as Profile
+      return normalizeProfile(result.rows[0])
     }
   }
 

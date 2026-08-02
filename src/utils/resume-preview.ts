@@ -15,6 +15,7 @@ import {
 import { richTextToPlainText } from '@/utils/rich-text'
 import { richTextToHtml } from '@/utils/rich-text'
 import { formatDateRange } from '@/utils/format'
+import { getPrimarySelfEvaluationDescription } from '@/utils/self-evaluation'
 
 /** 富文本 → 纯文本（三处预览统一使用） */
 export function desc(d?: DescriptionField | unknown): string {
@@ -182,7 +183,7 @@ export function mergeResumeContentWithProfile(content: ResumeContent, profile?: 
     awards: content.awards || profile?.awards || [],
     other_experience: content.other_experience || profile?.other_experience || [],
     research: content.research || profile?.research || [],
-    summary: content.summary || profile?.summary || '',
+    summary: content.summary || getPrimarySelfEvaluationDescription(profile?.self_evaluations, profile?.summary),
     preview_config: content.preview_config,
     basic_info_display: content.basic_info_display,
     module_titles: content.module_titles,
@@ -220,7 +221,7 @@ export function buildResumeSavePayload(store: {
 /** 模块中文标题映射 */
 export const MODULE_TITLES: Record<ResumeModuleType, string> = {
   basic_info: '',
-  summary: '个人简介',
+  summary: '自我评价',
   skills: '专业技能',
   education: '教育经历',
   work_experience: '工作经历',

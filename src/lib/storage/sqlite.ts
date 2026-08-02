@@ -17,7 +17,7 @@ export type QueryResult<T = Record<string, unknown>> = DatabaseQueryResult<T>
 /** 已知的 JSON 字段名 */
 const JSON_COLUMNS = new Set([
   'basic_info', 'education', 'skills', 'work_experience', 'projects',
-  'portfolio', 'awards', 'other_experience', 'research',
+  'portfolio', 'awards', 'other_experience', 'research', 'self_evaluations',
   'modules_config', 'modules_order', 'content',
   'otp_recovery_codes', 'snapshot',
   'metadata',

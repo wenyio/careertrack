@@ -43,7 +43,7 @@ const MODULE_LABELS: Record<ResumeModuleType, string> = {
   awards: '荣誉奖项',
   other_experience: '其他经历',
   research: '研究经历',
-  summary: '个人简介',
+  summary: '自我评价',
 }
 
 export function getModuleLabel(module: ResumeModuleType): string {

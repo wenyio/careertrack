@@ -44,6 +44,11 @@ const SAMPLE_PROFILE: Profile = {
   awards: [],
   other_experience: [],
   research: [],
+  self_evaluations: [{
+    id: 'eval-1',
+    title: '默认自我评价',
+    description: '我是张三',
+  }],
   summary: '我是张三',
 }
 

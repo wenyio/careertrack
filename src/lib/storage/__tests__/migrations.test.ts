@@ -102,6 +102,7 @@ describe('versioned storage migrations', () => {
     expect(versions).toContain('007_job_application_date_only')
     expect(versions).toContain('008_job_application_events')
     expect(versions).toContain('009_job_application_event_utc_ordering')
+    expect(versions).toContain('010_profile_self_evaluations')
 
     const versionTable = database.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",
@@ -119,6 +120,67 @@ describe('versioned storage migrations', () => {
     ]))
     expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'job_application_events'").get()).toBeTruthy()
     expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_job_application_events_user_application_utc_time'").get()).toBeTruthy()
+    database.close()
+  })
+
+  it('adds self evaluations and preserves legacy profile summaries', async () => {
+    const database = new Database(':memory:')
+    database.pragma('foreign_keys = ON')
+    database.exec(`
+      CREATE TABLE schema_migrations (
+        version VARCHAR(100) PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        otp_secret VARCHAR(100)
+      );
+      CREATE TABLE profiles (
+        id TEXT PRIMARY KEY,
+        user_id TEXT UNIQUE NOT NULL,
+        summary TEXT DEFAULT ''
+      );
+      CREATE TABLE resumes (
+        id TEXT PRIMARY KEY,
+        revision INTEGER NOT NULL DEFAULT 1
+      );
+      CREATE TABLE registration_codes (
+        id TEXT PRIMARY KEY,
+        code_hash VARCHAR(64) NOT NULL
+      );
+      INSERT INTO profiles (id, user_id, summary)
+      VALUES ('profile-legacy', 'user-legacy', '旧版简介');
+    `)
+
+    const query = sqliteQuery(database)
+    const transaction: DatabaseTransaction = async (callback) => {
+      database.exec('BEGIN')
+      try {
+        const result = await callback(query)
+        database.exec('COMMIT')
+        return result
+      } catch (error) {
+        database.exec('ROLLBACK')
+        throw error
+      }
+    }
+
+    await runMigrations('sqlite', transaction)
+
+    const migrated = database.prepare(
+      `SELECT self_evaluations
+       FROM profiles
+       WHERE id = 'profile-legacy'`,
+    ).get() as { self_evaluations: string }
+    const entries = JSON.parse(migrated.self_evaluations)
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      title: '默认自我评价',
+      description: '旧版简介',
+    })
+    expect(entries[0].id).toBeTruthy()
+
     database.close()
   })
 })

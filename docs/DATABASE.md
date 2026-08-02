@@ -79,7 +79,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     awards TEXT DEFAULT '[]',
     other_experience TEXT DEFAULT '[]',
     research TEXT DEFAULT '[]',
-    summary TEXT DEFAULT '',
+    self_evaluations TEXT DEFAULT '[]',
+    summary TEXT DEFAULT '',           -- 兼容默认自我评价
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -274,8 +275,9 @@ CREATE TABLE profiles (
     awards JSONB DEFAULT '[]',             -- 荣誉奖项
     other_experience JSONB DEFAULT '[]',   -- 其他经历
     research JSONB DEFAULT '[]',           -- 研究经历
+    self_evaluations JSONB DEFAULT '[]',   -- 多条自我评价
 
-    -- 个人简介
+    -- 兼容旧版个人简介，保存默认自我评价
     summary TEXT DEFAULT '',
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

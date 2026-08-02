@@ -19,6 +19,7 @@ import type {
   Award,
   OtherExperience,
   Research,
+  SelfEvaluation,
 } from '@/types/profile'
 
 /**
@@ -37,6 +38,7 @@ export interface GuestProfile {
   awards?: Partial<Award>[]
   other_experience?: Partial<OtherExperience>[]
   research?: Partial<Research>[]
+  self_evaluations?: Partial<SelfEvaluation>[]
   summary?: string
 }
 

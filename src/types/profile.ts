@@ -127,6 +127,13 @@ export interface Research {
   description: DescriptionField   // 详情
 }
 
+/** 自我评价 */
+export interface SelfEvaluation {
+  id: string
+  title: string
+  description: DescriptionField
+}
+
 /** 个人信息中的数组模块字段 */
 export type ProfileArrayField =
   | 'education'
@@ -137,6 +144,7 @@ export type ProfileArrayField =
   | 'awards'
   | 'other_experience'
   | 'research'
+  | 'self_evaluations'
 
 export type ProfileEntrySyncMode = 'create' | 'replace'
 
@@ -160,7 +168,8 @@ export interface Profile {
   awards: Award[]
   other_experience: OtherExperience[]
   research: Research[]
-  summary: string       // 个人简介
+  self_evaluations: SelfEvaluation[]
+  summary: DescriptionField       // 兼容旧版个人简介，取默认自我评价
   created_at: string
   updated_at: string
 }

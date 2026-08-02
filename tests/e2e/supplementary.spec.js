@@ -360,8 +360,8 @@ test.describe('个人信息管理深度测试', () => {
     await loginByUi(page, account.username, account.password)
     await goto(page, '/settings/profile')
 
-    // 切换到个人简介
-    const summaryTab = page.getByText('个人简介', { exact: false }).first()
+    // 切换到自我评价
+    const summaryTab = page.getByText('自我评价', { exact: false }).first()
     if (await summaryTab.isVisible().catch(() => false)) {
       await summaryTab.click()
       await page.waitForTimeout(500)

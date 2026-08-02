@@ -4,6 +4,31 @@ const { createUserByApi, createResumeByApi, goto, loginByUi, registerHooks } = r
 registerHooks(test)
 
 test.describe('简历条目同步到个人信息', () => {
+  test('profile 可保存多条自我评价但新建简历只初始化一条', async ({ request }) => {
+    const account = await createUserByApi(request, 'eval')
+    const profileResponse = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        self_evaluations: [
+          { id: 'eval-1', title: '技术岗位', description: '面向技术岗位' },
+          { id: 'eval-2', title: '产品岗位', description: '面向产品岗位' },
+        ],
+      },
+    })
+    expect(profileResponse.status(), await profileResponse.text()).toBe(200)
+    const profile = await profileResponse.json()
+    expect(profile.self_evaluations).toHaveLength(2)
+    expect(profile.summary).toBe('面向技术岗位')
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_自我评价_${Date.now()}`,
+    )
+    expect(resume.content.summary).toBe('面向技术岗位')
+    expect(resume.content.self_evaluations).toBeUndefined()
+  })
+
   test('可新增记录并覆盖指定 profile 条目', async ({ request }) => {
     const account = await createUserByApi(request, 'profile-sync')
 
@@ -109,5 +134,113 @@ test.describe('简历条目同步到个人信息', () => {
 
     await expect(page.getByPlaceholder('请输入项目名称')).toHaveValue('个人信息项目')
     await expect(page.getByPlaceholder('请输入担任角色')).toHaveValue('产品负责人')
+  })
+
+  test('简历编辑页从多条自我评价中只导入一条', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'summary-import-one')
+    const profileResponse = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        self_evaluations: [
+          { id: 'eval-tech', title: '技术岗位版本', description: '面向技术岗位' },
+          { id: 'eval-product', title: '产品岗位版本', description: '面向产品岗位' },
+        ],
+      },
+    })
+    expect(profileResponse.status(), await profileResponse.text()).toBe(200)
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_自我评价导入_${Date.now()}`,
+      { initialize_from_profile: false },
+    )
+    const updateResumeResponse = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        revision: resume.revision,
+        modules_config: { ...resume.modules_config, summary: true },
+        content: { summary: '当前简历自我评价' },
+      },
+    })
+    expect(updateResumeResponse.status(), await updateResumeResponse.text()).toBe(200)
+
+    await loginByUi(page, account.username, account.password)
+    await goto(page, `/resumes/${resume.id}/edit`)
+    await expect(page.locator('.resume-a4-preview')).toBeVisible()
+
+    await page.locator('div').filter({ hasText: /^自我评价$/ }).first().click()
+    await page.locator('#module-panel-summary').getByRole('button', { name: '从个人信息填充' }).click()
+    await expect(page.getByText('选择一条自我评价')).toBeVisible()
+    await page.getByText('产品岗位版本').click()
+    await page.locator('.ant-modal-footer .ant-btn-primary').click()
+
+    await expect(page.locator('.tiptap, [contenteditable="true"], .ProseMirror').first()).toContainText('面向产品岗位')
+    await expect(page.locator('.tiptap, [contenteditable="true"], .ProseMirror').first()).not.toContainText('面向技术岗位')
+  })
+
+  test('简历编辑页可将自我评价新增或覆盖到个人信息', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'summary-sync')
+    const profileResponse = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        self_evaluations: [
+          { id: 'eval-old', title: '旧版本', description: '旧自我评价' },
+        ],
+      },
+    })
+    expect(profileResponse.status(), await profileResponse.text()).toBe(200)
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_自我评价同步_${Date.now()}`,
+      { initialize_from_profile: false },
+    )
+    const updateResumeResponse = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        revision: resume.revision,
+        modules_config: { ...resume.modules_config, summary: true },
+        content: { summary: '新的简历自我评价' },
+      },
+    })
+    expect(updateResumeResponse.status(), await updateResumeResponse.text()).toBe(200)
+
+    await loginByUi(page, account.username, account.password)
+    await goto(page, `/resumes/${resume.id}/edit`)
+    await expect(page.locator('.resume-a4-preview')).toBeVisible()
+
+    await page.locator('div').filter({ hasText: /^自我评价$/ }).first().click()
+    await page.locator('#module-panel-summary').getByRole('button', { name: '同步到个人信息' }).click()
+    await page.getByPlaceholder('例如：技术岗位版本').fill('新版本')
+    await page.locator('.ant-modal-footer .ant-btn-primary').click()
+    await expect(page.getByRole('dialog', { name: '同步到个人信息' })).not.toBeVisible()
+
+    let saved = await request.get('/api/profile', { headers: { Cookie: account.token } })
+    expect(saved.status(), await saved.text()).toBe(200)
+    let profile = await saved.json()
+    expect(profile.self_evaluations).toHaveLength(2)
+    expect(profile.self_evaluations[1]).toMatchObject({
+      title: '新版本',
+      description: '新的简历自我评价',
+    })
+
+    await page.locator('#module-panel-summary').locator('.tiptap, [contenteditable="true"], .ProseMirror').first().fill('覆盖后的自我评价')
+    await page.locator('#module-panel-summary').getByRole('button', { name: '同步到个人信息' }).click()
+    await page.getByLabel('覆盖已有自我评价').check()
+    await page.locator('.ant-select').last().click()
+    await page.getByText('旧版本').click()
+    await page.locator('.ant-modal-footer .ant-btn-primary').click()
+
+    saved = await request.get('/api/profile', { headers: { Cookie: account.token } })
+    expect(saved.status(), await saved.text()).toBe(200)
+    profile = await saved.json()
+    expect(profile.self_evaluations[0]).toMatchObject({
+      id: 'eval-old',
+      title: '旧版本',
+    })
+    expect(JSON.stringify(profile.self_evaluations[0].description)).toContain('覆盖后的自我评价')
+    expect(JSON.stringify(profile.summary)).toContain('覆盖后的自我评价')
   })
 })

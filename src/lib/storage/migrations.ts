@@ -317,6 +317,59 @@ const migrations: Migration[] = [
       )
     },
   },
+  {
+    version: '010_profile_self_evaluations',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        const table = await query<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'profiles'",
+        )
+        if (table.rows.length === 0) return
+
+        const columns = await query<{ name: string }>('PRAGMA table_info(profiles)')
+        if (!columns.rows.some((column) => column.name === 'self_evaluations')) {
+          await query(
+            "ALTER TABLE profiles ADD COLUMN self_evaluations TEXT DEFAULT '[]'",
+          )
+        }
+        await query(
+          `UPDATE profiles
+           SET self_evaluations = json_array(json_object(
+             'id', lower(hex(randomblob(8))),
+             'title', '默认自我评价',
+             'description', summary
+           ))
+           WHERE summary IS NOT NULL
+             AND summary <> ''
+             AND (self_evaluations IS NULL OR self_evaluations = '[]')`,
+        )
+        return
+      }
+
+      const table = await query<{ table_name: string }>(
+        `SELECT table_name
+         FROM information_schema.tables
+         WHERE table_schema = current_schema()
+           AND table_name = 'profiles'`,
+      )
+      if (table.rows.length === 0) return
+
+      await query(
+        "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS self_evaluations JSONB DEFAULT '[]'",
+      )
+      await query(
+        `UPDATE profiles
+         SET self_evaluations = jsonb_build_array(jsonb_build_object(
+           'id', gen_random_uuid()::text,
+           'title', '默认自我评价',
+           'description', summary
+         ))
+         WHERE summary IS NOT NULL
+           AND summary <> ''
+           AND (self_evaluations IS NULL OR self_evaluations = '[]'::jsonb)`,
+      )
+    },
+  },
 ]
 
 export async function runMigrations(

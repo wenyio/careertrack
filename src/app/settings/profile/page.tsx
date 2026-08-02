@@ -193,6 +193,23 @@ export default function ProfilePage() {
   }, [])
 
   const FormComponent = FORM_COMPONENTS[activeModule]
+  const formContent = activeModule === 'summary' ? (
+    <SummaryForm
+      mode="profile"
+      value={formData.summary}
+      defaultValue={profile?.summary}
+      onChange={(val) => handleChange('summary', val)}
+      profileValue={formData.self_evaluations}
+      defaultProfileValue={profile?.self_evaluations}
+      onProfileChange={(val) => handleChange('self_evaluations', val)}
+    />
+  ) : (
+    <FormComponent
+      value={formData[activeModule]}
+      defaultValue={profile?.[activeModule]}
+      onChange={(val: unknown) => handleChange(activeModule, val)}
+    />
+  )
   const hasChanges = hasProfileChanges(formData)
   const effectiveSaveStatus: ProfileSaveStatus = isSaving || isAutoSaving ? 'saving' : saveStatus
   const status = SAVE_STATUS_MAP[effectiveSaveStatus]
@@ -223,11 +240,7 @@ export default function ProfilePage() {
           </Button>
         }
       >
-        <FormComponent
-          value={formData[activeModule]}
-          defaultValue={profile?.[activeModule]}
-          onChange={(val: unknown) => handleChange(activeModule, val)}
-        />
+        {formContent}
       </SettingsPageLayout>
 
       {showFloatingSave && (

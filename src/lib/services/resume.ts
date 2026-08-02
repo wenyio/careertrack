@@ -14,6 +14,7 @@ import {
   paginatedData,
   paginationOffset,
 } from '@/lib/pagination'
+import { getPrimarySelfEvaluationDescription } from '@/utils/self-evaluation'
 import type {
   Resume,
   ResumeListItem,
@@ -127,12 +128,19 @@ export async function getResume(resumeId: string, userId: string): Promise<Resum
  */
 export function buildInitialContentFromProfile(profile: Record<string, unknown>): Record<string, unknown> {
   const content: Record<string, unknown> = {}
-  const fields = ['basic_info', 'education', 'skills', 'work_experience', 'projects', 'portfolio', 'awards', 'other_experience', 'research', 'summary']
+  const fields = ['basic_info', 'education', 'skills', 'work_experience', 'projects', 'portfolio', 'awards', 'other_experience', 'research']
   for (const field of fields) {
     const value = profile[field]
     if (value !== null && value !== undefined) {
       content[field] = typeof value === 'string' ? value : (Array.isArray(value) && value.length === 0 ? undefined : value)
     }
+  }
+  const summary = getPrimarySelfEvaluationDescription(
+    Array.isArray(profile.self_evaluations) ? profile.self_evaluations : undefined,
+    profile.summary as Parameters<typeof getPrimarySelfEvaluationDescription>[1],
+  )
+  if (summary !== null && summary !== undefined) {
+    content.summary = summary
   }
   return content
 }

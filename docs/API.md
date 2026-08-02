@@ -356,6 +356,13 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
   "awards": [],
   "other_experience": [],
   "research": [],
+  "self_evaluations": [
+    {
+      "id": "eval-1",
+      "title": "技术岗位版本",
+      "description": "自我评价内容"
+    }
+  ],
   "summary": ""
 }
 ```
@@ -364,8 +371,10 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 
 更新个人信息（需认证）
 
-**请求体:** 同 GET 响应结构。支持局部更新；可清空的富文本字段（如 `summary`、经历
-`description`）以及头像、主页、GitHub、项目/作品链接和作品图片字段兼容历史 `null`，
+**请求体:** 同 GET 响应结构。支持局部更新；`self_evaluations` 可保存多条自我评价，
+简历创建或编辑导入时只会选取其中一条写入简历 `content.summary`。兼容字段 `summary`
+保留为默认自我评价的单条内容。可清空的富文本字段（如 `summary`、`self_evaluations[].description`、
+经历 `description`）以及头像、主页、GitHub、项目/作品链接和作品图片字段兼容历史 `null`，
 服务端会按空字符串保存。富文本兼容编辑器产出的列表和空字符串样式属性；URL 字段仍只允许
 `http`、`https` 或相对路径。
 
@@ -402,7 +411,7 @@ GitHub OAuth 回调（由 GitHub 重定向，前端无需直接调用）
 }
 ```
 
-- `field` 支持 `education`、`skills`、`work_experience`、`projects`、`portfolio`、`awards`、`other_experience`、`research`。
+- `field` 支持 `education`、`skills`、`work_experience`、`projects`、`portfolio`、`awards`、`other_experience`、`research`、`self_evaluations`。其中 `self_evaluations` 用于从简历编辑页将当前单条自我评价新增到个人信息，或覆盖个人信息中已有的一条自我评价。
 - `mode=create` 会生成新的个人信息条目 id；`mode=replace` 会保留 `target_id` 对应的 profile 条目 id，并用请求条目覆盖其它字段。
 - 条目内容复用个人信息更新的富文本与 URL 校验规则；目标条目不存在返回 `404`，并发冲突重试失败返回 `409`。
 

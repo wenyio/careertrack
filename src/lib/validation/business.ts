@@ -88,6 +88,20 @@ export const profileEntrySchema = z.object({
   description: descriptionFieldSchema.optional(),
 }).loose()
 
+export const selfEvaluationEntrySchema = z.object({
+  id: z.string({ error: '自我评价 ID 必须是字符串' })
+    .trim()
+    .min(1, '自我评价 ID 不能为空')
+    .max(100, '自我评价 ID 不能超过 100 个字符')
+    .optional(),
+  title: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '自我评价标题必须是字符串' })
+      .max(100, '自我评价标题不能超过 100 个字符'),
+  ).optional(),
+  description: descriptionFieldSchema.optional(),
+}).loose()
+
 export const projectEntrySchema = profileEntrySchema.extend({
   link: safeWebUrlSchema.optional(),
 })
@@ -149,6 +163,7 @@ export const profileArrayEntrySchemas = {
   awards: profileEntrySchema,
   other_experience: profileEntrySchema,
   research: profileEntrySchema,
+  self_evaluations: selfEvaluationEntrySchema,
 } as const
 
 const profileArrayFieldSchema = z.enum([
@@ -160,6 +175,7 @@ const profileArrayFieldSchema = z.enum([
   'awards',
   'other_experience',
   'research',
+  'self_evaluations',
 ])
 
 const profileEntrySyncModeSchema = z.enum(['create', 'replace'])
@@ -254,6 +270,7 @@ export const profileUpdateBodySchema = z.object({
   awards: z.array(profileEntrySchema).max(200, '荣誉奖项数量过多').optional(),
   other_experience: z.array(profileEntrySchema).max(200, '其他经历数量过多').optional(),
   research: z.array(profileEntrySchema).max(200, '研究经历数量过多').optional(),
+  self_evaluations: z.array(selfEvaluationEntrySchema).max(200, '自我评价数量过多').optional(),
   summary: descriptionFieldSchema.optional(),
 })
 

@@ -37,7 +37,7 @@ describe('resume templates', () => {
       template: 'black-white',
     }))
 
-    expect(html).toContain('个人简介')
+    expect(html).toContain('自我评价')
     expect(html).toContain('专注于前端工程与用户体验。')
   })
 

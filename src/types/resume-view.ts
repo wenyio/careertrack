@@ -62,6 +62,6 @@ export interface ResumeViewModel {
   basicInfo: BasicInfoViewModel
   /** 已解析的模块列表（按 modulesOrder 排序，已过滤禁用模块） */
   modules: ResolvedModule[]
-  /** 个人简介 */
+  /** 自我评价 */
   summary?: DescriptionField
 }

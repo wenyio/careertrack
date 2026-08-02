@@ -155,6 +155,8 @@ function renderModuleForm(
           value={content.summary}
           onChange={(value) => onChange(module, value)}
           importValue={profile?.summary}
+          importEntries={profile?.self_evaluations}
+          canSyncProfile={canSyncProfile}
         />
       )
     default:

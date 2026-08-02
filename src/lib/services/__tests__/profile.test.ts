@@ -9,6 +9,7 @@ import {
   patchProfileBasicInfo,
   patchProfileFields,
   replaceProfileEntryFromResume,
+  updateProfile,
   updateProfileEntry,
 } from '@/lib/services/profile'
 import { transaction } from '@/lib/storage/sqlite'
@@ -18,6 +19,7 @@ import type { Profile } from '@/types/profile'
 function createProfile(
   entries: Record<string, unknown>[] = [],
   basicInfo: Record<string, unknown> = {},
+  overrides: Partial<Profile> = {},
 ): Profile {
   return {
     id: 'profile-1',
@@ -31,9 +33,11 @@ function createProfile(
     awards: [],
     other_experience: [],
     research: [],
+    self_evaluations: [],
     summary: '',
     created_at: '2026-07-30T00:00:00.000Z',
     updated_at: '2026-07-30T00:00:00.000Z',
+    ...overrides,
   }
 }
 
@@ -53,6 +57,24 @@ describe('profile service concurrency', () => {
     const result = await getProfile('user-1', database)
     expect(result).toEqual(profile)
     expect(insertSql).toContain('ON CONFLICT(user_id) DO NOTHING')
+  })
+
+  it('derives self evaluations from legacy summary when the array is missing', async () => {
+    const legacyProfile = createProfile()
+    delete (legacyProfile as unknown as Record<string, unknown>).self_evaluations
+    legacyProfile.summary = '旧版简介'
+    const database: DatabaseQuery = async () => ({
+      rows: [legacyProfile],
+      rowCount: 1,
+    })
+
+    await expect(getProfile('user-1', database)).resolves.toMatchObject({
+      self_evaluations: [{
+        id: 'legacy-summary',
+        title: '默认自我评价',
+        description: '旧版简介',
+      }],
+    })
   })
 
   it('retries a stale array update and preserves both concurrent additions', async () => {
@@ -185,6 +207,65 @@ describe('profile service concurrency', () => {
     }])
   })
 
+  it('syncs self evaluations from resume and refreshes the compatibility summary', async () => {
+    let entries: Record<string, unknown>[] = []
+    const database: DatabaseQuery = async (sql, params) => {
+      if (sql.startsWith('SELECT')) {
+        return {
+          rows: [createProfile([], {}, { self_evaluations: structuredClone(entries) })],
+          rowCount: 1,
+        }
+      }
+
+      entries = JSON.parse(String(params?.[0])) as Record<string, unknown>[]
+      const summary = params?.[3] as string
+      return {
+        rows: [createProfile([], {}, {
+          self_evaluations: entries,
+          summary,
+        })],
+        rowCount: 1,
+      }
+    }
+
+    const created = await addProfileEntryFromResume(
+      'user-1',
+      'self_evaluations',
+      {
+        id: 'resume-summary',
+        title: '技术岗位',
+        description: '面向技术岗位',
+      },
+      database,
+    )
+    expect(created.self_evaluations).toHaveLength(1)
+    expect(created.self_evaluations[0]).toMatchObject({
+      title: '技术岗位',
+      description: '面向技术岗位',
+    })
+    expect(created.self_evaluations[0].id).not.toBe('resume-summary')
+    expect(created.summary).toBe('面向技术岗位')
+
+    const targetId = created.self_evaluations[0].id
+    const replaced = await replaceProfileEntryFromResume(
+      'user-1',
+      'self_evaluations',
+      targetId,
+      {
+        title: '产品岗位',
+        description: '面向产品岗位',
+      },
+      database,
+    )
+
+    expect(replaced.self_evaluations).toEqual([{
+      id: targetId,
+      title: '产品岗位',
+      description: '面向产品岗位',
+    }])
+    expect(replaced.summary).toBe('面向产品岗位')
+  })
+
   it('retries a nested basic-info patch without losing a concurrent field', async () => {
     let basicInfo: Record<string, unknown> = {
       name: 'Old',
@@ -261,6 +342,22 @@ describe('profile service SQLite dialect', () => {
           },
           summary: '一次条件写入',
         })
+        await expect(updateProfile(
+          'user-1',
+          {
+            self_evaluations: [
+              { id: 'eval-1', title: '技术岗位', description: '面向技术岗位' },
+              { id: 'eval-2', title: '产品岗位', description: '面向产品岗位' },
+            ],
+          },
+          database,
+        )).resolves.toMatchObject({
+          self_evaluations: [
+            { id: 'eval-1', title: '技术岗位', description: '面向技术岗位' },
+            { id: 'eval-2', title: '产品岗位', description: '面向产品岗位' },
+          ],
+          summary: '面向技术岗位',
+        })
         await expect(addProfileEntry(
           'user-1',
           'education',
@@ -269,6 +366,28 @@ describe('profile service SQLite dialect', () => {
         )).resolves.toMatchObject({
           education: [expect.objectContaining({ school: 'SQLite 大学' })],
         })
+        const createdEvaluation = await addProfileEntryFromResume(
+          'user-1',
+          'self_evaluations',
+          { title: 'SQLite 自我评价', description: '第一版' },
+          database,
+        )
+        const evaluationId = createdEvaluation.self_evaluations[0].id
+        expect(createdEvaluation.summary).toBe('面向技术岗位')
+        const replacedEvaluation = await replaceProfileEntryFromResume(
+          'user-1',
+          'self_evaluations',
+          evaluationId,
+          { title: 'SQLite 自我评价', description: '第二版' },
+          database,
+        )
+        expect(replacedEvaluation.self_evaluations[0]).toMatchObject({
+          id: evaluationId,
+          title: 'SQLite 自我评价',
+          description: '第二版',
+        })
+        expect(replacedEvaluation.self_evaluations).toHaveLength(3)
+        expect(replacedEvaluation.summary).toBe('第二版')
       })
     } finally {
       if (previousDatabasePath === undefined) {

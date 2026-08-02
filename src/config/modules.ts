@@ -26,7 +26,7 @@ export const MODULES: ModuleConfig[] = [
   { key: 'awards', label: '荣誉奖项', icon: '🏆', description: '获奖名称、时间、级别等' },
   { key: 'other_experience', label: '其他经历', icon: '📌', description: '志愿者、社团、其他经历等' },
   { key: 'research', label: '研究经历', icon: '📚', description: '研究课题、成果、发表论文等' },
-  { key: 'summary', label: '个人简介', icon: '📝', description: '个人总结、职业目标等' },
+  { key: 'summary', label: '自我评价', icon: '📝', description: '个人总结、职业目标等' },
 ]
 
 /** 默认模块排序（从 MODULES 数组自动派生，修改 MODULES 即可同步） */
