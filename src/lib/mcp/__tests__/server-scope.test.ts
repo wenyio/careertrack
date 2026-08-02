@@ -35,6 +35,11 @@ function toolInputSchema(name: string): {
 describe('MCP scope registration', () => {
   it('exposes only non-mutating tools to read_only keys', () => {
     expect(toolNames('read_only')).toEqual([
+      'applications_action_center',
+      'applications_events_list',
+      'applications_get',
+      'applications_list',
+      'applications_summary',
       'profile_get',
       'resume_get',
       'resume_list',
@@ -45,6 +50,15 @@ describe('MCP scope registration', () => {
 
   it('keeps all tools available to read_write keys', () => {
     expect(toolNames('read_write')).toEqual([
+      'applications_action_center',
+      'applications_create',
+      'applications_create_event',
+      'applications_delete',
+      'applications_events_list',
+      'applications_get',
+      'applications_list',
+      'applications_summary',
+      'applications_update',
       'profile_add_entry',
       'profile_delete_entry',
       'profile_get',

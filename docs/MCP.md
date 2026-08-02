@@ -130,13 +130,18 @@ curl -X POST https://your-domain.com/api/mcp \
 
 ## 工具列表
 
-`read_only` Key 只会看到以下 5 个读取工具：
+`read_only` Key 只会看到以下 10 个读取工具：
 
 - `schema_get`
 - `profile_get`
 - `resume_list`
 - `resume_get`
 - `resume_preview_get`
+- `applications_summary`
+- `applications_list`
+- `applications_get`
+- `applications_action_center`
+- `applications_events_list`
 
 下列所有创建、更新、删除、发布工具仅向 `read_write` Key 注册。scope 在服务端执行，不依赖客户端自觉。
 
@@ -190,11 +195,46 @@ curl -X POST https://your-domain.com/api/mcp \
 | `resume_publish` | 发布简历，设置公开链接（slug） |
 | `resume_unpublish` | 取消发布简历，移除公开链接 |
 
+### 求职进展查询工具
+
+| 工具名 | 说明 |
+|--------|------|
+| `applications_summary` | 获取求职进展的整体统计概览（各状态数量、活跃数、面试数、Offer 数、今日待办和逾期数） |
+| `applications_list` | 获取求职申请列表，支持搜索（公司/职位）、状态筛选、排序和分页 |
+| `applications_get` | 获取单条求职申请的完整详情，含 `revision` 字段（后续写操作需提供 `expected_revision` 做乐观锁校验） |
+| `applications_action_center` | 获取优先处理中心，按紧急程度分桶：逾期项、今日到期、近 7 天、待安排 |
+| `applications_events_list` | 获取某条求职申请的事件时间线（状态变更、跟进、面试、笔记、Offer 等） |
+
+### 求职进展写工具
+
+| 工具名 | 说明 |
+|--------|------|
+| `applications_create` | 创建一条新的求职申请（company、position 必填，status 默认为 wishlist） |
+| `applications_update` | 更新求职申请的元信息（需 `expected_revision`，先通过 `applications_get` 获取） |
+| `applications_create_event` | 记录事件（跟进/面试/笔记/Offer）+ 可同时推进阶段和/或设置下一步日期，是推进求职进展的核心工具 |
+| `applications_delete` | ⚠️ 永久删除求职申请及其所有事件记录 |
+
 ## 数据校验规则
 
 ### 模块类型 (ResumeModuleType)
 
 合法值：`basic_info`、`education`、`skills`、`work_experience`、`projects`、`portfolio`、`awards`、`other_experience`、`research`、`summary`
+
+### 申请状态 (JobApplicationStatus)
+
+合法值：`wishlist`（心愿单）、`applied`（已投递）、`screening`（沟通中）、`interview`（面试中）、`offer`（Offer）、`rejected`（未通过）、`withdrawn`（已撤回）
+
+阶段流转顺序：`wishlist → applied → screening → interview → offer`（`rejected` 和 `withdrawn` 为终态，不可再推进）
+
+### 事件类型 (JobApplicationEventType)
+
+写操作中可用的值：`follow_up`（跟进）、`interview`（面试）、`note`（笔记）、`offer`（Offer）
+
+`created`（创建）和 `status_changed`（阶段变更）由系统自动记录，不可手动创建。
+
+### 乐观锁
+
+`applications_update` 和 `applications_create_event`（推进阶段时）需要提供 `expected_revision`。如果 revision 不匹配，返回冲突错误——此时应重新调用 `applications_get` 获取最新版本后重试。
 
 ### 模板 ID
 

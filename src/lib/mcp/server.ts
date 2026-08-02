@@ -1,12 +1,13 @@
 /**
  * MCP Server composition root
  *
- * 每个请求创建独立实例并注入用户权限；具体工具按 schema、profile、resume
- * 三个稳定领域注册，避免权限边界和业务实现堆叠在同一文件。
+ * 每个请求创建独立实例并注入用户权限；具体工具按 schema、profile、resume、
+ * job-application 四个领域注册，避免权限边界和业务实现堆叠在同一文件。
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpScope } from '@/lib/services/mcp-key'
+import { registerJobApplicationTools } from './job-application-tools'
 import { registerProfileTools } from './profile-tools'
 import { registerResumeTools } from './resume-tools'
 import { registerSchemaTools } from './schema-tools'
@@ -28,6 +29,7 @@ export function createMcpServerForUser(auth: McpAuthContext): McpServer {
   registerSchemaTools(server)
   registerProfileTools(server, auth.userId, canWrite)
   registerResumeTools(server, auth.userId, canWrite)
+  registerJobApplicationTools(server, auth.userId, canWrite)
 
   return server
 }
