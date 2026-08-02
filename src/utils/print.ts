@@ -46,13 +46,22 @@ const PRINT_RICH_TEXT_CSS = `
   }
 `
 
+const PRINT_SIZE_PROPERTIES_TO_SKIP = new Set([
+  'height',
+  'min-height',
+  'max-height',
+  'block-size',
+  'min-block-size',
+  'max-block-size',
+])
+
 function copyComputedStyles(source: Element, target: Element) {
   const computed = window.getComputedStyle(source)
   const targetStyle = (target as HTMLElement | SVGElement).style
 
   for (let i = 0; i < computed.length; i += 1) {
     const property = computed[i]
-    if (property === 'height') continue
+    if (PRINT_SIZE_PROPERTIES_TO_SKIP.has(property)) continue
     targetStyle.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property))
   }
 
@@ -71,18 +80,17 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   clone.querySelectorAll('.preview-module-toolbar, .preview-subitem-actions').forEach((el) => el.remove())
   clone.querySelectorAll<HTMLElement>('.resume-a4-preview, section, [data-module], .resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
     el.style.setProperty('height', 'auto', 'important')
-  })
-  clone.querySelectorAll<HTMLElement>('.resume-section-title').forEach((el) => {
-    el.style.setProperty('break-after', 'avoid', 'important')
-    el.style.setProperty('page-break-after', 'avoid', 'important')
+    el.style.setProperty('block-size', 'auto', 'important')
   })
   clone.querySelectorAll<HTMLElement>('.resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
-    el.style.setProperty('break-inside', 'avoid', 'important')
-    el.style.setProperty('page-break-inside', 'avoid', 'important')
+    el.style.setProperty('break-inside', 'auto', 'important')
+    el.style.setProperty('page-break-inside', 'auto', 'important')
   })
   clone.style.width = `${A4_PAGE_WIDTH_PX}px`
   clone.style.height = 'auto'
+  clone.style.blockSize = 'auto'
   clone.style.minHeight = `${A4_PAGE_HEIGHT_PX}px`
+  clone.style.minBlockSize = `${A4_PAGE_HEIGHT_PX}px`
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
   clone.style.transformOrigin = 'top left'
@@ -114,12 +122,11 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     color-adjust: exact !important;
   }
   body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    display: block;
+    margin: 0;
   }
   body > .resume-a4-preview {
-    flex: 0 0 ${A4_PAGE_WIDTH_PX}px !important;
+    display: block !important;
     width: ${A4_PAGE_WIDTH_PX}px !important;
     max-width: ${A4_PAGE_WIDTH_PX}px !important;
     height: auto !important;
@@ -154,19 +161,15 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
   .resume-page-break-hint {
     display: none !important;
   }
-  .resume-section-title {
-    break-after: avoid !important;
-    page-break-after: avoid !important;
-  }
   .resume-subitem,
   .preview-subitem {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
   .resume-subitem > div,
   .preview-subitem > div {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 ${PRINT_RICH_TEXT_CSS}
   @media print { body { margin: 0; } }

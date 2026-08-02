@@ -54,7 +54,6 @@ function defaultSubItemRenderer(module: ResumeModuleType, index: number, _total:
     <div
       key={`${module}-${index}`}
       className="resume-subitem"
-      style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
     >
       {children}
     </div>
