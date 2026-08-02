@@ -155,9 +155,15 @@ test.describe('求职申请跟踪', () => {
   test('页面创建、进展联动阶段、职位链接、投递快照和删除', async ({ page, request }) => {
     const account = await createUserByApi(request, 'applications-ui')
     const resume = await createResumeByApi(request, account.token, `E2E_TEST_UI快照_${Date.now()}`)
+    const longNotes = [
+      '需要重点关注岗位要求，尤其是系统设计、跨团队推进和英文沟通。',
+      '面试前确认团队技术栈、汇报线、远程政策、薪资区间和入职时间。',
+      '沟通时提醒自己先问清业务目标，再补充项目里的指标和协作细节。',
+      '附加信息尾标：这段文字用于确认完整备注阅读区能看到全文。',
+    ].join(' ')
     const created = await request.post('/api/job-applications', {
       headers: { Cookie: account.token },
-      data: { company: 'UI Acme', position: '工程师', status: 'applied', job_url: 'https://example.com/jobs/ui', resume_id: resume.id, notes: '需要重点关注岗位要求' },
+      data: { company: 'UI Acme', position: '工程师', status: 'applied', job_url: 'https://example.com/jobs/ui', resume_id: resume.id, notes: longNotes },
     })
     expect(created.status()).toBe(201)
     let application = await created.json()
@@ -191,7 +197,18 @@ test.describe('求职申请跟踪', () => {
     await uiRow.focus()
     await page.keyboard.press('Space')
     const workbench = page.getByRole('dialog', { name: /UI Acme/ })
-    await expect(workbench.getByText('备注：需要重点关注岗位要求')).toBeVisible()
+    const titleNotePreview = workbench.getByLabel('备注预览')
+    await expect(titleNotePreview).toContainText('需要重点关注岗位要求')
+    const titleNoteText = titleNotePreview.locator('[class*="titleNoteText"]').first()
+    const collapsedBox = await titleNoteText.boundingBox()
+    expect(collapsedBox?.height).toBeLessThanOrEqual(45)
+    await expect(titleNotePreview.getByRole('button', { name: '展开备注' })).toBeVisible()
+    await titleNotePreview.getByRole('button', { name: '展开备注' }).click()
+    await expect(titleNotePreview.getByRole('button', { name: '收起备注' })).toBeVisible()
+    const expandedBox = await titleNoteText.boundingBox()
+    expect(expandedBox?.height).toBeLessThanOrEqual(120)
+    expect(expandedBox?.height || 0).toBeGreaterThan(collapsedBox?.height || 0)
+    await expect(workbench.getByLabel('完整备注')).toContainText('附加信息尾标')
     await workbench.getByRole('button', { name: '编辑' }).click()
     const editDrawer = page.getByRole('dialog', { name: /编辑申请/ })
     await expect(editDrawer).toBeVisible()
