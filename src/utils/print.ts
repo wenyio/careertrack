@@ -134,6 +134,18 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
   .resume-page-break-hint {
     display: none !important;
   }
+  .resume-section-title {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+  .preview-subitem {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .preview-subitem > div {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 ${PRINT_RICH_TEXT_CSS}
   @media print { body { margin: 0; } }
 </style>
