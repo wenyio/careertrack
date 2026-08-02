@@ -97,7 +97,10 @@ export function SubItem({
   children: React.ReactNode
 }) {
   return (
-    <div className="preview-subitem" style={{ position: 'relative' }}>
+    <div
+      className="preview-subitem resume-subitem"
+      style={{ position: 'relative', breakInside: 'avoid', pageBreakInside: 'avoid' }}
+    >
       <SubItemActions
         canMoveUp={index > 0}
         canMoveDown={index < total - 1}

@@ -50,7 +50,15 @@ function defaultSectionRenderer(module: ResumeModuleType, children: ReactNode) {
 }
 
 function defaultSubItemRenderer(module: ResumeModuleType, index: number, _total: number, children: ReactNode) {
-  return <div key={`${module}-${index}`}>{children}</div>
+  return (
+    <div
+      key={`${module}-${index}`}
+      className="resume-subitem"
+      style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+    >
+      {children}
+    </div>
+  )
 }
 
 // ── Props ──

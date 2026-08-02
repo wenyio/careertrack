@@ -218,6 +218,19 @@ img {
 .resume-desc p {
   margin: 0 0 4px 0;
 }
+
+@media print {
+  .resume-section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .resume-subitem,
+  .resume-subitem > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
 .resume-desc p:last-child {
   margin-bottom: 0;
 }

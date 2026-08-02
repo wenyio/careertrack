@@ -66,6 +66,14 @@ function copyComputedStyles(source: Element, target: Element) {
 export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   const clone = sourceEl.cloneNode(true) as HTMLElement
   copyComputedStyles(sourceEl, clone)
+  clone.querySelectorAll<HTMLElement>('.resume-section-title').forEach((el) => {
+    el.style.setProperty('break-after', 'avoid', 'important')
+    el.style.setProperty('page-break-after', 'avoid', 'important')
+  })
+  clone.querySelectorAll<HTMLElement>('.resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
+    el.style.setProperty('break-inside', 'avoid', 'important')
+    el.style.setProperty('page-break-inside', 'avoid', 'important')
+  })
   clone.style.width = `${A4_PAGE_WIDTH_PX}px`
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
@@ -138,10 +146,12 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     break-after: avoid !important;
     page-break-after: avoid !important;
   }
+  .resume-subitem,
   .preview-subitem {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+  .resume-subitem > div,
   .preview-subitem > div {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
