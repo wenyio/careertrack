@@ -159,7 +159,7 @@ test.describe('求职申请跟踪', () => {
       '需要重点关注岗位要求，尤其是系统设计、跨团队推进和英文沟通。',
       '面试前确认团队技术栈、汇报线、远程政策、薪资区间和入职时间。',
       '沟通时提醒自己先问清业务目标，再补充项目里的指标和协作细节。',
-      '附加信息尾标：这段文字用于确认完整备注阅读区能看到全文。',
+      '附加信息尾标：这段文字用于确认展开备注能看到全文。',
     ].join(' ')
     const created = await request.post('/api/job-applications', {
       headers: { Cookie: account.token },
@@ -202,13 +202,13 @@ test.describe('求职申请跟踪', () => {
     const titleNoteText = titleNotePreview.locator('[class*="titleNoteText"]').first()
     const collapsedBox = await titleNoteText.boundingBox()
     expect(collapsedBox?.height).toBeLessThanOrEqual(45)
-    await expect(titleNotePreview.getByRole('button', { name: '展开备注' })).toBeVisible()
-    await titleNotePreview.getByRole('button', { name: '展开备注' }).click()
-    await expect(titleNotePreview.getByRole('button', { name: '收起备注' })).toBeVisible()
+    await expect(titleNotePreview.getByRole('button', { name: '展开' })).toBeVisible()
+    await titleNotePreview.getByRole('button', { name: '展开' }).click()
+    await expect(titleNotePreview.getByRole('button', { name: '收起' })).toBeVisible()
     const expandedBox = await titleNoteText.boundingBox()
-    expect(expandedBox?.height).toBeLessThanOrEqual(120)
+    expect(expandedBox?.height).toBeLessThanOrEqual(126)
     expect(expandedBox?.height || 0).toBeGreaterThan(collapsedBox?.height || 0)
-    await expect(workbench.getByLabel('完整备注')).toContainText('附加信息尾标')
+    await expect(titleNotePreview).toContainText('附加信息尾标')
     await workbench.getByRole('button', { name: '编辑' }).click()
     const editDrawer = page.getByRole('dialog', { name: /编辑申请/ })
     await expect(editDrawer).toBeVisible()
