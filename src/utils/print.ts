@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client'
 import type { Resume, ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
 import ResumeHtmlPreview from '@/components/resume/editor/ResumeHtmlPreview'
-import { A4_PAGE_WIDTH_PX } from '@/constants'
+import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
 
 const PRINT_RICH_TEXT_CSS = `
   .resume-desc {
@@ -66,6 +66,7 @@ function copyComputedStyles(source: Element, target: Element) {
 export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   const clone = sourceEl.cloneNode(true) as HTMLElement
   copyComputedStyles(sourceEl, clone)
+  clone.querySelectorAll('.resume-page-break-hint').forEach((el) => el.remove())
   clone.querySelectorAll<HTMLElement>('.resume-section-title').forEach((el) => {
     el.style.setProperty('break-after', 'avoid', 'important')
     el.style.setProperty('page-break-after', 'avoid', 'important')
@@ -75,6 +76,7 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
     el.style.setProperty('page-break-inside', 'avoid', 'important')
   })
   clone.style.width = `${A4_PAGE_WIDTH_PX}px`
+  clone.style.minHeight = `${A4_PAGE_HEIGHT_PX}px`
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
   clone.style.transformOrigin = 'top left'
