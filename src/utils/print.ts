@@ -72,10 +72,11 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
     el.style.setProperty('page-break-after', 'avoid', 'important')
   })
   clone.querySelectorAll<HTMLElement>('.resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
-    el.style.setProperty('break-inside', 'avoid', 'important')
-    el.style.setProperty('page-break-inside', 'avoid', 'important')
+    el.style.setProperty('break-inside', 'auto', 'important')
+    el.style.setProperty('page-break-inside', 'auto', 'important')
   })
   clone.style.width = `${A4_PAGE_WIDTH_PX}px`
+  clone.style.height = 'auto'
   clone.style.minHeight = `${A4_PAGE_HEIGHT_PX}px`
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
@@ -116,6 +117,7 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     flex: 0 0 ${A4_PAGE_WIDTH_PX}px !important;
     width: ${A4_PAGE_WIDTH_PX}px !important;
     max-width: ${A4_PAGE_WIDTH_PX}px !important;
+    height: auto !important;
     margin: 0 auto !important;
     transform: none !important;
     transform-origin: top left !important;
@@ -150,13 +152,13 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
   }
   .resume-subitem,
   .preview-subitem {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
   .resume-subitem > div,
   .preview-subitem > div {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 ${PRINT_RICH_TEXT_CSS}
   @media print { body { margin: 0; } }

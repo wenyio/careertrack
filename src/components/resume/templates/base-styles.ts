@@ -58,8 +58,6 @@ export function getBaseStyles(
     },
     entry: {
       marginBottom: 10,
-      breakInside: 'avoid' as const,
-      pageBreakInside: 'avoid' as const,
     },
     entryHeader: {
       display: 'flex',

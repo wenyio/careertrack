@@ -227,8 +227,8 @@ img {
 
   .resume-subitem,
   .resume-subitem > div {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 }
 .resume-desc p:last-child {
