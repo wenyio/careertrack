@@ -6,6 +6,9 @@
 
 'use client'
 
+import { useRef } from 'react'
+import { useEntryGapAsPadding } from '@/hooks/useEntryGapAsPadding'
+
 /** SVG 图标 */
 export const ChevronUp = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -96,8 +99,12 @@ export function SubItem({
   onDelete: () => void
   children: React.ReactNode
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  useEntryGapAsPadding(wrapperRef, ':scope > div:not(.preview-subitem-actions)')
+
   return (
     <div
+      ref={wrapperRef}
       className="preview-subitem resume-subitem"
       style={{ position: 'relative' }}
     >

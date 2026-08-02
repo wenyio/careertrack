@@ -10,7 +10,8 @@
 
 'use client'
 
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { useEntryGapAsPadding } from '@/hooks/useEntryGapAsPadding'
 import type {
   ResumeContent,
   ModulesConfig,
@@ -49,14 +50,22 @@ function defaultSectionRenderer(module: ResumeModuleType, children: ReactNode) {
   )
 }
 
-function defaultSubItemRenderer(module: ResumeModuleType, index: number, _total: number, children: ReactNode) {
+function DefaultSubItemWrapper({ children }: { children: ReactNode }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  useEntryGapAsPadding(wrapperRef, ':scope > div')
+
   return (
-    <div
-      key={`${module}-${index}`}
-      className="resume-subitem"
-    >
+    <div ref={wrapperRef} className="resume-subitem">
       {children}
     </div>
+  )
+}
+
+function defaultSubItemRenderer(module: ResumeModuleType, index: number, _total: number, children: ReactNode) {
+  return (
+    <DefaultSubItemWrapper key={`${module}-${index}`}>
+      {children}
+    </DefaultSubItemWrapper>
   )
 }
 
