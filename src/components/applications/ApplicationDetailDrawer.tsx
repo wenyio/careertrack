@@ -137,6 +137,12 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   const [resumeVersionsLoading, setResumeVersionsLoading] = useState(false)
   const [resumeVersionsError, setResumeVersionsError] = useState(false)
   const [resumeVersionsRetry, setResumeVersionsRetry] = useState(0)
+  const titleNoteKey = `${current?.id || 'closed'}:${current?.notes || ''}`
+  const [titleNoteExpansion, setTitleNoteExpansion] = useState({ key: '', expanded: false })
+  const [titleNoteOverflow, setTitleNoteOverflow] = useState({ key: '', overflowing: false })
+  const titleNoteExpanded = titleNoteExpansion.key === titleNoteKey && titleNoteExpansion.expanded
+  const titleNoteOverflowing = titleNoteOverflow.key === titleNoteKey && titleNoteOverflow.overflowing
+  const titleNoteRef = useRef<HTMLDivElement>(null)
   const [form] = Form.useForm<EventValues>()
   const nextActionMode = Form.useWatch('next_action_mode', form) || 'keep'
   const linkedStatus = Form.useWatch('next_status', form)
@@ -158,6 +164,42 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
   const latestResume = useResume(selectedResumeId || '', {
     enabled: open && activeTab === 'resume' && Boolean(selectedResumeId && (!versionSelectValue || snapshot.isError || selectedSnapshot.isError)),
   })
+
+  useEffect(() => {
+    const noteEl = titleNoteRef.current
+    if (!current?.notes || !noteEl) return
+    const measure = () => {
+      const computedStyle = window.getComputedStyle(noteEl)
+      const fontSize = Number.parseFloat(computedStyle.fontSize) || 12
+      const lineHeight = Number.parseFloat(computedStyle.lineHeight) || fontSize * 1.35
+      // Some browsers report the clipped height while line-clamp is active.
+      const previousDisplay = noteEl.style.display
+      const previousMaxHeight = noteEl.style.maxHeight
+      const previousOverflow = noteEl.style.overflow
+      const previousLineClamp = noteEl.style.getPropertyValue('-webkit-line-clamp')
+      noteEl.style.display = 'block'
+      noteEl.style.maxHeight = 'none'
+      noteEl.style.overflow = 'visible'
+      noteEl.style.setProperty('-webkit-line-clamp', 'unset')
+      const fullHeight = noteEl.scrollHeight
+      noteEl.style.display = previousDisplay
+      noteEl.style.maxHeight = previousMaxHeight
+      noteEl.style.overflow = previousOverflow
+      if (previousLineClamp) {
+        noteEl.style.setProperty('-webkit-line-clamp', previousLineClamp)
+      } else {
+        noteEl.style.removeProperty('-webkit-line-clamp')
+      }
+      setTitleNoteOverflow({ key: titleNoteKey, overflowing: fullHeight > lineHeight * 2 + 1 })
+    }
+    const frame = window.requestAnimationFrame(measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(noteEl)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [current?.notes, screens.md, titleNoteKey])
 
   useEffect(() => {
     if (!open || activeTab !== 'resume' || !selectedResumeId) return
@@ -377,11 +419,23 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     current.applied_at ? { key: 'applied', label: `投递：${current.applied_at}` } : null,
     current.job_url && /^https?:\/\//i.test(current.job_url) ? { key: 'url', label: <a href={current.job_url} target="_blank" rel="noopener noreferrer">职位链接 <ExportOutlined /></a> } : null,
   ].filter(Boolean) as Array<{ key: string; label: ReactNode }>
+  const titleNoteCanToggle = current.notes ? titleNoteOverflowing || current.notes.length > (screens.md ? 90 : 44) : false
   const titleMeta = metaItems.length || current.notes ? <Space orientation="vertical" size={1} style={{ display: 'flex' }}>
     {metaItems.length > 0 && <Space wrap size={[10, 2]}>
       {metaItems.map((item) => <Typography.Text key={item.key} type="secondary" style={{ fontSize: 13 }}>{item.label}</Typography.Text>)}
     </Space>}
-    {current.notes && <Typography.Text type="secondary" className={styles.titleNote}><span>备注：</span>{current.notes}</Typography.Text>}
+    {current.notes && <div className={styles.titleNote} aria-label="备注预览">
+      <div ref={titleNoteRef} className={`${styles.titleNoteText} ${titleNoteExpanded ? styles.titleNoteTextExpanded : ''}`}><span className={styles.titleNoteLabel}>备注：</span>{current.notes}</div>
+      {titleNoteCanToggle && <Button
+        type="link"
+        size="small"
+        className={styles.titleNoteToggle}
+        aria-expanded={titleNoteExpanded}
+        onClick={() => setTitleNoteExpansion({ key: titleNoteKey, expanded: !titleNoteExpanded })}
+      >
+        {titleNoteExpanded ? '收起备注' : '展开备注'}
+      </Button>}
+    </div>}
   </Space> : undefined
   const nextActionHelp: Record<NextActionMode, string> = {
     keep: current.next_action_at ? `保留当前下一步提醒：${current.next_action_at}` : '保持当前安排，不新增下一步提醒',
@@ -390,6 +444,10 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     clear: '保存后清除当前下一步提醒，不影响申请阶段',
   }
   const progressContent = <>
+    {current.notes && <section className={styles.progressNotePanel} aria-label="完整备注">
+      <Typography.Text type="secondary" className={styles.fieldLabel}>完整备注</Typography.Text>
+      <Typography.Paragraph className={styles.progressNoteText}>{current.notes}</Typography.Paragraph>
+    </section>}
     <section style={{ padding: '8px 0 20px', borderBottom: '1px solid #f0f0f0' }}>
       <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>当前进展</Typography.Title>
       <Space orientation="vertical" size="middle" style={{ display: 'flex' }}>
