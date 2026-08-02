@@ -6,7 +6,7 @@ import dayjs from 'dayjs'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, App, Button, DatePicker, Drawer, Dropdown, Empty, Form, Grid, Input, Segmented, Select, Space, Spin, Tabs, Tag, Typography } from 'antd'
 import type { MenuProps } from 'antd'
-import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, DownOutlined, EditOutlined, ExportOutlined, FileTextOutlined, MessageOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, DownOutlined, EditOutlined, ExportOutlined, FileTextOutlined, MessageOutlined, UpOutlined } from '@ant-design/icons'
 import { ApplicationEventTimeline } from './ApplicationEventTimeline'
 import { useJobApplication, useJobApplicationEvents, useJobApplicationMutations } from '@/hooks/useJobApplications'
 import { useResume, useResumes } from '@/hooks/useResume'
@@ -424,16 +424,17 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     {metaItems.length > 0 && <Space wrap size={[10, 2]}>
       {metaItems.map((item) => <Typography.Text key={item.key} type="secondary" style={{ fontSize: 13 }}>{item.label}</Typography.Text>)}
     </Space>}
-    {current.notes && <div className={styles.titleNote} aria-label="备注预览">
+    {current.notes && <div className={`${styles.titleNote} ${titleNoteExpanded ? styles.titleNoteExpanded : ''}`} aria-label="备注预览">
       <div ref={titleNoteRef} className={`${styles.titleNoteText} ${titleNoteExpanded ? styles.titleNoteTextExpanded : ''}`}><span className={styles.titleNoteLabel}>备注：</span>{current.notes}</div>
       {titleNoteCanToggle && <Button
         type="link"
         size="small"
         className={styles.titleNoteToggle}
+        icon={titleNoteExpanded ? <UpOutlined /> : <DownOutlined />}
         aria-expanded={titleNoteExpanded}
         onClick={() => setTitleNoteExpansion({ key: titleNoteKey, expanded: !titleNoteExpanded })}
       >
-        {titleNoteExpanded ? '收起备注' : '展开备注'}
+        {titleNoteExpanded ? '收起' : '展开'}
       </Button>}
     </div>}
   </Space> : undefined
@@ -444,10 +445,6 @@ export function ApplicationDetailDrawer({ application, open, onClose, onEdit, in
     clear: '保存后清除当前下一步提醒，不影响申请阶段',
   }
   const progressContent = <>
-    {current.notes && <section className={styles.progressNotePanel} aria-label="完整备注">
-      <Typography.Text type="secondary" className={styles.fieldLabel}>完整备注</Typography.Text>
-      <Typography.Paragraph className={styles.progressNoteText}>{current.notes}</Typography.Paragraph>
-    </section>}
     <section style={{ padding: '8px 0 20px', borderBottom: '1px solid #f0f0f0' }}>
       <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>当前进展</Typography.Title>
       <Space orientation="vertical" size="middle" style={{ display: 'flex' }}>
