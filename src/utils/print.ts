@@ -46,22 +46,12 @@ const PRINT_RICH_TEXT_CSS = `
   }
 `
 
-const PRINT_SIZE_PROPERTIES_TO_SKIP = new Set([
-  'height',
-  'min-height',
-  'max-height',
-  'block-size',
-  'min-block-size',
-  'max-block-size',
-])
-
 function copyComputedStyles(source: Element, target: Element) {
   const computed = window.getComputedStyle(source)
   const targetStyle = (target as HTMLElement | SVGElement).style
 
   for (let i = 0; i < computed.length; i += 1) {
     const property = computed[i]
-    if (PRINT_SIZE_PROPERTIES_TO_SKIP.has(property)) continue
     targetStyle.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property))
   }
 
@@ -78,10 +68,6 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   copyComputedStyles(sourceEl, clone)
   clone.querySelectorAll('.resume-page-break-hint').forEach((el) => el.remove())
   clone.querySelectorAll('.preview-module-toolbar, .preview-subitem-actions').forEach((el) => el.remove())
-  clone.querySelectorAll<HTMLElement>('.resume-a4-preview, section, [data-module], .resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
-    el.style.setProperty('height', 'auto', 'important')
-    el.style.setProperty('block-size', 'auto', 'important')
-  })
   clone.querySelectorAll<HTMLElement>('.resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
     el.style.setProperty('break-inside', 'auto', 'important')
     el.style.setProperty('page-break-inside', 'auto', 'important')
@@ -135,9 +121,6 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     transform-origin: top left !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-  }
-  .resume-a4-preview > div {
-    height: auto !important;
   }
   .anticon {
     display: inline-flex;
