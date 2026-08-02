@@ -49,12 +49,13 @@
 }
 
 .titleNoteToggle {
-  height: 20px;
-  padding: 0 2px;
+  align-self: flex-end;
+  height: 18px;
+  padding: 0 1px;
   color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 20px;
+  line-height: 18px;
 }
 
 .titleNoteToggle:hover {
@@ -62,7 +63,7 @@
 }
 
 .titleNoteToggle :global(.anticon) {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .resumeLinkPanel {
