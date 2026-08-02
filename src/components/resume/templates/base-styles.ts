@@ -53,8 +53,6 @@ export function getBaseStyles(
       marginBottom: 8,
       paddingBottom: 4,
       borderBottom: `1px solid ${config.primaryColor}`,
-      breakAfter: 'avoid' as const,
-      pageBreakAfter: 'avoid' as const,
     },
     entry: {
       marginBottom: 10,

@@ -67,9 +67,11 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   const clone = sourceEl.cloneNode(true) as HTMLElement
   copyComputedStyles(sourceEl, clone)
   clone.querySelectorAll('.resume-page-break-hint').forEach((el) => el.remove())
-  clone.querySelectorAll<HTMLElement>('.resume-section-title').forEach((el) => {
-    el.style.setProperty('break-after', 'avoid', 'important')
-    el.style.setProperty('page-break-after', 'avoid', 'important')
+  // 移除编辑 UI 元素（避免冻结高度包含工具栏空间）
+  clone.querySelectorAll('.preview-module-toolbar, .preview-subitem-actions').forEach((el) => el.remove())
+  // 重置所有 resume 相关容器的高度为 auto，消除 copyComputedStyles 冻结的固定高度
+  clone.querySelectorAll<HTMLElement>('.resume-a4-preview, section, [data-module], .resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
+    el.style.setProperty('height', 'auto', 'important')
   })
   clone.querySelectorAll<HTMLElement>('.resume-subitem, .preview-subitem, .resume-subitem > div, .preview-subitem > div').forEach((el) => {
     el.style.setProperty('break-inside', 'auto', 'important')
@@ -124,6 +126,11 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
     box-shadow: none !important;
     border-radius: 0 !important;
   }
+  /* 重置内部容器高度：copyComputedStyles 会冻结 height 为固定像素值，
+     在打印上下文中可能导致内容高度不匹配，产生异常空白 */
+  .resume-a4-preview > div {
+    height: auto !important;
+  }
   .anticon {
     display: inline-flex;
     align-items: center;
@@ -145,10 +152,6 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
   .preview-subitem-actions,
   .resume-page-break-hint {
     display: none !important;
-  }
-  .resume-section-title {
-    break-after: avoid !important;
-    page-break-after: avoid !important;
   }
   .resume-subitem,
   .preview-subitem {
