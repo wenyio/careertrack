@@ -14,8 +14,10 @@ import { useLayoutEffect, type RefObject } from 'react'
 export function useEntryGapAsPadding(
   wrapperRef: RefObject<HTMLElement | null>,
   entrySelector: string,
+  skip = false,
 ) {
   useLayoutEffect(() => {
+    if (skip) return
     const wrapper = wrapperRef.current
     if (!wrapper) return
     const entry = wrapper.querySelector<HTMLElement>(entrySelector)

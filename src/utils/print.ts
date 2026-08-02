@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client'
 import type { Resume, ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import { DEFAULT_MODULES_CONFIG, DEFAULT_MODULES_ORDER } from '@/types/resume'
 import ResumeHtmlPreview from '@/components/resume/editor/ResumeHtmlPreview'
-import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
+import { A4_PAGE_WIDTH_PX } from '@/constants'
 
 const PRINT_RICH_TEXT_CSS = `
   .resume-desc {
@@ -75,8 +75,10 @@ export function cloneElementForPrint(sourceEl: HTMLElement): HTMLElement {
   clone.style.width = `${A4_PAGE_WIDTH_PX}px`
   clone.style.height = 'auto'
   clone.style.blockSize = 'auto'
-  clone.style.minHeight = `${A4_PAGE_HEIGHT_PX}px`
-  clone.style.minBlockSize = `${A4_PAGE_HEIGHT_PX}px`
+  // 清零 min-height：copyComputedStyles 会冻住 PageBreakHints 为屏幕预览设的
+  // 多页 minHeight（如 2246px），打印时该值会撑出多余空白导致内容被推到下页
+  clone.style.minHeight = '0'
+  clone.style.minBlockSize = '0'
   clone.style.margin = '0 auto'
   clone.style.transform = 'none'
   clone.style.transformOrigin = 'top left'
@@ -96,20 +98,25 @@ function buildPrintHtml(bodyHtml: string, title: string): string {
 <title>${title}</title>
 <style>
   @page { size: A4; margin: 0; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
     width: 100%;
     min-height: 100%;
     background: #fff;
   }
-  body, * {
+  body > .resume-a4-preview,
+  body > .resume-a4-preview * {
+    box-sizing: border-box;
+  }
+  body, body > .resume-a4-preview, body > .resume-a4-preview * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
   body {
     display: block;
-    margin: 0;
   }
   body > .resume-a4-preview {
     display: block !important;
@@ -198,7 +205,6 @@ export function printHtml(bodyHtml: string, title: string): Promise<void> {
     iframe.onload = () => {
       // 留出渲染时间
       setTimeout(() => {
-        // 临时替换父页面标题，使打印/保存 PDF 的默认文件名为简历名
         const originalTitle = document.title
         document.title = title
         try {

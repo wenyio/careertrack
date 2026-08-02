@@ -100,7 +100,7 @@ export function SubItem({
   children: React.ReactNode
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  useEntryGapAsPadding(wrapperRef, ':scope > div:not(.preview-subitem-actions)')
+  useEntryGapAsPadding(wrapperRef, ':scope > div:not(.preview-subitem-actions)', index === total - 1)
 
   return (
     <div

@@ -50,9 +50,9 @@ function defaultSectionRenderer(module: ResumeModuleType, children: ReactNode) {
   )
 }
 
-function DefaultSubItemWrapper({ children }: { children: ReactNode }) {
+function DefaultSubItemWrapper({ children, isLast = false }: { children: ReactNode; isLast?: boolean }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  useEntryGapAsPadding(wrapperRef, ':scope > div')
+  useEntryGapAsPadding(wrapperRef, ':scope > div', isLast)
 
   return (
     <div ref={wrapperRef} className="resume-subitem">
@@ -61,9 +61,9 @@ function DefaultSubItemWrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function defaultSubItemRenderer(module: ResumeModuleType, index: number, _total: number, children: ReactNode) {
+function defaultSubItemRenderer(module: ResumeModuleType, index: number, total: number, children: ReactNode) {
   return (
-    <DefaultSubItemWrapper key={`${module}-${index}`}>
+    <DefaultSubItemWrapper key={`${module}-${index}`} isLast={index === total - 1}>
       {children}
     </DefaultSubItemWrapper>
   )
