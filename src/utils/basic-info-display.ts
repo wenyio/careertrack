@@ -78,6 +78,33 @@ export function hasBasicInfoExtraValue(
     && !(field === 'age' && value === 0)
 }
 
+/** Normalize custom work-year input while keeping stored profile data numeric. */
+export function normalizeWorkYearsInput(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? value : undefined
+  }
+
+  if (typeof value !== 'string') return undefined
+
+  const text = value.trim()
+  if (!text) return undefined
+  if (text === '应届生') return 0
+
+  const numericText = text
+    .replace(/年/g, '')
+    .replace(/\+/g, '')
+    .trim()
+  const numericValue = Number(numericText)
+
+  return Number.isFinite(numericValue) && numericValue >= 0
+    ? numericValue
+    : undefined
+}
+
+export function formatWorkYears(value: number): string {
+  return value === 0 ? '应届生' : `${value}年`
+}
+
 /** Calculate age on a specific date so the rule remains deterministic in tests. */
 export function calculateAgeFromBirthday(
   birthday: string,

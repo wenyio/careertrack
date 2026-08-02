@@ -7,6 +7,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import {
   Button,
   Col,
@@ -29,11 +30,14 @@ import type {
 import {
   BASIC_INFO_EXTRA_FIELDS,
   EXTRA_FIELDS_MAP,
+  type BasicInfoExtraFieldConfig,
 } from '@/config/basic-info-fields'
 import {
   addVisibleBasicInfoField,
   calculateAgeFromBirthday,
+  formatWorkYears,
   hasBasicInfoExtraValue,
+  normalizeWorkYearsInput,
   removeVisibleBasicInfoField,
   toggleBasicInfoFieldIcon,
 } from '@/utils/basic-info-display'
@@ -58,6 +62,7 @@ export default function BasicInfoExtraFields({
     ? BASIC_INFO_EXTRA_FIELDS.map((fieldConfig) => fieldConfig.field)
     : (displayConfig?.visible_extra_fields || [])
   const fieldIcons = displayConfig?.field_icons || {}
+  const [workYearsSearch, setWorkYearsSearch] = useState('')
 
   const handleFieldChange = (field: BasicInfoExtraField, fieldValue: unknown) => {
     const updates: Partial<OtherInfo> = {
@@ -107,10 +112,76 @@ export default function BasicInfoExtraFields({
     ))
   }
 
+  const commitWorkYearsSearch = () => {
+    const normalizedValue = normalizeWorkYearsInput(workYearsSearch)
+    if (normalizedValue !== undefined) {
+      handleFieldChange('work_years', normalizedValue)
+    }
+    setWorkYearsSearch('')
+  }
+
+  const getWorkYearsOptions = (
+    fieldConfig: BasicInfoExtraFieldConfig,
+    fieldValue: unknown,
+  ) => {
+    const options = (fieldConfig.options || [])
+      .map((option) => {
+        const normalizedValue = normalizeWorkYearsInput(option.value)
+        return normalizedValue === undefined
+          ? null
+          : { value: normalizedValue, label: option.label }
+      })
+      .filter(Boolean) as { value: number; label: string }[]
+
+    const ensureOption = (nextValue: number | undefined) => {
+      if (
+        nextValue !== undefined
+        && !options.some((option) => option.value === nextValue)
+      ) {
+        options.push({ value: nextValue, label: formatWorkYears(nextValue) })
+      }
+    }
+
+    ensureOption(normalizeWorkYearsInput(fieldValue))
+    ensureOption(normalizeWorkYearsInput(workYearsSearch))
+
+    return options
+  }
+
   const renderFieldInput = (field: BasicInfoExtraField) => {
     const fieldConfig = EXTRA_FIELDS_MAP[field]
     if (!fieldConfig) return null
     const fieldValue = value?.[field]
+
+    if (field === 'work_years') {
+      const normalizedValue = normalizeWorkYearsInput(fieldValue)
+
+      return (
+        <Select
+          value={normalizedValue}
+          onChange={(nextValue) => {
+            handleFieldChange(field, nextValue)
+            setWorkYearsSearch('')
+          }}
+          onClear={() => {
+            handleFieldChange(field, undefined)
+            setWorkYearsSearch('')
+          }}
+          onBlur={commitWorkYearsSearch}
+          onInputKeyDown={(event) => {
+            if (event.key === 'Enter') commitWorkYearsSearch()
+          }}
+          placeholder={fieldConfig.placeholder}
+          options={getWorkYearsOptions(fieldConfig, fieldValue)}
+          showSearch={{
+            onSearch: setWorkYearsSearch,
+            optionFilterProp: 'label',
+            searchValue: workYearsSearch,
+          }}
+          allowClear
+        />
+      )
+    }
 
     switch (fieldConfig.kind) {
       case 'select':

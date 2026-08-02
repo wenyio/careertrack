@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   addVisibleBasicInfoField,
   calculateAgeFromBirthday,
+  formatWorkYears,
   hasBasicInfoExtraValue,
+  normalizeWorkYearsInput,
   removeVisibleBasicInfoField,
   toggleBasicInfoFieldIcon,
 } from '@/utils/basic-info-display'
@@ -54,6 +56,20 @@ describe('basic info extra values', () => {
     expect(hasBasicInfoExtraValue('work_years', 0)).toBe(true)
     expect(hasBasicInfoExtraValue('city', '')).toBe(false)
     expect(hasBasicInfoExtraValue('city', '上海')).toBe(true)
+  })
+
+  it('normalizes custom work years input to numeric values', () => {
+    expect(normalizeWorkYearsInput('7')).toBe(7)
+    expect(normalizeWorkYearsInput('7年')).toBe(7)
+    expect(normalizeWorkYearsInput('10+')).toBe(10)
+    expect(normalizeWorkYearsInput('应届生')).toBe(0)
+    expect(normalizeWorkYearsInput(-1)).toBeUndefined()
+    expect(normalizeWorkYearsInput('abc')).toBeUndefined()
+  })
+
+  it('formats custom work years consistently', () => {
+    expect(formatWorkYears(0)).toBe('应届生')
+    expect(formatWorkYears(7)).toBe('7年')
   })
 
   it('calculates age around the birthday boundary', () => {
