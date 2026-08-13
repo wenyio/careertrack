@@ -129,6 +129,127 @@ function BlackWhiteProjectsRenderer({ content, styles, renderSubItem }: ModuleRe
   )
 }
 
+function joinVisibleParts(item: AnyItem, parts: Array<{ field: string; value: unknown }>) {
+  return parts
+    .filter((part) => part.value && !isFieldHiddenOnItem(item, part.field))
+    .map((part) => String(part.value))
+    .join(' · ')
+}
+
+/** black-white education compact：学校 + 教育短信息同行 */
+function BlackWhiteCompactEducationRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+  const education: AnyItem[] = content.education || []
+  return (
+    <>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('education', content)}</SectionTitle>
+      {education.map((item, i) => {
+        const inlineInfo = joinVisibleParts(item, [
+          { field: 'major', value: item.major },
+          { field: 'degree', value: item.degree },
+          { field: 'degree_type', value: item.degree_type },
+          { field: 'college', value: item.college },
+          { field: 'city', value: item.city },
+        ])
+
+        return renderSubItem('education', i, education.length, (
+          <div style={styles.entry}>
+            <div style={styles.entryHeader}>
+              <span style={styles.entryTitle}>
+                {item.school}
+                {inlineInfo && (
+                  <span style={{ ...styles.entrySubtitle, marginLeft: 8, marginBottom: 0, fontWeight: 'normal' }}>
+                    {inlineInfo}
+                  </span>
+                )}
+              </span>
+              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date)}</span>
+            </div>
+            {item.description && (
+              <DescriptionHtml value={item.description} style={styles.description} />
+            )}
+          </div>
+        ))
+      })}
+    </>
+  )
+}
+
+/** black-white work compact：公司 + 岗位/部门/城市同行 */
+function BlackWhiteCompactWorkExperienceRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+  const workExperience: AnyItem[] = content.work_experience || []
+  return (
+    <>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('work_experience', content)}</SectionTitle>
+      {workExperience.map((item, i) => {
+        const inlineInfo = joinVisibleParts(item, [
+          { field: 'position', value: item.position },
+          { field: 'department', value: item.department },
+          { field: 'city', value: item.city },
+        ])
+
+        return renderSubItem('work_experience', i, workExperience.length, (
+          <div style={styles.entry}>
+            <div style={styles.entryHeader}>
+              <span style={styles.entryTitle}>
+                {item.company}
+                {inlineInfo && (
+                  <span style={{ ...styles.entrySubtitle, marginLeft: 8, marginBottom: 0, fontWeight: 'normal' }}>
+                    {inlineInfo}
+                  </span>
+                )}
+              </span>
+              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date)}</span>
+            </div>
+            {item.description && (
+              <DescriptionHtml value={item.description} style={styles.description} />
+            )}
+          </div>
+        ))
+      })}
+    </>
+  )
+}
+
+/** black-white projects compact：项目名 + 角色/城市同行，链接保持独立以避免挤压标题 */
+function BlackWhiteCompactProjectsRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+  const projects: AnyItem[] = content.projects || []
+  return (
+    <>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('projects', content)}</SectionTitle>
+      {projects.map((project, i) => {
+        const inlineInfo = joinVisibleParts(project, [
+          { field: 'role', value: project.role },
+          { field: 'city', value: project.city },
+        ])
+
+        return renderSubItem('projects', i, projects.length, (
+          <div style={styles.entry}>
+            <div style={styles.entryHeader}>
+              <span style={styles.entryTitle}>
+                {project.name}
+                {inlineInfo && (
+                  <span style={{ ...styles.entrySubtitle, marginLeft: 8, marginBottom: 0, fontWeight: 'normal' }}>
+                    {inlineInfo}
+                  </span>
+                )}
+              </span>
+              <span style={styles.entryDate}>{formatDateRange(project.start_date, project.end_date)}</span>
+            </div>
+            {project.link && !isFieldHiddenOnItem(project, 'link') && (
+              <a href={project.link} style={{ ...styles.entrySubtitle, display: 'inline-block', color: '#2f67ff', textDecoration: 'none' }}>
+                {project.link}
+              </a>
+            )}
+            {project.description && (
+              <DescriptionHtml value={project.description} style={styles.description} />
+            )}
+          </div>
+        ))
+      })}
+    </>
+  )
+}
+
 // ── 自定义 Renderer ──
 
 function BlackWhiteRenderer({
@@ -145,12 +266,17 @@ function BlackWhiteRenderer({
 }: TemplateRendererProps) {
   const basicInfo = content.basic_info
   const s = (n: number) => Math.round(resolvedFontSize * n * 10) / 10
+  const blackWhiteSettings = content.template_settings?.black_white
 
   // 模块渲染映射：自定义 or 默认
   const customModuleRenderers: Partial<Record<ResumeModuleType, (props: ModuleRendererProps) => ReactNode>> = {
     skills: (props) => renderSkillsModule({ ...props, s }),
+    ...(blackWhiteSettings?.education_compact ? { education: BlackWhiteCompactEducationRenderer } : {}),
+    ...(blackWhiteSettings?.work_experience_compact ? { work_experience: BlackWhiteCompactWorkExperienceRenderer } : {}),
     portfolio: BlackWhitePortfolioRenderer,
-    projects: BlackWhiteProjectsRenderer,
+    projects: blackWhiteSettings?.projects_compact
+      ? BlackWhiteCompactProjectsRenderer
+      : BlackWhiteProjectsRenderer,
   }
 
   function renderModuleContent(module: ResumeModuleType): ReactNode {

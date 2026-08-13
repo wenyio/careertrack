@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import { getTemplateConfig } from '@/components/resume/templates/registry'
 import { useResumeEditorStore } from '@/stores/resume-editor'
-import type { ResumeTemplateId } from '@/types/resume'
+import type { BlackWhiteTemplateSettings, ResumeTemplateId } from '@/types/resume'
 import { getPreviewConfig } from '@/utils/resume-preview'
 
 /**
@@ -55,9 +55,25 @@ export function useResumeEditorPreferences(
     [triggerAutoSave],
   )
 
+  const handleBlackWhiteTemplateSettingChange = useCallback(
+    (setting: keyof BlackWhiteTemplateSettings, enabled: boolean) => {
+      const store = useResumeEditorStore.getState()
+      store.setContent('template_settings', {
+        ...store.content.template_settings,
+        black_white: {
+          ...store.content.template_settings?.black_white,
+          [setting]: enabled,
+        },
+      })
+      triggerAutoSave()
+    },
+    [triggerAutoSave],
+  )
+
   return {
     handleTemplateChange,
     handlePreviewFontSizeChange,
     handlePreviewLineHeightChange,
+    handleBlackWhiteTemplateSettingChange,
   }
 }

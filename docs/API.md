@@ -591,6 +591,13 @@ schema，至少包含非空 `round`，`format` 仅支持 `线上`、`现场`、`
     "preview_config": {
       "fontSize": 14,
       "lineHeight": 1.5
+    },
+    "template_settings": {
+      "black_white": {
+        "education_compact": false,
+        "work_experience_compact": false,
+        "projects_compact": false
+      }
     }
   }
 }
@@ -598,7 +605,7 @@ schema，至少包含非空 `round`，`format` 仅支持 `线上`、`现场`、`
 
 `revision` 是推荐携带的乐观并发令牌。每次写入成功后服务端递增并返回新值；提交旧 revision 时返回 `409`，客户端应重新读取最新数据后再决定合并或覆盖。为兼容旧客户端，该字段暂时可省略。
 
-`modules_order` 传入时必须包含全部 10 个模块且不能重复；`modules_config` 继续兼容局部更新。未识别的顶层字段会被忽略。
+`modules_order` 传入时必须包含全部 10 个模块且不能重复；`modules_config` 继续兼容局部更新。`content.template_settings.black_white.*_compact` 控制黑白整齐模板的教育经历、工作经历和项目经历紧凑显示。未识别的顶层字段会被忽略。
 
 ### DELETE /api/resumes/:id
 

@@ -7,6 +7,7 @@
 /** 当前状态选项 */
 export const CURRENT_STATUS_OPTIONS = [
   { value: '在职', label: '在职' },
+  { value: '在职-考虑机会', label: '在职-考虑机会' },
   { value: '离职', label: '离职' },
   { value: '应届生', label: '应届生' },
   { value: '在校生', label: '在校生' },

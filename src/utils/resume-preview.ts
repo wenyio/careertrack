@@ -187,6 +187,7 @@ export function mergeResumeContentWithProfile(content: ResumeContent, profile?: 
     preview_config: content.preview_config,
     basic_info_display: content.basic_info_display,
     module_titles: content.module_titles,
+    template_settings: content.template_settings,
   }
 }
 

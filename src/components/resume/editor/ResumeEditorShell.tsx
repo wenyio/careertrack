@@ -91,6 +91,7 @@ export default function ResumeEditorShell({
     handleTemplateChange,
     handlePreviewFontSizeChange,
     handlePreviewLineHeightChange,
+    handleBlackWhiteTemplateSettingChange,
   } = useResumeEditorPreferences(triggerAutoSave)
   const showPreview = useResumeEditorStore((state) => state.showPreview)
 
@@ -147,7 +148,9 @@ export default function ResumeEditorShell({
             profile={profile ?? undefined}
             canSyncProfile={canSyncProfile}
             showSettings={showSettings}
+            onCloseSettings={() => setShowSettings(false)}
             onTemplateChange={handleTemplateChange}
+            onBlackWhiteTemplateSettingChange={handleBlackWhiteTemplateSettingChange}
             onContentChange={handleContentChange}
             onExpandModules={handleExpandModules}
             onDisplayConfigChange={handleDisplayConfigChange}

@@ -1,12 +1,14 @@
 'use client'
 
 import { useShallow } from 'zustand/react/shallow'
+import { Modal, Switch } from 'antd'
 import ModuleForm from '@/components/resume/ModuleForm'
 import { useResumeEditorStore } from '@/stores/resume-editor'
 import { selectResumeFormPane } from '@/stores/resume-editor-selectors'
 import type { Profile } from '@/types/profile'
 import type {
   BasicInfoDisplayConfig,
+  BlackWhiteTemplateSettings,
   ResumeModuleType,
   ResumeTemplateId,
 } from '@/types/resume'
@@ -16,7 +18,9 @@ interface ResumeFormPaneProps {
   profile?: Profile
   canSyncProfile?: boolean
   showSettings: boolean
+  onCloseSettings: () => void
   onTemplateChange: (template: ResumeTemplateId) => void
+  onBlackWhiteTemplateSettingChange: (setting: keyof BlackWhiteTemplateSettings, enabled: boolean) => void
   onContentChange: (module: ResumeModuleType, value: unknown) => void
   onExpandModules: (modules: Set<ResumeModuleType>) => void
   onDisplayConfigChange: (config: BasicInfoDisplayConfig) => void
@@ -33,7 +37,9 @@ export default function ResumeFormPane({
   profile,
   canSyncProfile,
   showSettings,
+  onCloseSettings,
   onTemplateChange,
+  onBlackWhiteTemplateSettingChange,
   onContentChange,
   onExpandModules,
   onDisplayConfigChange,
@@ -59,16 +65,14 @@ export default function ResumeFormPane({
         padding: 24,
       }}
     >
-      {showSettings && (
-        <div
-          style={{
-            marginBottom: 24,
-            padding: 16,
-            backgroundColor: '#f8fafc',
-            borderRadius: 8,
-            border: '1px solid #e5e7eb',
-          }}
-        >
+      <Modal
+        title="模板与设置"
+        open={showSettings}
+        onCancel={onCloseSettings}
+        footer={null}
+        width={760}
+      >
+        <div style={{ paddingTop: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12, color: '#333' }}>
             选择模板
           </div>
@@ -76,8 +80,47 @@ export default function ResumeFormPane({
             value={template}
             onChange={onTemplateChange}
           />
+          {template === 'black-white' && (
+            <div
+              style={{
+                marginTop: 18,
+                paddingTop: 16,
+                borderTop: '1px solid #e5e7eb',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10, color: '#333' }}>
+                黑白整齐排版
+              </div>
+              {[
+                ['education_compact', '教育经历紧凑显示'],
+                ['work_experience_compact', '工作经历紧凑显示'],
+                ['projects_compact', '项目经历紧凑显示'],
+              ].map(([setting, label]) => (
+                <div
+                  key={setting}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    minHeight: 34,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: '#333' }}>{label}</span>
+                  <Switch
+                    size="small"
+                    aria-label={label}
+                    checked={content.template_settings?.black_white?.[setting as keyof BlackWhiteTemplateSettings] ?? false}
+                    onChange={(checked) =>
+                      onBlackWhiteTemplateSettingChange(setting as keyof BlackWhiteTemplateSettings, checked)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
 
       <ModuleForm
         modulesOrder={modulesOrder}

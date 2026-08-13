@@ -152,6 +152,7 @@ export const resumeContentSchema = z.object({
   preview_config: resumePreviewConfigSchema.optional(),
   basic_info_display: jsonObjectSchema.optional(),
   module_titles: z.record(z.string(), z.string()).optional(),
+  template_settings: jsonObjectSchema.optional(),
 }).loose()
 
 export const profileArrayEntrySchemas = {

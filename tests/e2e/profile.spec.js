@@ -32,6 +32,8 @@ test.describe('个人信息管理', () => {
     await page.keyboard.press('Enter')
     await page.getByPlaceholder('请输入期望职位').fill('全栈工程师')
     await page.getByPlaceholder('请输入期望工作地').fill('北京')
+    const salaryField = page.locator('.ant-form-item').filter({ hasText: '期望薪资' }).getByRole('combobox')
+    await salaryField.fill('28-35K·14薪')
 
     const profileResponse = page.waitForResponse((r) => r.url().includes('/api/profile') && r.request().method() === 'PUT')
     await page.getByRole('button', { name: /保存更改/ }).click()
@@ -45,6 +47,7 @@ test.describe('个人信息管理', () => {
     await expect(page.getByPlaceholder('请输入姓名')).toHaveValue('E2E_测试用户')
     await expect(page.getByPlaceholder('请输入电话')).toHaveValue('13900139000')
     await expect(page.getByPlaceholder('请输入邮箱')).toHaveValue('e2e@test.com')
+    await expect(salaryField).toHaveValue('28-35K·14薪')
     await expect(workYearsField.locator('..')).toContainText('7年')
     await screenshot(page, '个人信息', '刷新后数据持久化')
   })

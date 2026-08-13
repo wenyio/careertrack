@@ -415,7 +415,7 @@ CREATE TABLE resumes (
         "summary": false
     }',
 
-    -- 简历内容（可以覆盖个人信息；模块标题、基本信息显示和预览配置也存放于此）
+    -- 简历内容（可以覆盖个人信息；模块标题、基本信息显示、预览配置和模板设置也存放于此）
     content JSONB DEFAULT '{}',
 
     -- 公开相关
@@ -442,7 +442,8 @@ CREATE INDEX idx_resumes_template ON resumes(template);
 `revision` 用于简历乐观并发控制。客户端更新时提交最近一次读取到的值，服务端使用 `WHERE ... AND revision = ?` 条件更新；版本过期时 API 返回 `409`。
 
 SQLite 与 PostgreSQL 均以 `content.module_titles`、
-`content.basic_info_display`、`content.preview_config` 为唯一存储位置。迁移 004
+`content.basic_info_display`、`content.preview_config` 和
+`content.template_settings` 为唯一存储位置。迁移 004
 只在 PostgreSQL 发现历史独立列时执行数据归并和删列，新建数据库不会再创建
 这些冗余列。
 

@@ -112,6 +112,39 @@ test.describe('简历编辑器', () => {
     await screenshot(page, '预览控制', '预览区域可见')
   })
 
+  test('基本信息支持手动输入状态和薪资', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'resbasic')
+    const resume = await createResumeByApi(request, account.token, `E2E_TEST_手输薪资_${Date.now()}`)
+    await loginByUi(page, account.username, account.password)
+
+    await goto(page, `/resumes/${resume.id}/edit`)
+    await page.locator('.ant-form-item').filter({ hasText: '当前状态' }).getByRole('combobox').fill('在职-考虑机会')
+    await page.locator('.ant-form-item').filter({ hasText: '期望薪资' }).getByRole('combobox').fill('30-40K·13薪')
+
+    const saveButton = page.locator('button').filter({
+      has: page.locator('[aria-label="save"]'),
+    })
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/resumes/${resume.id}`)
+        && response.request().method() === 'PUT',
+    )
+    await saveButton.click()
+    expect((await saveResponse).ok()).toBeTruthy()
+
+    await expect.poll(async () => {
+      const savedResponse = await request.get(`/api/resumes/${resume.id}`, {
+        headers: { Cookie: account.token },
+      })
+      if (!savedResponse.ok()) return null
+      const saved = await savedResponse.json()
+      return saved.content.basic_info?.job_intention
+    }).toMatchObject({
+      current_status: '在职-考虑机会',
+      expected_salary: '30-40K·13薪',
+    })
+  })
+
   test('额外字段隐藏时保留字段值和头像布局配置', async ({ page, request }) => {
     const account = await createUserByApi(request, 'basicinfo')
     const resume = await createResumeByApi(

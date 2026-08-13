@@ -139,6 +139,21 @@ export interface ResumeTemplateConfig {
   defaultPreviewConfig?: Partial<ResumePreviewConfig>
 }
 
+/** 黑白整齐模板的排版设置 */
+export interface BlackWhiteTemplateSettings {
+  /** 教育经历紧凑显示：学校与专业同行展示 */
+  education_compact?: boolean
+  /** 工作经历紧凑显示：公司与岗位等短信息同行展示 */
+  work_experience_compact?: boolean
+  /** 项目经历紧凑显示：项目名与角色等短信息同行展示 */
+  projects_compact?: boolean
+}
+
+/** 模板专属排版设置 */
+export interface ResumeTemplateSettings {
+  black_white?: BlackWhiteTemplateSettings
+}
+
 /** 简历详情 */
 export interface Resume {
   id: string
@@ -213,6 +228,8 @@ export interface ResumeContent {
   basic_info_display?: BasicInfoDisplayConfig
   /** 模块自定义标题 */
   module_titles?: Partial<Record<ResumeModuleType, string>>
+  /** 模板专属排版设置 */
+  template_settings?: ResumeTemplateSettings
 }
 
 /** 创建简历请求 */

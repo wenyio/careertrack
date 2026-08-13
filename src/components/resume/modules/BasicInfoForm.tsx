@@ -8,6 +8,7 @@
 'use client'
 
 import {
+  AutoComplete,
   Button,
   Card,
   Col,
@@ -15,7 +16,6 @@ import {
   Input,
   Modal,
   Row,
-  Select,
   Switch,
   Tooltip,
 } from 'antd'
@@ -180,12 +180,12 @@ export default function BasicInfoForm({
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={8}>
             <Form.Item label="当前状态">
-              <Select
+              <AutoComplete
                 value={data?.job_intention?.current_status}
                 onChange={(val) =>
                   handleJobIntentionChange('current_status', val)
                 }
-                placeholder="请选择"
+                placeholder="请选择或输入当前状态"
                 options={[...CURRENT_STATUS_OPTIONS]}
                 allowClear
               />
@@ -219,12 +219,12 @@ export default function BasicInfoForm({
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={8}>
             <Form.Item label="期望薪资">
-              <Select
+              <AutoComplete
                 value={data?.job_intention?.expected_salary}
                 onChange={(val) =>
                   handleJobIntentionChange('expected_salary', val)
                 }
-                placeholder="请选择"
+                placeholder="请选择或输入期望薪资"
                 options={[...SALARY_OPTIONS]}
                 allowClear
               />

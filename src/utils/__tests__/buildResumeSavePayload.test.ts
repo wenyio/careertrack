@@ -134,7 +134,7 @@ describe('buildResumeSavePayload', () => {
     })
   })
 
-  it('保留 basic_info_display 和 module_titles', () => {
+  it('保留 basic_info_display、module_titles 和 template_settings', () => {
     const content: ResumeContent = {
       basic_info: { name: '测试' },
       basic_info_display: {
@@ -142,6 +142,13 @@ describe('buildResumeSavePayload', () => {
         visible_extra_fields: ['city'],
       },
       module_titles: { education: '学习经历' },
+      template_settings: {
+        black_white: {
+          education_compact: true,
+          work_experience_compact: true,
+          projects_compact: true,
+        },
+      },
     }
     const payload = buildResumeSavePayload(makeStore(content))
 
@@ -150,6 +157,13 @@ describe('buildResumeSavePayload', () => {
       visible_extra_fields: ['city'],
     })
     expect(payload.content.module_titles).toEqual({ education: '学习经历' })
+    expect(payload.content.template_settings).toEqual({
+      black_white: {
+        education_compact: true,
+        work_experience_compact: true,
+        projects_compact: true,
+      },
+    })
   })
 
   it('resumeName 为空时 fallback 到 fallbackName', () => {
@@ -213,12 +227,22 @@ describe('mergeResumeContentWithProfile（对比测试）', () => {
       basic_info: { name: '李四' },
       education: [{ id: 'edu-mine', school: '浙大' }],
       summary: '我是李四',
+      template_settings: {
+        black_white: {
+          education_compact: true,
+        },
+      },
     }
     const merged = mergeResumeContentWithProfile(content, SAMPLE_PROFILE)
 
     expect(merged.basic_info).toEqual({ name: '李四' })
     expect(merged.education).toEqual([{ id: 'edu-mine', school: '浙大' }])
     expect(merged.summary).toBe('我是李四')
+    expect(merged.template_settings).toEqual({
+      black_white: {
+        education_compact: true,
+      },
+    })
   })
 
   it('buildResumeSavePayload 不执行 mergeResumeContentWithProfile 的行为', () => {
