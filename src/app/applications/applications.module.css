@@ -110,17 +110,19 @@
 
 .applicationListCard :global(.ant-card-head-wrapper) {
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
 }
 
 .applicationListCard :global(.ant-card-head-title) {
-  min-width: 220px;
+  min-width: 0;
+  flex: 1 1 auto;
   padding: 0;
 }
 
 .applicationListCard :global(.ant-card-extra) {
   min-width: 0;
+  flex: 0 0 auto;
 }
 
 .listTabs :global(.ant-tabs-nav) {
@@ -131,7 +133,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 
@@ -144,7 +146,8 @@
 }
 
 .search {
-  width: 280px;
+  width: clamp(280px, 32vw, 420px);
+  flex: 0 0 auto;
 }
 
 .applicationRow {
@@ -286,6 +289,16 @@
 }
 
 @media (max-width: 768px) {
+  .applicationListCard :global(.ant-card-head-wrapper) {
+    flex-wrap: wrap;
+  }
+
+  .applicationListCard :global(.ant-card-head-title),
+  .applicationListCard :global(.ant-card-extra) {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
   .overviewStats {
     gap: 10px;
   }
@@ -305,16 +318,15 @@
     justify-content: flex-start;
   }
 
+  .listHeaderActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: flex-start;
+  }
+
   .search {
     width: 100%;
-  }
-
-  .applicationListCard :global(.ant-card-extra) {
-    width: 100%;
-  }
-
-  .listHeaderActions {
-    justify-content: flex-start;
+    min-width: 0;
   }
 
   .toolbar > * {
