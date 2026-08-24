@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { App } from 'antd'
 import { getMcpKeys, createMcpKey, revokeMcpKey, deleteMcpKey } from '@/services/mcp'
+import { useI18n } from '@/i18n'
 
 /** Query key 常量 */
 export const MCP_KEYS_QUERY_KEY = ['mcp-keys']
@@ -24,15 +25,16 @@ export function useMcpKeys() {
 export function useCreateMcpKey() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: () => createMcpKey(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MCP_KEYS_QUERY_KEY })
-      message.success('Key 创建成功')
+      message.success(t('mcp.keyCreated'))
     },
     onError: () => {
-      message.error('创建 Key 失败')
+      message.error(t('mcp.keyCreateFailed'))
     },
   })
 }
@@ -41,15 +43,16 @@ export function useCreateMcpKey() {
 export function useRevokeMcpKey() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (keyId: string) => revokeMcpKey(keyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MCP_KEYS_QUERY_KEY })
-      message.success('Key 已撤销')
+      message.success(t('mcp.keyRevoked'))
     },
     onError: () => {
-      message.error('撤销失败')
+      message.error(t('mcp.keyRevokeFailed'))
     },
   })
 }
@@ -58,15 +61,16 @@ export function useRevokeMcpKey() {
 export function useDeleteMcpKey() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (keyId: string) => deleteMcpKey(keyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MCP_KEYS_QUERY_KEY })
-      message.success('Key 已删除')
+      message.success(t('mcp.keyDeleted'))
     },
     onError: () => {
-      message.error('删除失败')
+      message.error(t('mcp.keyDeleteFailed'))
     },
   })
 }

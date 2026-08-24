@@ -28,6 +28,7 @@ import {
 } from '@/hooks/useAuth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import type { SetupOtpResponse } from '@/types/auth'
+import { useI18n } from '@/i18n'
 import OtpEnrollmentPanel from './OtpEnrollmentPanel'
 import OtpRecoveryCodesPanel from './OtpRecoveryCodesPanel'
 
@@ -40,6 +41,7 @@ interface CredentialFields {
 
 export default function OtpSettings() {
   const { user } = useAuthStore()
+  const { t } = useI18n()
   const { mutate: setupOtp, isPending: isSettingUpOtp } = useSetupOtp()
   const { mutate: verifyOtp, isPending: isVerifyingOtp } = useVerifyOtp()
   const { mutate: disableOtp, isPending: isDisablingOtp } = useDisableOtp()
@@ -123,11 +125,10 @@ export default function OtpSettings() {
           <GithubOutlined style={{ fontSize: 20, color: '#fa8c16', flexShrink: 0 }} />
           <div>
             <Text strong style={{ display: 'block', fontSize: 14, marginBottom: 2 }}>
-              OTP 二次验证不可用
+              {t('security.otpUnavailable')}
             </Text>
             <Text type="secondary" style={{ fontSize: 13 }}>
-              当前账号通过 GitHub 登录，需先设置账号密码后才能启用 OTP。
-              OTP 仅用于保护账号密码登录。
+              {t('security.otpUnavailableHint')}
             </Text>
           </div>
         </div>
@@ -157,12 +158,14 @@ export default function OtpSettings() {
         )}
         <div>
           <Text strong style={{ display: 'block', fontSize: 14, marginBottom: 2 }}>
-            OTP 二次验证：{isEnabled ? '已启用' : '未启用'}
+            {t('security.otpStatus', {
+              status: isEnabled ? t('security.otpEnabled') : t('security.otpDisabled'),
+            })}
           </Text>
           <Text type="secondary" style={{ fontSize: 13 }}>
             {isEnabled
-              ? '您的账号已受到双重保护，登录时需要验证码'
-              : '启用后登录时需要输入身份验证器应用生成的验证码'}
+              ? t('security.otpEnabledHint')
+              : t('security.otpDisabledHint')}
           </Text>
         </div>
       </div>
@@ -199,15 +202,15 @@ export default function OtpSettings() {
             name="password"
             label={
               <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
-                账号密码
+                {t('security.accountPassword')}
               </Text>
             }
-            rules={[{ required: true, message: '请输入密码' }]}
+            rules={[{ required: true, message: t('auth.passwordRequired') }]}
             style={{ marginBottom: 20 }}
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-              placeholder="输入密码以继续"
+              placeholder={t('security.continuePasswordPlaceholder')}
               style={{ height: 42, borderRadius: 8 }}
             />
           </Form.Item>
@@ -217,15 +220,15 @@ export default function OtpSettings() {
               name="otp_code"
               label={
                 <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
-                  当前验证码或恢复码
+                  {t('security.currentOtpOrRecovery')}
                 </Text>
               }
-              rules={[{ required: true, message: '请输入验证码或恢复码' }]}
+              rules={[{ required: true, message: t('security.otpOrRecoveryRequired') }]}
               style={{ marginBottom: 20 }}
             >
               <Input
                 prefix={<SafetyOutlined style={{ color: '#bfbfbf' }} />}
-                placeholder="6 位验证码或恢复码"
+                placeholder={t('security.otpOrRecoveryPlaceholder')}
                 autoComplete="one-time-code"
                 maxLength={19}
                 style={{ height: 42, borderRadius: 8, fontSize: 16 }}
@@ -244,7 +247,7 @@ export default function OtpSettings() {
                   disabled={isDisablingOtp}
                   style={{ height: 42, borderRadius: 8, fontSize: 15 }}
                 >
-                  重新生成恢复码
+                  {t('security.regenerateRecoveryCodes')}
                 </Button>
                 <Button
                   type="primary"
@@ -256,7 +259,7 @@ export default function OtpSettings() {
                   disabled={isRegeneratingRecoveryCodes}
                   style={{ height: 42, borderRadius: 8, fontSize: 15 }}
                 >
-                  禁用 OTP 二次验证
+                  {t('security.disableOtp')}
                 </Button>
               </Space>
             ) : (
@@ -271,7 +274,7 @@ export default function OtpSettings() {
                   fontSize: 15,
                 }}
               >
-                启用 OTP 二次验证
+                {t('security.enableOtp')}
               </Button>
             )}
           </Form.Item>

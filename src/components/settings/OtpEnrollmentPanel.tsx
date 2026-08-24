@@ -12,6 +12,7 @@ import { Alert, Button, Form, Input, Space, Typography } from 'antd'
 import { SafetyOutlined, SecurityScanOutlined } from '@ant-design/icons'
 import QRCode from 'qrcode'
 import type { SetupOtpResponse } from '@/types/auth'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -32,6 +33,7 @@ export default function OtpEnrollmentPanel({
   onVerify,
   onCancel,
 }: OtpEnrollmentPanelProps) {
+  const { t } = useI18n()
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [qrError, setQrError] = useState(false)
 
@@ -63,7 +65,7 @@ export default function OtpEnrollmentPanel({
           style={{ display: 'block', fontSize: 15, marginBottom: 12 }}
         >
           <SecurityScanOutlined style={{ marginRight: 8, color: '#1677ff' }} />
-          扫描二维码
+          {t('security.scanQr')}
         </Text>
         <div
           style={{
@@ -89,7 +91,7 @@ export default function OtpEnrollmentPanel({
               // eslint-disable-next-line @next/next/no-img-element -- QR is a local data URL.
               <img
                 src={qrDataUrl}
-                alt="OTP 二维码"
+                alt={t('security.otpQrAlt')}
                 width={180}
                 height={180}
                 style={{ display: 'block', borderRadius: 4 }}
@@ -107,7 +109,7 @@ export default function OtpEnrollmentPanel({
                   fontSize: 12,
                 }}
               >
-                {qrError ? '二维码生成失败' : '生成中...'}
+                {qrError ? t('security.qrGenerateFailed') : t('security.qrGenerating')}
               </div>
             )}
           </div>
@@ -115,7 +117,7 @@ export default function OtpEnrollmentPanel({
             <Alert
               type="warning"
               showIcon
-              title="二维码生成失败，请使用下方密钥手动添加"
+              title={t('security.qrGenerateFailedUseSecret')}
               style={{ width: '100%', marginBottom: 12 }}
             />
           )}
@@ -123,14 +125,14 @@ export default function OtpEnrollmentPanel({
             type="secondary"
             style={{ fontSize: 13, textAlign: 'center', marginBottom: 8 }}
           >
-            使用身份验证器应用扫描此二维码
+            {t('security.scanWithAuthenticator')}
           </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            支持 Google Authenticator、Microsoft Authenticator、1Password
+            {t('security.authenticatorSupport')}
           </Text>
           <div style={{ marginTop: 12 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              或手动输入密钥：
+              {t('security.manualSecret')}
               <Text copyable style={{ fontSize: 12 }}>
                 {otpData.secret}
               </Text>
@@ -149,12 +151,12 @@ export default function OtpEnrollmentPanel({
           name="otp_code"
           label={
             <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
-              输入 6 位验证码
+              {t('security.enterSixDigitCode')}
             </Text>
           }
           rules={[
-            { required: true, message: '请输入验证码' },
-            { pattern: /^\d{6}$/, message: '请输入 6 位数字验证码' },
+            { required: true, message: t('security.otpCodeRequired') },
+            { pattern: /^\d{6}$/, message: t('security.otpCodeDigits') },
           ]}
           style={{ marginBottom: 20 }}
         >
@@ -181,7 +183,7 @@ export default function OtpEnrollmentPanel({
               loading={isVerifying}
               style={{ height: 42, borderRadius: 8, minWidth: 120 }}
             >
-              验证并启用
+              {t('security.verifyAndEnable')}
             </Button>
             <Button
               htmlType="button"
@@ -189,7 +191,7 @@ export default function OtpEnrollmentPanel({
               onClick={onCancel}
               style={{ height: 42, borderRadius: 8 }}
             >
-              取消
+              {t('common.cancel')}
             </Button>
           </Space>
         </Form.Item>

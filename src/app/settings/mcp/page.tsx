@@ -18,10 +18,12 @@ import {
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout'
 import { useMcpKeys, useCreateMcpKey, useRevokeMcpKey, useDeleteMcpKey } from '@/hooks/useMcpKeys'
 import type { McpKeyInfo } from '@/services/mcp'
+import { useI18n } from '@/i18n'
 
 const { Text, Paragraph } = Typography
 
 export default function McpSettingsPage() {
+  const { locale, t } = useI18n()
   const [secretModal, setSecretModal] = useState<{ open: boolean; secret: string; prefix: string }>({
     open: false,
     secret: '',
@@ -51,11 +53,11 @@ export default function McpSettingsPage() {
 
   const handleRevoke = (keyId: string) => {
     modal.confirm({
-      title: '确认撤销',
-      content: '撤销后该 Key 将立即失效，此操作不可恢复。确定要撤销吗？',
-      okText: '撤销',
+      title: t('mcp.confirmRevokeTitle'),
+      content: t('mcp.confirmRevokeContent'),
+      okText: t('mcp.revoke'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         revokeMutation.mutate(keyId)
       },
@@ -64,11 +66,11 @@ export default function McpSettingsPage() {
 
   const handleDelete = (keyId: string) => {
     modal.confirm({
-      title: '确认删除',
-      content: '删除后该 Key 记录将被永久移除。确定要删除吗？',
-      okText: '删除',
+      title: t('mcp.confirmDeleteTitle'),
+      content: t('mcp.confirmDeleteContent'),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         deleteMutation.mutate(keyId)
       },
@@ -91,15 +93,15 @@ export default function McpSettingsPage() {
         document.execCommand('copy')
         document.body.removeChild(textarea)
       }
-      message.success('已复制到剪贴板')
+      message.success(t('mcp.copied'))
     } catch {
-      message.error('复制失败，请手动复制')
+      message.error(t('mcp.copyFailed'))
     }
   }
 
   const columns = [
     {
-      title: 'Key 前缀',
+      title: t('mcp.prefix'),
       dataIndex: 'prefix',
       key: 'prefix',
       render: (prefix: string) => (
@@ -107,38 +109,38 @@ export default function McpSettingsPage() {
       ),
     },
     {
-      title: '权限',
+      title: t('mcp.scope'),
       dataIndex: 'scope',
       key: 'scope',
       render: (scope: string) => (
         <Tag color={scope === 'read_write' ? 'blue' : 'default'}>
-          {scope === 'read_write' ? '读写' : '只读'}
+          {scope === 'read_write' ? t('mcp.readWrite') : t('mcp.readOnly')}
         </Tag>
       ),
     },
     {
-      title: '状态',
+      title: t('mcp.status'),
       key: 'status',
       render: (_: unknown, record: McpKeyInfo) => (
         record.revoked_at
-          ? <Tag color="error">已撤销</Tag>
-          : <Tag color="success">有效</Tag>
+          ? <Tag color="error">{t('mcp.revoked')}</Tag>
+          : <Tag color="success">{t('mcp.valid')}</Tag>
       ),
     },
     {
-      title: '创建时间',
+      title: t('mcp.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      render: (v: string) => new Date(v).toLocaleString(locale),
     },
     {
-      title: '最后使用',
+      title: t('mcp.lastUsedAt'),
       dataIndex: 'last_used_at',
       key: 'last_used_at',
-      render: (v: string | null) => v ? new Date(v).toLocaleString('zh-CN') : '-',
+      render: (v: string | null) => v ? new Date(v).toLocaleString(locale) : '-',
     },
     {
-      title: '操作',
+      title: t('mcp.action'),
       key: 'action',
       render: (_: unknown, record: McpKeyInfo) => (
         record.revoked_at ? (
@@ -149,7 +151,7 @@ export default function McpSettingsPage() {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
           >
-            删除
+            {t('common.delete')}
           </Button>
         ) : (
           <Space size={0}>
@@ -159,7 +161,7 @@ export default function McpSettingsPage() {
               icon={<StopOutlined />}
               onClick={() => handleRevoke(record.id)}
             >
-              撤销
+              {t('mcp.revoke')}
             </Button>
             <Button
               type="link"
@@ -168,7 +170,7 @@ export default function McpSettingsPage() {
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record.id)}
             >
-              删除
+              {t('common.delete')}
             </Button>
           </Space>
         )
@@ -178,8 +180,8 @@ export default function McpSettingsPage() {
 
   return (
     <SettingsPageLayout
-      title="MCP 服务"
-      subtitle="管理 MCP API Key，供 AI Agent 通过 MCP 协议访问您的数据"
+      title={t('mcp.title')}
+      subtitle={t('mcp.subtitle')}
       extra={
         <Button
           type="primary"
@@ -187,7 +189,7 @@ export default function McpSettingsPage() {
           loading={createMutation.isPending}
           onClick={handleCreate}
         >
-          创建 Key
+          {t('mcp.createKey')}
         </Button>
       }
       size="lg"
@@ -197,13 +199,8 @@ export default function McpSettingsPage() {
           type="info"
           showIcon
           icon={<ApiOutlined />}
-          title="什么是 MCP？"
-          description={
-            <span>
-              MCP (Model Context Protocol) 是一种标准化协议，允许 AI Agent 安全地访问您的简历和个人信息。
-              创建 Key 后，将其配置到支持 MCP 的客户端（如 Claude Desktop）即可使用。
-            </span>
-          }
+          title={t('mcp.whatIsMcp')}
+          description={<span>{t('mcp.description')}</span>}
         />
       </div>
 
@@ -214,7 +211,7 @@ export default function McpSettingsPage() {
         loading={isLoading}
         pagination={false}
         size="middle"
-        locale={{ emptyText: '暂无 API Key，点击右上角按钮创建' }}
+        locale={{ emptyText: t('mcp.empty') }}
         style={{ marginBottom: 20 }}
       />
 
@@ -223,12 +220,12 @@ export default function McpSettingsPage() {
         size="small"
         items={[{
           key: 'guide',
-          label: <span style={{ fontWeight: 500 }}>📖 接入指南</span>,
+          label: <span style={{ fontWeight: 500 }}>{t('mcp.guide')}</span>,
           children: (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* MCP 端点地址 */}
               <div>
-                <Text strong style={{ fontSize: 13 }}>MCP 端点地址</Text>
+                <Text strong style={{ fontSize: 13 }}>{t('mcp.endpoint')}</Text>
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Text
                     code
@@ -247,19 +244,21 @@ export default function McpSettingsPage() {
 
               {/* 鉴权方式 */}
               <div>
-                <Text strong style={{ fontSize: 13 }}>鉴权方式</Text>
+                <Text strong style={{ fontSize: 13 }}>{t('mcp.authMethod')}</Text>
                 <div style={{ marginTop: 6 }}>
                   <Text code style={{ fontSize: 12 }}>Authorization: Bearer &lt;your-key&gt;</Text>
-                  <Text type="secondary" style={{ fontSize: 12, margin: '0 8px' }}>或</Text>
+                  <Text type="secondary" style={{ fontSize: 12, margin: '0 8px' }}>{t('mcp.or')}</Text>
                   <Text code style={{ fontSize: 12 }}>X-API-Key: &lt;your-key&gt;</Text>
                 </div>
               </div>
 
               {/* Claude Desktop 配置 */}
               <div>
-                <Text strong style={{ fontSize: 13 }}>Claude Desktop 配置</Text>
+                <Text strong style={{ fontSize: 13 }}>{t('mcp.claudeDesktopConfig')}</Text>
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-                  编辑 <Text code style={{ fontSize: 12 }}>claude_desktop_config.json</Text>：
+                  {t('mcp.editConfigPrefix')}
+                  <Text code style={{ fontSize: 12 }}>claude_desktop_config.json</Text>
+                  {t('mcp.editConfigSuffix')}
                 </Text>
                 <div style={{ position: 'relative' }}>
                   <Paragraph
@@ -305,9 +304,9 @@ export default function McpSettingsPage() {
 
               {/* Claude Code 配置 */}
               <div>
-                <Text strong style={{ fontSize: 13 }}>Claude Code 配置</Text>
+                <Text strong style={{ fontSize: 13 }}>{t('mcp.claudeCodeConfig')}</Text>
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-                  运行以下命令添加 MCP 服务：
+                  {t('mcp.runCommand')}
                 </Text>
                 <div style={{ position: 'relative' }}>
                   <Paragraph
@@ -344,27 +343,27 @@ export default function McpSettingsPage() {
 
       {/* 创建成功后显示 Secret */}
       <Modal
-        title="🔑 Key 创建成功"
+        title={t('mcp.secretCreatedTitle')}
         open={secretModal.open}
         onOk={() => setSecretModal({ ...secretModal, open: false })}
         onCancel={() => setSecretModal({ ...secretModal, open: false })}
-        okText="我已保存"
+        okText={t('mcp.saved')}
         cancelButtonProps={{ style: { display: 'none' } }}
         width={600}
       >
         <Alert
           type="warning"
           showIcon
-          title="请立即保存 Secret Key"
-          description="此密钥只会显示一次，关闭后将无法再次查看完整 Key。请妥善保管。"
+          title={t('mcp.saveSecretNow')}
+          description={t('mcp.secretDescription')}
           style={{ marginBottom: 16 }}
         />
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">前缀：</Text>
+          <Text type="secondary">{t('mcp.prefix')}:</Text>
           <Text code>{secretModal.prefix}...</Text>
         </div>
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">完整 Key：</Text>
+          <Text type="secondary">{t('mcp.fullKey')}</Text>
           <div style={{ marginTop: 8 }}>
             <Paragraph
               code
@@ -387,7 +386,7 @@ export default function McpSettingsPage() {
             icon={<CopyOutlined />}
             onClick={() => handleCopy(secretModal.secret)}
           >
-            复制 Key
+            {t('mcp.copyKey')}
           </Button>
         </Space>
       </Modal>

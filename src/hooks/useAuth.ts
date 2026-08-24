@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import type { LoginRequest, ChangeUsernameRequest } from '@/types/auth'
+import { useI18n } from '@/i18n'
 
 /**
  * 登录 Hook
@@ -28,12 +29,13 @@ export function useLogin() {
   const { loginSuccess } = useAuthStore()
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (credentials: LoginRequest) => loginApi(credentials),
     onSuccess: (data) => {
       loginSuccess(data.user)
-      message.success('登录成功')
+      message.success(t('auth.loginSuccess'))
       router.push('/resumes')
     },
     // 不在 onError 中显示通用错误，让调用方处理特定错误（如 OTP_REQUIRED）
@@ -47,6 +49,7 @@ export function useLogout() {
   const { logout } = useAuthStore()
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return async () => {
     await logoutApi().catch(() => {
@@ -55,7 +58,7 @@ export function useLogout() {
     queryClient.clear()
     logout()
     router.push('/auth/login')
-    message.success('已退出登录')
+    message.success(t('security.logoutSuccess'))
   }
 }
 
@@ -64,11 +67,12 @@ export function useLogout() {
  */
 export function useSetupOtp() {
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (password: string) => setupOtpApi(password),
     onError: (error: Error) => {
-      message.error(error.message || '启用 OTP 失败')
+      message.error(error.message || t('security.otpSetupFailed'))
     },
   })
 }
@@ -79,16 +83,17 @@ export function useSetupOtp() {
 export function useVerifyOtp() {
   const { updateUser } = useAuthStore()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (code: string) => verifyOtpApi({ code }),
     onSuccess: () => {
       // 更新本地用户状态
       updateUser({ otp_enabled: true })
-      message.success('OTP 启用成功')
+      message.success(t('security.otpEnabledSuccess'))
     },
     onError: (error: Error) => {
-      message.error(error.message || 'OTP 验证失败')
+      message.error(error.message || t('security.otpVerifyFailed'))
     },
   })
 }
@@ -99,16 +104,17 @@ export function useVerifyOtp() {
 export function useDisableOtp() {
   const { updateUser } = useAuthStore()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data: { password: string; code: string }) => disableOtpApi(data),
     onSuccess: () => {
       // 更新本地用户状态
       updateUser({ otp_enabled: false })
-      message.success('OTP 已禁用')
+      message.success(t('security.otpDisabledSuccess'))
     },
     onError: (error: Error) => {
-      message.error(error.message || '禁用 OTP 失败')
+      message.error(error.message || t('security.otpDisableFailed'))
     },
   })
 }
@@ -118,16 +124,17 @@ export function useDisableOtp() {
  */
 export function useRegenerateRecoveryCodes() {
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data: { password: string; code: string }) => (
       regenerateRecoveryCodesApi(data)
     ),
     onSuccess: () => {
-      message.success('恢复码已重新生成，旧恢复码已失效')
+      message.success(t('security.recoveryRegenerated'))
     },
     onError: (error: Error) => {
-      message.error(error.message || '重新生成恢复码失败')
+      message.error(error.message || t('security.recoveryRegenerateFailed'))
     },
   })
 }
@@ -138,15 +145,16 @@ export function useRegenerateRecoveryCodes() {
 export function useChangeUsername() {
   const { loginSuccess } = useAuthStore()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data: ChangeUsernameRequest) => changeUsernameApi(data),
     onSuccess: (data) => {
       loginSuccess(data.user)
-      message.success('用户名修改成功')
+      message.success(t('security.usernameChanged'))
     },
     onError: (error: Error) => {
-      message.error(error.message || '修改用户名失败')
+      message.error(error.message || t('security.usernameChangeFailed'))
     },
   })
 }
@@ -168,6 +176,7 @@ export function useUnbindOAuthAccount() {
   const { updateUser } = useAuthStore()
   const { user } = useAuthStore.getState()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => unbindOAuthAccountApi(id),
@@ -177,10 +186,10 @@ export function useUnbindOAuthAccount() {
         updateUser({ auth_provider: user.auth_provider & ~AUTH_PROVIDER.GITHUB })
       }
       queryClient.invalidateQueries({ queryKey: ['auth', 'oauth-accounts'] })
-      message.success('已解绑 GitHub 账号')
+      message.success(t('security.githubUnboundSuccess'))
     },
     onError: (error: Error) => {
-      message.error(error.message || '解绑失败')
+      message.error(error.message || t('security.githubUnbindFailed'))
     },
   })
 }

@@ -8,6 +8,7 @@
 'use client'
 
 import { Alert, Button, Space, Typography } from 'antd'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -20,13 +21,15 @@ export default function OtpRecoveryCodesPanel({
   codes,
   onConfirmSaved,
 }: OtpRecoveryCodesPanelProps) {
+  const { t } = useI18n()
+
   return (
     <div>
       <Alert
         type="warning"
         showIcon
-        title="立即保存恢复码"
-        description="每个恢复码只能使用一次。请保存到密码管理器或其他安全位置；关闭后无法再次查看。"
+        title={t('security.saveRecoveryCodesNow')}
+        description={t('security.recoveryCodesDescription')}
         style={{ marginBottom: 16 }}
       />
       <div
@@ -49,7 +52,7 @@ export default function OtpRecoveryCodesPanel({
       </div>
       <Space orientation="vertical" style={{ width: '100%' }}>
         <Text copyable={{ text: codes.join('\n') }}>
-          复制全部恢复码
+          {t('security.copyAllRecoveryCodes')}
         </Text>
         <Button
           type="primary"
@@ -57,7 +60,7 @@ export default function OtpRecoveryCodesPanel({
           onClick={onConfirmSaved}
           style={{ height: 42, borderRadius: 8 }}
         >
-          我已安全保存
+          {t('security.recoveryCodesSaved')}
         </Button>
       </Space>
     </div>
