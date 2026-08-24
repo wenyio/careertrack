@@ -9,6 +9,7 @@ import { App } from 'antd'
 import { getProfile, updateProfile, syncProfileEntry } from '@/services/profile'
 import { getErrorMessage } from '@/utils/error'
 import type { Profile, SyncProfileEntryRequest } from '@/types/profile'
+import { useI18n } from '@/i18n'
 
 /**
  * 查询 key 常量
@@ -35,16 +36,17 @@ export function useProfile(enabled = true) {
 export function useUpdateProfile(options?: { silent?: boolean }) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const silent = options?.silent ?? false
 
   return useMutation({
     mutationFn: (profile: Partial<Profile>) => updateProfile(profile),
     onSuccess: (data) => {
       queryClient.setQueryData(PROFILE_QUERY_KEY, data)
-      if (!silent) message.success('保存成功')
+      if (!silent) message.success(t('profile.saveSuccess'))
     },
     onError: (error: Error) => {
-      if (!silent) message.error(getErrorMessage(error, '保存失败'))
+      if (!silent) message.error(getErrorMessage(error, t('profile.saveFailed')))
     },
   })
 }
@@ -55,16 +57,17 @@ export function useUpdateProfile(options?: { silent?: boolean }) {
 export function useSyncProfileEntry(options?: { silent?: boolean }) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const silent = options?.silent ?? false
 
   return useMutation({
     mutationFn: (data: SyncProfileEntryRequest) => syncProfileEntry(data),
     onSuccess: (data) => {
       queryClient.setQueryData(PROFILE_QUERY_KEY, data)
-      if (!silent) message.success('已同步到个人信息')
+      if (!silent) message.success(t('profile.syncSuccess'))
     },
     onError: (error: Error) => {
-      if (!silent) message.error(getErrorMessage(error, '同步失败'))
+      if (!silent) message.error(getErrorMessage(error, t('profile.syncFailed')))
     },
   })
 }

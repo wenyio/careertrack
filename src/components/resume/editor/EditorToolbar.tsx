@@ -20,6 +20,7 @@ import {
 } from '@ant-design/icons'
 import PublicLinkPopover from '@/components/resume/PublicLinkPopover'
 import type { SaveStatus } from '@/stores/resume-editor'
+import { useI18n } from '@/i18n'
 
 interface EditorToolbarProps {
   resumeName: string
@@ -40,13 +41,13 @@ interface EditorToolbarProps {
   onOpenVersionHistory?: () => void
 }
 
-const SAVE_STATUS_MAP: Record<SaveStatus, { text: string; color: string }> = {
-  idle: { text: '', color: '#999' },
-  pending: { text: '未保存', color: '#faad14' },
-  saving: { text: '保存中...', color: '#1677ff' },
-  saved: { text: '已自动保存', color: '#52c41a' },
-  manual_saved: { text: '已保存', color: '#52c41a' },
-  error: { text: '保存冲突或失败，请刷新后重试', color: '#ff4d4f' },
+const SAVE_STATUS_COLORS: Record<SaveStatus, string> = {
+  idle: '#999',
+  pending: '#faad14',
+  saving: '#1677ff',
+  saved: '#52c41a',
+  manual_saved: '#52c41a',
+  error: '#ff4d4f',
 }
 
 export default function EditorToolbar({
@@ -66,7 +67,16 @@ export default function EditorToolbar({
   hidePublic = false,
   onOpenVersionHistory,
 }: EditorToolbarProps) {
-  const status = SAVE_STATUS_MAP[saveStatus]
+  const { t } = useI18n()
+  const saveStatusText: Record<SaveStatus, string> = {
+    idle: '',
+    pending: t('resumeEditor.savePending'),
+    saving: t('resumeEditor.saving'),
+    saved: t('resumeEditor.autoSaved'),
+    manual_saved: t('resumeEditor.saved'),
+    error: t('resumeEditor.saveError'),
+  }
+  const status = { text: saveStatusText[saveStatus], color: SAVE_STATUS_COLORS[saveStatus] }
   const [popoverOpen, setPopoverOpen] = useState(false)
 
   return (
@@ -90,7 +100,7 @@ export default function EditorToolbar({
         type="text"
         icon={<ArrowLeftOutlined />}
         onClick={onBack}
-        aria-label="返回简历列表"
+        aria-label={t('nav.backToResumes')}
         style={{ flexShrink: 0 }}
       />
 
@@ -105,7 +115,7 @@ export default function EditorToolbar({
           maxWidth: 240,
           padding: '0 4px',
         }}
-        placeholder="未命名简历"
+        placeholder={t('resume.unnamed')}
       />
 
       {/* 保存状态 */}
@@ -118,38 +128,38 @@ export default function EditorToolbar({
       <div style={{ flex: 1 }} />
 
       {/* 操作按钮 */}
-      <Tooltip title="保存">
+      <Tooltip title={t('common.save')}>
         <Button
           type="text"
           icon={<SaveOutlined />}
           onClick={onSave}
-          aria-label="保存简历"
+          aria-label={t('resumeEditor.saveResume')}
         />
       </Tooltip>
 
-      <Tooltip title={showPreview ? '隐藏预览' : '显示预览'}>
+      <Tooltip title={showPreview ? t('resumeEditor.hidePreview') : t('resumeEditor.showPreview')}>
         <Button
           type="text"
           icon={showPreview ? <EyeInvisibleOutlined /> : <EyeOutlined />}
           onClick={onTogglePreview}
-          aria-label={showPreview ? '隐藏预览' : '显示预览'}
+          aria-label={showPreview ? t('resumeEditor.hidePreview') : t('resumeEditor.showPreview')}
         />
       </Tooltip>
 
       {onOpenSettings && (
-        <Tooltip title="模板与设置">
+        <Tooltip title={t('resumeEditor.templateSettings')}>
           <Button
             type="text"
             icon={<SettingOutlined />}
             onClick={onOpenSettings}
-            aria-label="模板与设置"
+            aria-label={t('resumeEditor.templateSettings')}
           />
         </Tooltip>
       )}
 
       {onOpenVersionHistory && (
-        <Tooltip title="版本历史">
-          <Button type="text" icon={<HistoryOutlined />} onClick={onOpenVersionHistory} aria-label="版本历史" />
+        <Tooltip title={t('resumeEditor.versionHistory')}>
+          <Button type="text" icon={<HistoryOutlined />} onClick={onOpenVersionHistory} aria-label={t('resumeEditor.versionHistory')} />
         </Tooltip>
       )}
 
@@ -158,7 +168,7 @@ export default function EditorToolbar({
         onClick={onPrint}
         size="small"
       >
-        打印
+        {t('resumeEditor.print')}
       </Button>
 
       {!hidePublic && (
@@ -185,7 +195,7 @@ export default function EditorToolbar({
               icon={<LinkOutlined />}
               size="small"
             >
-              公开
+              {t('resumeEditor.public')}
             </Button>
           </span>
         </Popover>

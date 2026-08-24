@@ -12,6 +12,7 @@ import type {
   ResumeModuleType,
   ResumeTemplateId,
 } from '@/types/resume'
+import { useI18n } from '@/i18n'
 import TemplateSelector from './TemplateSelector'
 
 interface ResumeFormPaneProps {
@@ -47,6 +48,7 @@ export default function ResumeFormPane({
   onMoveModule,
   onDeleteModule,
 }: ResumeFormPaneProps) {
+  const { t } = useI18n()
   const {
     modulesOrder,
     modulesConfig,
@@ -66,15 +68,16 @@ export default function ResumeFormPane({
       }}
     >
       <Modal
-        title="模板与设置"
+        title={t('resumeEditor.templateSettings')}
         open={showSettings}
         onCancel={onCloseSettings}
         footer={null}
         width={760}
+        rootClassName="resume-template-settings-modal"
       >
         <div style={{ paddingTop: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12, color: '#333' }}>
-            选择模板
+            {t('resumeEditor.selectTemplate')}
           </div>
           <TemplateSelector
             value={template}
@@ -89,12 +92,12 @@ export default function ResumeFormPane({
               }}
             >
               <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10, color: '#333' }}>
-                黑白整齐排版
+                {t('resumeEditor.blackWhiteLayout')}
               </div>
               {[
-                ['education_compact', '教育经历紧凑显示'],
-                ['work_experience_compact', '工作经历紧凑显示'],
-                ['projects_compact', '项目经历紧凑显示'],
+                ['education_compact', t('resumeEditor.educationCompact')],
+                ['work_experience_compact', t('resumeEditor.workExperienceCompact')],
+                ['projects_compact', t('resumeEditor.projectsCompact')],
               ].map(([setting, label]) => (
                 <div
                   key={setting}
@@ -136,6 +139,16 @@ export default function ResumeFormPane({
         onMoveModule={onMoveModule}
         onDeleteModule={onDeleteModule}
       />
+      <style jsx global>{`
+        .resume-template-settings-modal .ant-modal-mask,
+        .resume-template-settings-modal .ant-modal-wrap {
+          pointer-events: none;
+        }
+
+        .resume-template-settings-modal .ant-modal {
+          pointer-events: auto;
+        }
+      `}</style>
     </div>
   )
 }

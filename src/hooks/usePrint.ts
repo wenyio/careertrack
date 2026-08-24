@@ -7,6 +7,7 @@
 import { useCallback } from 'react'
 import { App } from 'antd'
 import { cloneElementForPrint, printHtml } from '@/utils/print'
+import { useI18n } from '@/i18n'
 
 interface UsePrintOptions {
   resumeName: string
@@ -14,22 +15,23 @@ interface UsePrintOptions {
 
 export function usePrint({ resumeName }: UsePrintOptions) {
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   const handlePrint = useCallback(async () => {
     try {
       const sourceEl = document.querySelector('.resume-a4-preview') as HTMLElement
       if (!sourceEl) {
-        message.error({ content: '未找到预览区域', key: 'print' })
+        message.error({ content: t('resumeEditor.previewNotFound'), key: 'print' })
         return
       }
 
       const clone = cloneElementForPrint(sourceEl)
 
-      await printHtml(clone.outerHTML, resumeName || '简历')
+      await printHtml(clone.outerHTML, resumeName || t('resumeEditor.printDocumentTitle'))
     } catch {
-      message.error({ content: '打印失败，请重试', key: 'print' })
+      message.error({ content: t('resumeEditor.printFailedRetry'), key: 'print' })
     }
-  }, [message, resumeName])
+  }, [message, resumeName, t])
 
   return { handlePrint }
 }

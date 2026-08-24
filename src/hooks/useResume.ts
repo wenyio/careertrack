@@ -20,6 +20,7 @@ import {
 } from '@/services/resume'
 import { getErrorMessage } from '@/utils/error'
 import type { Resume, CreateResumeRequest, UpdateResumeRequest, PublishResumeRequest } from '@/types/resume'
+import { useI18n } from '@/i18n'
 
 /**
  * 查询 key 常量
@@ -65,16 +66,17 @@ export function useCreateResume() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data: CreateResumeRequest) => createResume(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
-      message.success('简历创建成功')
+      message.success(t('resume.createSuccess'))
       router.push(`/resumes/${data.id}/edit`)
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '创建失败'))
+      message.error(getErrorMessage(error, t('resume.createFailed')))
     },
   })
 }
@@ -88,6 +90,7 @@ export function useCreateResume() {
 export function useUpdateResume(id: string, options?: { silent?: boolean }) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const silent = options?.silent ?? false
 
   return useMutation({
@@ -96,12 +99,12 @@ export function useUpdateResume(id: string, options?: { silent?: boolean }) {
       cacheResumeDetail(queryClient, data)
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
       if (!silent) {
-        message.success('保存成功')
+        message.success(t('resume.saveSuccess'))
       }
     },
     onError: (error: Error) => {
       if (!silent) {
-        message.error(getErrorMessage(error, '保存失败'))
+        message.error(getErrorMessage(error, t('resume.saveFailed')))
       }
     },
   })
@@ -113,15 +116,16 @@ export function useUpdateResume(id: string, options?: { silent?: boolean }) {
 export function useDeleteResume() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => deleteResume(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
-      message.success('删除成功')
+      message.success(t('resume.deleteSuccess'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '删除失败'))
+      message.error(getErrorMessage(error, t('resume.deleteFailed')))
     },
   })
 }
@@ -132,16 +136,17 @@ export function useDeleteResume() {
 export function useDuplicateResume() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => duplicateResume(id),
     onSuccess: (data) => {
       cacheResumeDetail(queryClient, data)
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
-      message.success('复制成功')
+      message.success(t('resume.duplicateSuccess'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '复制失败'))
+      message.error(getErrorMessage(error, t('resume.duplicateFailed')))
     },
   })
 }
@@ -152,16 +157,17 @@ export function useDuplicateResume() {
 export function usePublishResume(id: string) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data: PublishResumeRequest) => publishResume(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: resumeQueryKey(id) })
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
-      message.success('简历已公开')
+      message.success(t('resume.publishSuccess'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '公开失败'))
+      message.error(getErrorMessage(error, t('resume.publishFailed')))
     },
   })
 }
@@ -172,16 +178,17 @@ export function usePublishResume(id: string) {
 export function useUnpublishResume(id: string) {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: () => unpublishResume(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: resumeQueryKey(id) })
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
-      message.success('已取消公开')
+      message.success(t('resume.unpublishSuccess'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '操作失败'))
+      message.error(getErrorMessage(error, t('resume.operationFailed')))
     },
   })
 }
