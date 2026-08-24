@@ -5,14 +5,9 @@ export type PriorityActivity = 'follow_up' | 'interview'
 export type PriorityNextActionMode = 'keep' | 'date' | 'snooze' | 'clear'
 
 export interface PriorityActionPolicy {
-  primaryLabel: string
+  primaryLabelKey: string
   activity: PriorityActivity
   initialNextActionMode: PriorityNextActionMode
-}
-
-export const APPLICATION_STATUS_LABELS: Record<JobApplicationStatus, string> = {
-  wishlist: '心愿单', applied: '已投递', screening: '沟通中', interview: '面试中',
-  offer: 'Offer', rejected: '未通过', withdrawn: '已撤回',
 }
 
 export const APPLICATION_STATUS_COLORS: Record<JobApplicationStatus, string> = {
@@ -43,7 +38,7 @@ export function previousApplicationStatus(status: JobApplicationStatus): JobAppl
 export function getPriorityActionPolicy(bucket: PriorityBucket, status: JobApplicationStatus): PriorityActionPolicy {
   if (bucket === 'unplanned') {
     return {
-      primaryLabel: '安排下一步',
+      primaryLabelKey: 'applications.priority.scheduleNext',
       activity: 'follow_up',
       initialNextActionMode: 'date',
     }
@@ -51,7 +46,7 @@ export function getPriorityActionPolicy(bucket: PriorityBucket, status: JobAppli
 
   if (status === 'interview') {
     return {
-      primaryLabel: '记录面试',
+      primaryLabelKey: 'applications.priority.recordInterview',
       activity: 'interview',
       initialNextActionMode: bucket === 'upcoming' ? 'keep' : 'date',
     }
@@ -59,14 +54,14 @@ export function getPriorityActionPolicy(bucket: PriorityBucket, status: JobAppli
 
   if (bucket === 'overdue' || bucket === 'due_today') {
     return {
-      primaryLabel: '处理',
+      primaryLabelKey: 'applications.priority.handle',
       activity: 'follow_up',
       initialNextActionMode: 'date',
     }
   }
 
   return {
-    primaryLabel: '记录进展',
+    primaryLabelKey: 'applications.priority.recordProgress',
     activity: 'follow_up',
     initialNextActionMode: 'keep',
   }

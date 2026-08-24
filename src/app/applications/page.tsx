@@ -11,11 +11,12 @@ import { useResumes } from '@/hooks/useResume'
 import { getResumeVersions } from '@/services/resume'
 import type { CreateJobApplicationRequest, JobApplication, JobApplicationSort, JobApplicationStatus } from '@/types/job-application'
 import { JOB_APPLICATION_STATUSES } from '@/types/job-application'
-import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS as STATUS_COLORS, APPLICATION_STATUS_LABELS as STATUS_LABELS, getPriorityActionPolicy } from '@/lib/job-applications/config'
+import { APPLICATION_STAGE_ORDER, APPLICATION_STATUS_COLORS as STATUS_COLORS, getPriorityActionPolicy } from '@/lib/job-applications/config'
 import type { PriorityBucket, PriorityNextActionMode } from '@/lib/job-applications/config'
 import { appTodayDateOnly } from '@/lib/app-time'
 import { ApplicationDetailDrawer } from '@/components/applications/ApplicationDetailDrawer'
 import PageContainer from '@/components/layout/PageContainer'
+import { useI18n } from '@/i18n'
 import styles from './applications.module.css'
 
 type ApplicationFormValues = Omit<CreateJobApplicationRequest, 'applied_at' | 'next_action_at'> & {
@@ -63,6 +64,7 @@ function companyAvatarTone(company: string) {
 function ApplicationForm({ application, open, onClose, nested = false }: { application: JobApplication | null; open: boolean; onClose: () => void; nested?: boolean }) {
   const [form] = Form.useForm<ApplicationFormValues>()
   const screens = Grid.useBreakpoint()
+  const { t } = useI18n()
   const { create, update } = useJobApplicationMutations()
   const [resumeQuery, setResumeQuery] = useState('')
   const { data: resumePage, isError: resumesError, refetch: refetchResumes } = useResumes(1, 20, { enabled: open, q: resumeQuery })
@@ -107,53 +109,54 @@ function ApplicationForm({ application, open, onClose, nested = false }: { appli
     }
   }
 
+  const statusLabel = (status: JobApplicationStatus) => t(`applications.status.${status}`)
   const formContent = <Form form={form} layout="vertical" requiredMark={false} initialValues={application ? {
       ...application,
       applied_at: application.applied_at ? dayjs(application.applied_at) : undefined,
       next_action_at: application.next_action_at ? dayjs(application.next_action_at) : undefined,
     } : { status: 'wishlist' }}>
-      <Typography.Title level={5}>职位信息</Typography.Title>
+      <Typography.Title level={5}>{t('applications.jobInfo')}</Typography.Title>
       <Space size="middle" orientation={screens.md ? 'horizontal' : 'vertical'} style={{ display: 'flex' }}>
-        <Form.Item label="公司" name="company" rules={[{ required: true, message: '请输入公司名称' }, { max: 120, message: '公司名称最多 120 字' }]} style={{ flex: 1 }}><Input autoFocus /></Form.Item>
-        <Form.Item label="职位" name="position" rules={[{ required: true, message: '请输入职位名称' }, { max: 120, message: '职位名称最多 120 字' }]} style={{ flex: 1 }}><Input /></Form.Item>
+        <Form.Item label={t('applications.company')} name="company" rules={[{ required: true, message: t('applications.companyRequired') }, { max: 120, message: t('applications.companyMax') }]} style={{ flex: 1 }}><Input autoFocus /></Form.Item>
+        <Form.Item label={t('applications.position')} name="position" rules={[{ required: true, message: t('applications.positionRequired') }, { max: 120, message: t('applications.positionMax') }]} style={{ flex: 1 }}><Input /></Form.Item>
       </Space>
-      <Typography.Title level={5}>进展与跟进</Typography.Title>
+      <Typography.Title level={5}>{t('applications.progressAndFollowUp')}</Typography.Title>
       <Space size="middle" orientation={screens.md ? 'horizontal' : 'vertical'} style={{ display: 'flex' }}>
-        <Form.Item label="状态" name="status" rules={[{ required: true }]} style={{ flex: 1 }}><Select options={JOB_APPLICATION_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] }))} /></Form.Item>
-        <Form.Item label="投递日期" name="applied_at" style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
-        <Form.Item label="下次跟进" name="next_action_at" style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
+        <Form.Item label={t('applications.statusLabel')} name="status" rules={[{ required: true }]} style={{ flex: 1 }}><Select options={JOB_APPLICATION_STATUSES.map((value) => ({ value, label: statusLabel(value) }))} /></Form.Item>
+        <Form.Item label={t('applications.appliedDate')} name="applied_at" style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
+        <Form.Item label={t('applications.nextFollowUp')} name="next_action_at" style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
       </Space>
-      <Form.Item label="职位链接" name="job_url" rules={[{
+      <Form.Item label={t('applications.jobUrl')} name="job_url" rules={[{
         validator: async (_rule, value) => {
           if (!value || /^https?:\/\//i.test(value)) return
-          throw new Error('请输入 http 或 https 链接')
+          throw new Error(t('applications.jobUrlInvalid'))
         },
       }]}><Input placeholder="https://example.com/jobs/123" /></Form.Item>
       <Space size="middle" orientation={screens.md ? 'horizontal' : 'vertical'} style={{ display: 'flex' }}>
-        <Form.Item label="地点" name="location" rules={[{ max: 120 }]} style={{ flex: 1 }}><Input /></Form.Item>
-        <Form.Item label="投递渠道" name="channel" rules={[{ max: 80 }]} style={{ flex: 1 }}><Input placeholder="官网、内推、招聘平台…" /></Form.Item>
-        <Form.Item label="薪资" name="salary" rules={[{ max: 80 }]} style={{ flex: 1 }}><Input /></Form.Item>
+        <Form.Item label={t('applications.location')} name="location" rules={[{ max: 120 }]} style={{ flex: 1 }}><Input /></Form.Item>
+        <Form.Item label={t('applications.channel')} name="channel" rules={[{ max: 80 }]} style={{ flex: 1 }}><Input placeholder={t('applications.channelPlaceholder')} /></Form.Item>
+        <Form.Item label={t('applications.salary')} name="salary" rules={[{ max: 80 }]} style={{ flex: 1 }}><Input /></Form.Item>
       </Space>
-      <Typography.Title level={5}>简历与备注</Typography.Title>
-      {resumesError && <Alert type="error" showIcon title="简历列表加载失败" action={<Button size="small" onClick={() => void refetchResumes()}>重试</Button>} />}
-      {versionsError && effectiveResumeId && <Alert type="error" showIcon title="简历版本加载失败" action={<Button size="small" onClick={() => void loadVersions(effectiveResumeId)}>重试</Button>} />}
+      <Typography.Title level={5}>{t('applications.resumeAndNotes')}</Typography.Title>
+      {resumesError && <Alert type="error" showIcon title={t('applications.resumesLoadFailed')} action={<Button size="small" onClick={() => void refetchResumes()}>{t('common.retry')}</Button>} />}
+      {versionsError && effectiveResumeId && <Alert type="error" showIcon title={t('applications.versionsLoadFailed')} action={<Button size="small" onClick={() => void loadVersions(effectiveResumeId)}>{t('common.retry')}</Button>} />}
       <div className={styles.resumeEditPanel}>
         <div className={styles.resumeEditGrid}>
           <div className={styles.resumeInlineField}>
-            <Typography.Text type="secondary" className={styles.inlineLabel}>关联简历</Typography.Text>
-            <Form.Item name="resume_id" style={{ marginBottom: 0 }}><Select allowClear showSearch={{ filterOption: false, onSearch: setResumeQuery }} aria-label="关联简历" placeholder="选择简历" style={{ width: '100%' }} options={(resumePage?.items || []).map((resume) => ({ value: resume.id, label: resume.name }))} onChange={(value) => { setResumeId(value || null); setVersions([]); setVersionsError(false); form.setFieldValue('resume_version_id', undefined) }} /></Form.Item>
+            <Typography.Text type="secondary" className={styles.inlineLabel}>{t('applications.linkedResume')}</Typography.Text>
+            <Form.Item name="resume_id" style={{ marginBottom: 0 }}><Select allowClear showSearch={{ filterOption: false, onSearch: setResumeQuery }} aria-label={t('applications.linkedResume')} placeholder={t('applications.selectResume')} style={{ width: '100%' }} options={(resumePage?.items || []).map((resume) => ({ value: resume.id, label: resume.name }))} onChange={(value) => { setResumeId(value || null); setVersions([]); setVersionsError(false); form.setFieldValue('resume_version_id', undefined) }} /></Form.Item>
           </div>
           <div className={styles.versionInlineField}>
-            <Typography.Text type="secondary" className={styles.inlineLabel}>投递版本</Typography.Text>
-            <Form.Item name="resume_version_id" style={{ marginBottom: 0 }}><Select allowClear disabled={!effectiveResumeId} aria-label="简历版本" placeholder={effectiveResumeId ? '当前快照' : '先选简历'} style={{ width: '100%' }} options={versions.map((version) => ({ value: version.id, label: `r${version.revision} · ${version.source} · ${dayjs(version.created_at).format('YYYY-MM-DD HH:mm')}` }))} /></Form.Item>
+            <Typography.Text type="secondary" className={styles.inlineLabel}>{t('applications.resumeVersion')}</Typography.Text>
+            <Form.Item name="resume_version_id" style={{ marginBottom: 0 }}><Select allowClear disabled={!effectiveResumeId} aria-label={t('applications.resumeVersionAria')} placeholder={effectiveResumeId ? t('applications.currentSnapshot') : t('applications.selectResumeFirst')} style={{ width: '100%' }} options={versions.map((version) => ({ value: version.id, label: `r${version.revision} · ${version.source} · ${dayjs(version.created_at).format('YYYY-MM-DD HH:mm')}` }))} /></Form.Item>
           </div>
         </div>
       </div>
-      <Form.Item label="备注" name="notes" rules={[{ max: 5000, message: '备注最多 5000 字' }]}><Input.TextArea rows={3} showCount maxLength={5000} placeholder="补充地点、偏好、沟通注意点等" /></Form.Item>
+      <Form.Item label={t('applications.notes')} name="notes" rules={[{ max: 5000, message: t('applications.notesMax') }]}><Input.TextArea rows={3} showCount maxLength={5000} placeholder={t('applications.notesPlaceholder')} /></Form.Item>
     </Form>
 
   return <Drawer
-    title={<Space orientation="vertical" size={0}><Typography.Text strong>{application ? '编辑申请' : '新建申请'}</Typography.Text><Typography.Text type="secondary">{application ? '修改职位信息、阶段和投递快照' : '创建后可继续记录沟通和面试'}</Typography.Text></Space>}
+    title={<Space orientation="vertical" size={0}><Typography.Text strong>{application ? t('applications.editApplication') : t('applications.newApplication')}</Typography.Text><Typography.Text type="secondary">{application ? t('applications.editApplicationSubtitle') : t('applications.newApplicationSubtitle')}</Typography.Text></Space>}
     open={open}
     onClose={onClose}
     placement="right"
@@ -161,7 +164,7 @@ function ApplicationForm({ application, open, onClose, nested = false }: { appli
     closable={false}
     styles={{ body: { overscrollBehavior: 'contain' } }}
     destroyOnHidden
-    extra={<Space><Button onClick={onClose}>取消</Button><Button type="primary" onClick={submit} loading={create.isPending || update.isPending}>{application ? '保存修改' : '创建申请'}</Button></Space>}
+    extra={<Space><Button onClick={onClose}>{t('common.cancel')}</Button><Button type="primary" onClick={submit} loading={create.isPending || update.isPending}>{application ? t('applications.saveChanges') : t('applications.createApplication')}</Button></Space>}
   >
     {formContent}
   </Drawer>
@@ -180,6 +183,7 @@ type PriorityItem = {
 export default function ApplicationsPage() {
   const router = useRouter()
   const { modal } = App.useApp()
+  const { t } = useI18n()
   const { isAuthenticated, sessionReady } = useAuthStore()
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -218,16 +222,17 @@ export default function ApplicationsPage() {
   }, [searchInput])
 
   const applications = data?.items || []
-  const filters = useMemo(() => JOB_APPLICATION_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })), [])
+  const statusLabel = useCallback((value: JobApplicationStatus) => t(`applications.status.${value}`), [t])
+  const filters = useMemo(() => JOB_APPLICATION_STATUSES.map((value) => ({ value, label: statusLabel(value) })), [statusLabel])
   const today = appTodayDateOnly()
   const isActionable = (item: JobApplication) => APPLICATION_STAGE_ORDER.slice(0, 4).includes(item.status)
   const allPriorityItems: PriorityItem[] = [
-    ...(actions?.overdue.items || []).map((item) => ({ item, bucket: 'overdue' as const, tone: 'error' as const, label: '已逾期', description: `原定 ${item.next_action_at}` })),
-    ...(actions?.due_today.items || []).map((item) => ({ item, bucket: 'due_today' as const, tone: 'warning' as const, label: '今天', description: '今天需要完成跟进' })),
-    ...(actions?.upcoming.items || []).map((item) => ({ item, bucket: 'upcoming' as const, tone: 'processing' as const, label: '未来七天', description: `${item.next_action_at} 前处理` })),
-    ...(actions?.unplanned.items || []).map((item) => ({ item, bucket: 'unplanned' as const, tone: 'default' as const, label: '待规划', description: '尚未设置下一步行动' })),
+    ...(actions?.overdue.items || []).map((item) => ({ item, bucket: 'overdue' as const, tone: 'error' as const, label: t('applications.priority.overdue'), description: t('applications.priority.overdueDescription', { date: item.next_action_at || '' }) })),
+    ...(actions?.due_today.items || []).map((item) => ({ item, bucket: 'due_today' as const, tone: 'warning' as const, label: t('applications.priority.dueToday'), description: t('applications.priority.dueTodayDescription') })),
+    ...(actions?.upcoming.items || []).map((item) => ({ item, bucket: 'upcoming' as const, tone: 'processing' as const, label: t('applications.priority.upcoming'), description: t('applications.priority.upcomingDescription', { date: item.next_action_at || '' }) })),
+    ...(actions?.unplanned.items || []).map((item) => ({ item, bucket: 'unplanned' as const, tone: 'default' as const, label: t('applications.priority.unplanned'), description: t('applications.priority.unplannedDescription') })),
   ]
-  // 优先处理只展示最高优先级的五条；完整数据通过下方申请列表管理。
+  // Show only the highest-priority items here; the full set stays manageable in the list below.
   const priorityItems = allPriorityItems.slice(0, 5)
 
   if (!sessionReady || !isAuthenticated) return null
@@ -256,10 +261,10 @@ export default function ApplicationsPage() {
   }
   const confirmRemove = (item: JobApplication) => {
     modal.confirm({
-      title: `删除 ${item.company} 的申请？`,
-      content: '删除会移除申请和时间线记录，此操作不可恢复。',
-      okText: '删除',
-      cancelText: '取消',
+      title: t('applications.confirmDeleteTitle', { company: item.company }),
+      content: t('applications.confirmDeleteContent'),
+      okText: t('common.delete'),
+      cancelText: t('common.cancel'),
       okButtonProps: { danger: true },
       onOk: () => remove.mutateAsync(item.id),
     })
@@ -273,7 +278,7 @@ export default function ApplicationsPage() {
       className={`${styles.applicationRow} ${overdue ? styles.applicationRowOverdue : ''}`}
       role="button"
       tabIndex={0}
-      aria-label={`查看详情 ${item.company}`}
+      aria-label={t('applications.openDetailAria', { company: item.company })}
       onClick={() => openDetail(item)}
       onKeyDown={(event) => {
         if (event.currentTarget !== event.target) return
@@ -288,28 +293,28 @@ export default function ApplicationsPage() {
         <Space wrap size={8}>
           <Typography.Text strong>{item.company}</Typography.Text>
           <Typography.Text type="secondary">{item.position}</Typography.Text>
-          <Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag>
-          {overdue && <Tag color="error">跟进已逾期</Tag>}
+          <Tag color={STATUS_COLORS[item.status]}>{statusLabel(item.status)}</Tag>
+          {overdue && <Tag color="error">{t('applications.overdueTag')}</Tag>}
         </Space>
         <Space wrap separator={<span>·</span>}>
-          <span>{item.location || '地点未填写'}</span>
-          {item.salary && <span>薪资：{item.salary}</span>}
-          {item.channel && <span>渠道：{item.channel}</span>}
-          {item.applied_at && <span>投递：{item.applied_at}</span>}
-          {item.next_action_at ? <Typography.Text strong={overdue}><CalendarOutlined /> 下一步：{item.next_action_at}</Typography.Text> : <Typography.Text type="secondary">尚未安排下一步</Typography.Text>}
-          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={`打开 ${item.company} 的职位链接`} onClick={(event) => event.stopPropagation()}>职位链接 <ExportOutlined /></a>}
-          {item.resume_id && <span>简历：{item.resume_name || '已删除'}{item.resume_version_revision ? ` · r${item.resume_version_revision}` : ''}</span>}
+          <span>{item.location || t('applications.locationEmpty')}</span>
+          {item.salary && <span>{t('applications.salaryPrefix', { salary: item.salary })}</span>}
+          {item.channel && <span>{t('applications.channelPrefix', { channel: item.channel })}</span>}
+          {item.applied_at && <span>{t('applications.appliedPrefix', { date: item.applied_at })}</span>}
+          {item.next_action_at ? <Typography.Text strong={overdue}><CalendarOutlined /> {t('applications.nextStepPrefix', { date: item.next_action_at })}</Typography.Text> : <Typography.Text type="secondary">{t('applications.nextStepEmpty')}</Typography.Text>}
+          {item.job_url && /^https?:\/\//i.test(item.job_url) && <a href={item.job_url} target="_blank" rel="noopener noreferrer" aria-label={t('applications.openJobLinkAria', { company: item.company })} onClick={(event) => event.stopPropagation()}>{t('applications.jobUrl')} <ExportOutlined /></a>}
+          {item.resume_id && <span>{t('applications.resumePrefix', { name: item.resume_name || t('applications.deletedResume') })}{item.resume_version_revision ? ` · r${item.resume_version_revision}` : ''}</span>}
         </Space>
         {item.notes && <Typography.Text type="secondary" className={styles.applicationNotes}>{item.notes}</Typography.Text>}
       </Space>
       <div className={styles.applicationActions} onClick={(event) => event.stopPropagation()}>
-        <Button type="primary" size="small" icon={<MessageOutlined />} aria-label={`记录 ${item.company} 的进展`} onClick={() => openDetail(item, 'follow_up', true)}>记录进展</Button>
-        <Button size="small" aria-label={`查看申请详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
+        <Button type="primary" size="small" icon={<MessageOutlined />} aria-label={t('applications.recordProgressAria', { company: item.company })} onClick={() => openDetail(item, 'follow_up', true)}>{t('applications.priority.recordProgress')}</Button>
+        <Button size="small" aria-label={t('applications.detailAria', { company: item.company })} onClick={() => openDetail(item)}>{t('applications.detail')}</Button>
         <Dropdown menu={{
-          items: [{ key: 'edit', label: '编辑申请' }, { key: 'delete', label: '删除申请', danger: true }],
+          items: [{ key: 'edit', label: t('applications.editMenu') }, { key: 'delete', label: t('applications.deleteMenu'), danger: true }],
           onClick: ({ key }) => key === 'edit' ? setEditing(item) : confirmRemove(item),
         }} trigger={['click']}>
-          <Button size="small" icon={<EllipsisOutlined />} aria-label={`${item.company} 的更多操作`} />
+          <Button size="small" icon={<EllipsisOutlined />} aria-label={t('applications.moreActionsAria', { company: item.company })} />
         </Dropdown>
       </div>
     </div>
@@ -317,27 +322,27 @@ export default function ApplicationsPage() {
 
   return <PageContainer
     size="lg"
-    title="求职进展"
-    subtitle="聚焦下一步行动，掌握每一条申请的最新状态"
-    extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(null)}>新建申请</Button>}
+    title={t('applications.title')}
+    subtitle={t('applications.subtitle')}
+    extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(null)}>{t('applications.newApplication')}</Button>}
   >
     <Space orientation="vertical" size="large" style={{ display: 'flex' }}>
-      {(isError || isSummaryError || isActionsError) && <Alert type="error" showIcon title="求职数据加载失败" description="请检查网络后重试。" action={<Button size="small" onClick={() => { void refetch(); void refetchSummary(); void refetchActions() }}>重试</Button>} />}
+      {(isError || isSummaryError || isActionsError) && <Alert type="error" showIcon title={t('applications.dataLoadFailed')} description={t('applications.dataLoadFailedDescription')} action={<Button size="small" onClick={() => { void refetch(); void refetchSummary(); void refetchActions() }}>{t('common.retry')}</Button>} />}
 
       <div className={styles.dashboardGrid}>
         <div ref={priorityRef} style={{ scrollMarginTop: 72 }}>
           <Card
-            title="优先处理"
+            title={t('applications.priorityTitle')}
             styles={{ body: { paddingTop: priorityItems.length ? 0 : 24 } }}
           >
-            {isActionsError ? <Alert type="error" showIcon title="优先事项加载失败" action={<Button size="small" onClick={() => void refetchActions()}>重试</Button>} /> : !actions && isActionsLoading ? <div style={{ textAlign: 'center', padding: 32 }} aria-label="正在加载优先处理"><Spin /></div> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办，当前申请都已安排妥当" style={{ margin: '12px 0' }} /> : <div aria-label="优先处理申请">{priorityItems.map(({ item, bucket, tone, label, description }, index) => {
+            {isActionsError ? <Alert type="error" showIcon title={t('applications.priorityLoadFailed')} action={<Button size="small" onClick={() => void refetchActions()}>{t('common.retry')}</Button>} /> : !actions && isActionsLoading ? <div style={{ textAlign: 'center', padding: 32 }} aria-label={t('applications.loadingPriority')}><Spin /></div> : priorityItems.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('applications.noPriority')} style={{ margin: '12px 0' }} /> : <div aria-label={t('applications.priorityListAria')}>{priorityItems.map(({ item, bucket, tone, label, description }, index) => {
               const actionPolicy = getPriorityActionPolicy(bucket, item.status)
               return <div
                 key={item.id}
                 className={styles.priorityRow}
                 role="button"
                 tabIndex={0}
-                aria-label={`查看详情 ${item.company}`}
+                aria-label={t('applications.openDetailAria', { company: item.company })}
                 onClick={() => openDetail(item)}
                 onKeyDown={(event) => {
                   if (event.currentTarget !== event.target) return
@@ -349,48 +354,48 @@ export default function ApplicationsPage() {
               >
               <span className={`${styles.companyAvatar} ${styles[`companyAvatarTone${companyAvatarTone(item.company)}`]}`} aria-hidden="true">{companyAvatarText(item.company)}</span>
               <Space orientation="vertical" size={4} className={styles.priorityMain}>
-                <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status]}</Tag><Tag color={tone}>{label}</Tag></Space>
+                <Space wrap size={8}><Typography.Text strong>{item.company}</Typography.Text><Typography.Text type="secondary">{item.position}</Typography.Text><Tag color={STATUS_COLORS[item.status]}>{statusLabel(item.status)}</Tag><Tag color={tone}>{label}</Tag></Space>
                 <Typography.Text type={tone === 'error' ? 'danger' : 'secondary'}><ClockCircleOutlined /> {description}</Typography.Text>
               </Space>
               <div className={styles.priorityActions} onClick={(event) => event.stopPropagation()}>
-                <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, actionPolicy.activity, true, actionPolicy.initialNextActionMode)}>{actionPolicy.primaryLabel}</Button>
-                <Button size="small" aria-label={`查看优先事项详情 ${item.company}`} onClick={() => openDetail(item)}>详情</Button>
+                <Button size="small" type={index === 0 ? 'primary' : 'default'} onClick={() => openDetail(item, actionPolicy.activity, true, actionPolicy.initialNextActionMode)}>{t(actionPolicy.primaryLabelKey)}</Button>
+                <Button size="small" aria-label={t('applications.priorityDetailAria', { company: item.company })} onClick={() => openDetail(item)}>{t('applications.detail')}</Button>
               </div>
             </div>})}</div>}
           </Card>
         </div>
 
-        <Card title="进展概览">
+        <Card title={t('applications.overviewTitle')}>
           {summary ? <div className={styles.overviewBody}>
-            <div className={styles.overviewStats} aria-label="求职申请概览">
-              <button type="button" className={styles.statButton} onClick={() => filterByStatus('all')}><Statistic title="进行中" value={summary.active} /></button>
-              <button type="button" className={styles.statButton} onClick={() => { priorityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><Statistic title="待跟进" value={summary.due_today + summary.overdue} styles={summary.overdue ? { content: { color: '#ff4d4f' } } : undefined} /></button>
-              <button type="button" className={styles.statButton} onClick={() => filterByStatus('interview')}><Statistic title="面试中" value={summary.interview} /></button>
+            <div className={styles.overviewStats} aria-label={t('applications.overviewAria')}>
+              <button type="button" className={styles.statButton} onClick={() => filterByStatus('all')}><Statistic title={t('applications.active')} value={summary.active} /></button>
+              <button type="button" className={styles.statButton} onClick={() => { priorityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><Statistic title={t('applications.due')} value={summary.due_today + summary.overdue} styles={summary.overdue ? { content: { color: '#ff4d4f' } } : undefined} /></button>
+              <button type="button" className={styles.statButton} onClick={() => filterByStatus('interview')}><Statistic title={t('applications.interviewing')} value={summary.interview} /></button>
             </div>
-            <div className={styles.pipeline} aria-label="申请阶段分布">
+            <div className={styles.pipeline} aria-label={t('applications.stageDistributionAria')}>
               {APPLICATION_STAGE_ORDER.map((stage) => <span key={stage} className={styles.pipelineStage}>
-                <button type="button" className={styles.pipelineButton} onClick={() => filterByStatus(stage)}><Tag color={STATUS_COLORS[stage]}>{STATUS_LABELS[stage]} {summary.by_status[stage] || 0}</Tag></button>
+                <button type="button" className={styles.pipelineButton} onClick={() => filterByStatus(stage)}><Tag color={STATUS_COLORS[stage]}>{statusLabel(stage)} {summary.by_status[stage] || 0}</Tag></button>
               </span>)}
             </div>
-          </div> : <Spin aria-label="正在加载求职概览" />}
+          </div> : <Spin aria-label={t('applications.loadingOverview')} />}
         </Card>
       </div>
 
       <Card
         className={styles.applicationListCard}
-        title={<Tabs className={styles.listTabs} activeKey={view} onChange={(key) => changeView(key as ApplicationView)} items={[{ key: 'recent', label: '最近动态' }, { key: 'all', label: '全部申请' }]} />}
+        title={<Tabs className={styles.listTabs} activeKey={view} onChange={(key) => changeView(key as ApplicationView)} items={[{ key: 'recent', label: t('applications.recent') }, { key: 'all', label: t('applications.allApplications') }]} />}
         extra={<div className={styles.listHeaderActions}>
-          <Input.Search className={styles.search} aria-label="搜索公司或职位" placeholder="搜索公司或职位" allowClear value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onSearch={(value) => { setSearchInput(value); setQ(value.trim()); setPage(1) }} />
-          {(searchInput || status !== 'all') && <Button onClick={clearFilters}>清空筛选</Button>}
+          <Input.Search className={styles.search} aria-label={t('applications.searchAria')} placeholder={t('applications.searchPlaceholder')} allowClear value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onSearch={(value) => { setSearchInput(value); setQ(value.trim()); setPage(1) }} />
+          {(searchInput || status !== 'all') && <Button onClick={clearFilters}>{t('applications.clearFilters')}</Button>}
         </div>}
       >
         {view === 'all' && <div className={styles.toolbar}>
-          <Select aria-label="按状态筛选" value={status} onChange={filterByStatus} options={[{ value: 'all', label: `全部状态 (${summary?.total || 0})` }, ...filters.map((filter) => ({ ...filter, label: `${filter.label} (${summary?.by_status[filter.value] || 0})` }))]} style={{ width: 180 }} />
-          <Select aria-label="排序方式" value={sort} onChange={setSort} options={[{ value: 'next_action', label: '按下次行动' }, { value: 'updated', label: '按最近更新' }, { value: 'applied_at', label: '按投递日期' }, { value: 'company', label: '按公司名称' }]} style={{ width: 160 }} />
+          <Select aria-label={t('applications.statusFilterAria')} value={status} onChange={filterByStatus} options={[{ value: 'all', label: t('applications.allStatus', { count: summary?.total || 0 }) }, ...filters.map((filter) => ({ ...filter, label: `${filter.label} (${summary?.by_status[filter.value] || 0})` }))]} style={{ width: 180 }} />
+          <Select aria-label={t('applications.sortAria')} value={sort} onChange={setSort} options={[{ value: 'next_action', label: t('applications.sortNextAction') }, { value: 'updated', label: t('applications.sortUpdated') }, { value: 'applied_at', label: t('applications.sortAppliedAt') }, { value: 'company', label: t('applications.sortCompany') }]} style={{ width: 160 }} />
         </div>}
 
-        {isLoading ? <div style={{ textAlign: 'center', padding: 64 }} aria-label="正在加载求职申请"><Spin /></div> : applications.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={q || status !== 'all' ? '没有符合条件的申请' : '还没有求职申请'} style={{ margin: '28px 0' }}><Button type="primary" onClick={() => setEditing(null)}>创建第一条申请</Button></Empty> : <div aria-label="求职申请列表">{applications.map(renderApplicationCard)}</div>}
-        {view === 'all' && data && data.pagination.total_pages > 1 && <div className={styles.pagination}><Pagination current={page} pageSize={data.pagination.page_size} total={data.pagination.total} showSizeChanger={false} showTotal={(total) => `共 ${total} 条申请`} onChange={setPage} /></div>}
+        {isLoading ? <div style={{ textAlign: 'center', padding: 64 }} aria-label={t('applications.loadingApplications')}><Spin /></div> : applications.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={q || status !== 'all' ? t('applications.noMatchingApplications') : t('applications.noApplications')} style={{ margin: '28px 0' }}><Button type="primary" onClick={() => setEditing(null)}>{t('applications.createFirst')}</Button></Empty> : <div aria-label={t('applications.listAria')}>{applications.map(renderApplicationCard)}</div>}
+        {view === 'all' && data && data.pagination.total_pages > 1 && <div className={styles.pagination}><Pagination current={page} pageSize={data.pagination.page_size} total={data.pagination.total} showSizeChanger={false} showTotal={(total) => t('applications.totalApplications', { total })} onChange={setPage} /></div>}
       </Card>
     </Space>
     <ApplicationDetailDrawer key={`application-detail-${detail?.id || 'closed'}-${detailActivity}-${detailNextActionMode}-${detailRecorderOpen ? 'recorder' : 'summary'}`} application={detail} open={Boolean(detail)} initialActivity={detailActivity} initialRecorderOpen={detailRecorderOpen} initialNextActionMode={detailNextActionMode} onClose={() => setDetail(null)} onEdit={setEditing}>

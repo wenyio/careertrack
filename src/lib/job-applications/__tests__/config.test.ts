@@ -3,14 +3,14 @@ import { getPriorityActionPolicy } from '@/lib/job-applications/config'
 
 describe('job application priority action policy', () => {
   it.each([
-    ['unplanned', 'applied', '安排下一步', 'follow_up', 'date'],
-    ['overdue', 'applied', '处理', 'follow_up', 'date'],
-    ['due_today', 'interview', '记录面试', 'interview', 'date'],
-    ['upcoming', 'applied', '记录进展', 'follow_up', 'keep'],
-    ['upcoming', 'interview', '记录面试', 'interview', 'keep'],
-  ] as const)('%s + %s -> %s / %s / %s', (bucket, status, primaryLabel, activity, initialNextActionMode) => {
+    ['unplanned', 'applied', 'applications.priority.scheduleNext', 'follow_up', 'date'],
+    ['overdue', 'applied', 'applications.priority.handle', 'follow_up', 'date'],
+    ['due_today', 'interview', 'applications.priority.recordInterview', 'interview', 'date'],
+    ['upcoming', 'applied', 'applications.priority.recordProgress', 'follow_up', 'keep'],
+    ['upcoming', 'interview', 'applications.priority.recordInterview', 'interview', 'keep'],
+  ] as const)('%s + %s -> %s / %s / %s', (bucket, status, primaryLabelKey, activity, initialNextActionMode) => {
     expect(getPriorityActionPolicy(bucket, status)).toEqual({
-      primaryLabel,
+      primaryLabelKey,
       activity,
       initialNextActionMode,
     })
