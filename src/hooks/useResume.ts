@@ -5,6 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { App } from 'antd'
 import {
@@ -27,6 +28,10 @@ export const RESUMES_QUERY_KEY = ['resumes']
 export const resumesQueryKey = (page: number, pageSize: number, q = '') =>
   [...RESUMES_QUERY_KEY, page, pageSize, q]
 export const resumeQueryKey = (id: string) => ['resume', id]
+
+export function cacheResumeDetail(queryClient: QueryClient, resume: Resume) {
+  queryClient.setQueryData(resumeQueryKey(resume.id), resume)
+}
 
 /**
  * 获取简历列表 Hook
@@ -88,7 +93,7 @@ export function useUpdateResume(id: string, options?: { silent?: boolean }) {
   return useMutation({
     mutationFn: (data: UpdateResumeRequest) => updateResume(id, data),
     onSuccess: (data) => {
-      queryClient.setQueryData(resumeQueryKey(id), (old: Resume | undefined) => old ? { ...old, ...data } : data)
+      cacheResumeDetail(queryClient, data)
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
       if (!silent) {
         message.success('保存成功')
@@ -130,7 +135,8 @@ export function useDuplicateResume() {
 
   return useMutation({
     mutationFn: (id: string) => duplicateResume(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      cacheResumeDetail(queryClient, data)
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
       message.success('复制成功')
     },

@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { App } from 'antd'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useResumes, useCreateResume, useDeleteResume, useDuplicateResume } from '@/hooks/useResume'
+import { cacheResumeDetail, useResumes, useCreateResume, useDeleteResume, useDuplicateResume } from '@/hooks/useResume'
 import { useProfile } from '@/hooks/useProfile'
 import { getResume, updateResume, publishResume, unpublishResume } from '@/services/resume'
 import { useQueryClient } from '@tanstack/react-query'
@@ -66,7 +66,8 @@ function AuthenticatedResumeList() {
 
   const handleRename = useCallback(async (id: string, name: string) => {
     try {
-      await updateResume(id, { name })
+      const resume = await updateResume(id, { name })
+      cacheResumeDetail(queryClient, resume)
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
       message.success(t('resume.renameSuccess'))
     } catch {
