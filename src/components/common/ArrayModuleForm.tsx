@@ -31,7 +31,8 @@ type EntrySyncMode = ProfileEntrySyncMode | 'pull'
 interface ArrayModuleFormProps<T extends { id?: string }> {
   items: Partial<T>[]
   fields: ModuleFieldConfig[]
-  addText: string
+  addText?: string
+  addTextKey?: string
   createItem: () => Partial<T>
   onChange: (items: Partial<T>[]) => void
   /** 个人信息中对应模块的数据，作为导入源 */
@@ -56,6 +57,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   items,
   fields,
   addText,
+  addTextKey,
   createItem,
   onChange,
   importItems,
@@ -65,7 +67,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 }: ArrayModuleFormProps<T>) {
   const isResumeMode = mode === 'resume'
   const canSyncToProfile = isResumeMode && !!profileSyncField
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const { mutateAsync: syncProfileEntry, isPending: isSyncingProfileEntry } = useSyncProfileEntry()
 
   /** 切换某条目某字段的隐藏状态 */
@@ -95,21 +97,35 @@ export default function ArrayModuleForm<T extends { id?: string }>({
     })
   }, [importItems, importConfig, existingSignatures])
 
+  const getImportItemTitle = useCallback((item: T) => {
+    const title = importConfig?.getItemTitle(item)
+    if (title) return title
+    return importConfig?.fallbackTitleKey ? t(importConfig.fallbackTitleKey) : t('common.untitled')
+  }, [importConfig, t])
+
   const profileTargetOptions = useMemo(() => {
     if (!importItems || !importConfig) return []
     return importItems
       .filter((item) => item.id)
       .map((item) => {
-        const subtitle = importConfig.getItemSubtitle?.(item)
+        const subtitle = importConfig.getItemSubtitle?.(item, locale)
         return {
           value: item.id as string,
           label: [
-            importConfig.getItemTitle(item),
+            getImportItemTitle(item),
             subtitle,
           ].filter(Boolean).join(' · '),
         }
       })
-  }, [importItems, importConfig])
+  }, [importItems, importConfig, locale, getImportItemTitle])
+
+  function getImportModalTitle() {
+    return importConfig?.modalTitleKey ? t(importConfig.modalTitleKey) : importConfig?.modalTitle
+  }
+
+  function getImportEmptyText() {
+    return importConfig?.emptyTextKey ? t(importConfig.emptyTextKey) : importConfig?.emptyText
+  }
 
   const handleAdd = () => {
     onChange([...items, createItem()])
@@ -308,11 +324,13 @@ export default function ArrayModuleForm<T extends { id?: string }>({
     const labelNode = isResumeMode && field.hideable ? (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         {label}
-        <Tooltip title={hidden ? '显示此字段' : '隐藏此字段（不删除值）'}>
+        <Tooltip title={hidden ? t('arrayForm.showField') : t('arrayForm.hideField')}>
           <Button
             type="text"
             size="small"
-            aria-label={`${hidden ? '显示' : '隐藏'}第 ${index + 1} 项${label}`}
+            aria-label={hidden
+              ? t('arrayForm.showItemFieldAria', { index: index + 1, label })
+              : t('arrayForm.hideItemFieldAria', { index: index + 1, label })}
             icon={hidden
               ? <EyeInvisibleOutlined style={{ color: '#999', fontSize: 12 }} />
               : <EyeOutlined style={{ color: '#1677ff', fontSize: 12 }} />}
@@ -341,10 +359,10 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           index={index}
           onRemove={() => handleRemove(index)}
           actions={canSyncToProfile && (
-            <Tooltip title="同步记录">
+            <Tooltip title={t('arrayForm.syncRecord')}>
               <Button
                 type="text"
-                aria-label={`同步第 ${index + 1} 项记录`}
+                aria-label={t('arrayForm.syncRecordAria', { index: index + 1 })}
                 icon={<SyncOutlined />}
                 onClick={() => handleOpenSync(index)}
               />
@@ -360,7 +378,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
       ))}
 
       <Space style={{ width: '100%' }}>
-        <AddItemButton text={addText} onClick={handleAdd} />
+        <AddItemButton text={addTextKey ? t(addTextKey) : addText || t('common.create')} onClick={handleAdd} />
         {showImportButton && (
           <Button
             type="dashed"
@@ -368,31 +386,31 @@ export default function ArrayModuleForm<T extends { id?: string }>({
             icon={<ImportOutlined />}
             style={{ minWidth: 160 }}
           >
-            从个人信息导入
+            {t('arrayForm.importFromProfile')}
           </Button>
         )}
       </Space>
 
       {showImportButton && (
         <Modal
-          title={importConfig.modalTitle}
+          title={getImportModalTitle()}
           open={importModalOpen}
           onOk={handleConfirmImport}
           onCancel={() => setImportModalOpen(false)}
-          okText="导入选中"
-          cancelText="取消"
+          okText={t('arrayForm.importSelected')}
+          cancelText={t('common.cancel')}
           okButtonProps={{ disabled: selectedIndices.length === 0 }}
           width={520}
         >
           {availableImportItems.length === 0 ? (
-            <Empty description={importConfig.emptyText} />
+            <Empty description={getImportEmptyText()} />
           ) : (
             <Checkbox.Group
               value={selectedIndices}
               onChange={(values) => setSelectedIndices(values as number[])}
               style={{ width: '100%' }}
             >
-              <div aria-label={importConfig.modalTitle}>
+              <div aria-label={getImportModalTitle()}>
                 {availableImportItems.map(({ item, index, isDuplicate }) => (
                   <div
                     key={index}
@@ -404,16 +422,16 @@ export default function ArrayModuleForm<T extends { id?: string }>({
                     <Checkbox value={index} disabled={isDuplicate}>
                       <div>
                         <div style={{ fontWeight: 500 }}>
-                          {importConfig.getItemTitle(item)}
+                          {getImportItemTitle(item)}
                         </div>
                         {importConfig.getItemSubtitle && (
                           <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-                            {importConfig.getItemSubtitle(item)}
+                            {importConfig.getItemSubtitle(item, locale)}
                           </div>
                         )}
                         {isDuplicate && (
                           <div style={{ fontSize: 12, color: '#faad14', marginTop: 2 }}>
-                            已存在
+                            {t('arrayForm.duplicate')}
                           </div>
                         )}
                       </div>
@@ -428,12 +446,12 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 
       {canSyncToProfile && (
         <Modal
-          title="同步记录"
+          title={t('arrayForm.syncRecord')}
           open={syncModalOpen}
           onOk={handleConfirmSync}
           onCancel={() => setSyncModalOpen(false)}
-          okText={syncMode === 'pull' ? '更新当前记录' : '同步'}
-          cancelText="取消"
+          okText={syncMode === 'pull' ? t('arrayForm.updateCurrentRecord') : t('arrayForm.sync')}
+          cancelText={t('common.cancel')}
           confirmLoading={isSyncingProfileEntry}
           okButtonProps={{
             disabled: (syncMode === 'replace' || syncMode === 'pull') && !syncTargetId,
@@ -444,24 +462,24 @@ export default function ArrayModuleForm<T extends { id?: string }>({
             onChange={(event) => setSyncMode(event.target.value as EntrySyncMode)}
             style={{ display: 'grid', gap: 12, width: '100%' }}
           >
-            <Radio value="create">新增为个人信息记录</Radio>
+            <Radio value="create">{t('arrayForm.createProfileRecord')}</Radio>
             <Radio value="replace" disabled={profileTargetOptions.length === 0}>
-              覆盖已有记录
+              {t('arrayForm.replaceProfileRecord')}
             </Radio>
             <Radio value="pull" disabled={profileTargetOptions.length === 0}>
-              从个人信息更新当前记录
+              {t('arrayForm.pullProfileRecord')}
             </Radio>
           </Radio.Group>
 
           {(syncMode === 'replace' || syncMode === 'pull') && (
             <div style={{ marginTop: 12 }}>
               {profileTargetOptions.length === 0 ? (
-                <Empty description="个人信息中暂无可用记录" />
+                <Empty description={t('arrayForm.noProfileRecords')} />
               ) : (
                 <Select
                   value={syncTargetId}
                   onChange={setSyncTargetId}
-                  placeholder={syncMode === 'pull' ? '选择用于更新当前记录的个人信息记录' : '选择要覆盖的个人信息记录'}
+                  placeholder={syncMode === 'pull' ? t('arrayForm.selectRecordForPull') : t('arrayForm.selectRecordForReplace')}
                   options={profileTargetOptions}
                   style={{ width: '100%' }}
                   showSearch={{ optionFilterProp: 'label' }}

@@ -15,8 +15,8 @@ import { generateId } from '@/utils/format'
 import { deepClone } from '@/utils/format'
 import { richTextToPlainText } from '@/utils/rich-text'
 import { useSyncProfileEntry } from '@/hooks/useProfile'
+import { useI18n } from '@/i18n'
 import {
-  DEFAULT_SELF_EVALUATION_TITLE,
   hasDescriptionContent,
   normalizeSelfEvaluations,
 } from '@/utils/self-evaluation'
@@ -65,6 +65,7 @@ export default function SummaryForm({
   onProfileChange,
 }: SummaryFormProps) {
   const { modal } = App.useApp()
+  const { t } = useI18n()
   const { mutateAsync: syncProfileEntry, isPending: isSyncingProfileEntry } = useSyncProfileEntry()
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [syncModalOpen, setSyncModalOpen] = useState(false)
@@ -83,9 +84,9 @@ export default function SummaryForm({
   const profileTargetOptions = useMemo(() => {
     return candidates.map((entry, index) => ({
       value: entry.id,
-      label: entry.title || `自我评价 ${index + 1}`,
+      label: entry.title || t('summaryForm.defaultTitleWithIndex', { index: index + 1 }),
     }))
-  }, [candidates])
+  }, [candidates, t])
 
   const profileItems = useMemo(() => {
     if (mode !== 'profile') return []
@@ -170,10 +171,10 @@ export default function SummaryForm({
     if (!selected) return
 
     modal.confirm({
-      title: '从个人信息填充',
-      content: '这将覆盖当前简历的自我评价内容，确定继续吗？',
-      okText: '确定',
-      cancelText: '取消',
+      title: t('summaryForm.importConfirmTitle'),
+      content: t('summaryForm.importConfirmContent'),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       onOk: () => {
         onChange(deepClone(selected.description) as DescriptionField)
       },
@@ -190,24 +191,24 @@ export default function SummaryForm({
             index={index}
             onRemove={() => handleRemoveProfileItem(index)}
           >
-            <Form.Item label="标题">
+            <Form.Item label={t('summaryForm.title')}>
               <Input
                 value={item.title}
                 onChange={(event) => handleProfileFieldChange(index, 'title', event.target.value)}
-                placeholder={index === 0 ? DEFAULT_SELF_EVALUATION_TITLE : '例如：产品岗位版本、技术岗位版本'}
+                placeholder={index === 0 ? t('summaryForm.defaultTitle') : t('summaryForm.alternateTitlePlaceholder')}
               />
             </Form.Item>
-            <Form.Item label="自我评价">
+            <Form.Item label={t('summaryForm.summary')}>
               <RichTextEditor
                 value={item.description || ''}
                 onChange={(nextValue) => handleProfileFieldChange(index, 'description', nextValue)}
-                placeholder="请输入自我评价，概述您的优势、经历和职业目标..."
+                placeholder={t('summaryForm.summaryPlaceholder')}
                 minHeight={160}
               />
             </Form.Item>
           </ArrayFormItemCard>
         ))}
-        <AddItemButton text="添加自我评价" onClick={handleAddProfileItem} />
+        <AddItemButton text={t('summaryForm.addSummary')} onClick={handleAddProfileItem} />
       </Form>
     )
   }
@@ -223,7 +224,7 @@ export default function SummaryForm({
               onClick={handleImportFromProfile}
               style={{ width: canSyncCurrentEvaluation ? '50%' : '100%' }}
             >
-              从个人信息填充
+              {t('summaryForm.importFromProfile')}
             </Button>
           )}
           {canSyncCurrentEvaluation && (
@@ -234,30 +235,30 @@ export default function SummaryForm({
               loading={isSyncingProfileEntry}
               style={{ width: showImportButton ? '50%' : '100%' }}
             >
-              同步到个人信息
+              {t('summaryForm.syncToProfile')}
             </Button>
           )}
         </Space.Compact>
       )}
-      <Form.Item label="自我评价">
+      <Form.Item label={t('summaryForm.summary')}>
         <RichTextEditor
           value={value || defaultValue || ''}
           onChange={onChange}
-          placeholder="请输入自我评价，概述您的优势、经历和职业目标..."
+          placeholder={t('summaryForm.summaryPlaceholder')}
           minHeight={160}
         />
       </Form.Item>
       <Modal
-        title="选择一条自我评价"
+        title={t('summaryForm.chooseSummary')}
         open={importModalOpen}
-        okText="导入"
-        cancelText="取消"
+        okText={t('summaryForm.import')}
+        cancelText={t('common.cancel')}
         onOk={handleConfirmImport}
         onCancel={() => setImportModalOpen(false)}
         okButtonProps={{ disabled: !selectedImportId }}
       >
         {candidates.length === 0 ? (
-          <Empty description="个人信息中暂无自我评价" />
+          <Empty description={t('summaryForm.noSummaries')} />
         ) : (
           <Radio.Group
             value={selectedImportId}
@@ -269,7 +270,7 @@ export default function SummaryForm({
                 <Radio key={entry.id} value={entry.id} style={{ width: '100%' }}>
                   <div>
                     <div style={{ fontWeight: 500 }}>
-                      {entry.title || `自我评价 ${index + 1}`}
+                      {entry.title || t('summaryForm.defaultTitleWithIndex', { index: index + 1 })}
                     </div>
                     <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>
                       {truncateDescription(entry.description)}
@@ -282,10 +283,10 @@ export default function SummaryForm({
         )}
       </Modal>
       <Modal
-        title="同步到个人信息"
+        title={t('summaryForm.syncToProfile')}
         open={syncModalOpen}
-        okText={syncMode === 'create' ? '新增' : '覆盖'}
-        cancelText="取消"
+        okText={syncMode === 'create' ? t('summaryForm.create') : t('summaryForm.replace')}
+        cancelText={t('common.cancel')}
         onOk={handleConfirmSync}
         onCancel={() => setSyncModalOpen(false)}
         confirmLoading={isSyncingProfileEntry}
@@ -299,23 +300,23 @@ export default function SummaryForm({
           style={{ width: '100%', marginBottom: 16 }}
         >
           <Space orientation="vertical">
-            <Radio value="create">新增为一条自我评价</Radio>
+            <Radio value="create">{t('summaryForm.createProfileSummary')}</Radio>
             <Radio value="replace" disabled={profileTargetOptions.length === 0}>
-              覆盖已有自我评价
+              {t('summaryForm.replaceProfileSummary')}
             </Radio>
           </Space>
         </Radio.Group>
 
         {syncMode === 'create' ? (
-          <Form.Item label="标题">
+          <Form.Item label={t('summaryForm.title')}>
             <Input
               value={syncTitle}
               onChange={(event) => setSyncTitle(event.target.value)}
-              placeholder="例如：技术岗位版本"
+              placeholder={t('summaryForm.syncTitlePlaceholder')}
             />
           </Form.Item>
         ) : (
-          <Form.Item label="选择要覆盖的自我评价">
+          <Form.Item label={t('summaryForm.selectSummaryToReplace')}>
             <Select
               value={syncTargetId}
               onChange={(nextTargetId) => {
@@ -324,7 +325,7 @@ export default function SummaryForm({
                 setSyncTitle(target?.title || '')
               }}
               options={profileTargetOptions}
-              placeholder="请选择已有自我评价"
+              placeholder={t('summaryForm.selectExistingSummary')}
             />
           </Form.Item>
         )}

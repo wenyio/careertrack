@@ -15,6 +15,7 @@ import {
   paginationOffset,
 } from '@/lib/pagination'
 import { getPrimarySelfEvaluationDescription } from '@/utils/self-evaluation'
+import { getPrimaryJobIntention } from '@/utils/job-intention'
 import type {
   Resume,
   ResumeListItem,
@@ -133,6 +134,15 @@ export function buildInitialContentFromProfile(profile: Record<string, unknown>)
     const value = profile[field]
     if (value !== null && value !== undefined) {
       content[field] = typeof value === 'string' ? value : (Array.isArray(value) && value.length === 0 ? undefined : value)
+    }
+  }
+  if (content.basic_info && typeof content.basic_info === 'object') {
+    content.basic_info = {
+      ...(content.basic_info as Record<string, unknown>),
+      job_intention: getPrimaryJobIntention(
+        profile.job_intentions,
+        (content.basic_info as Record<string, unknown>).job_intention,
+      ),
     }
   }
   const summary = getPrimarySelfEvaluationDescription(

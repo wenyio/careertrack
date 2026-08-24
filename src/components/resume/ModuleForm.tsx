@@ -68,6 +68,8 @@ function renderModuleForm(
           displayConfig={content.basic_info_display}
           onDisplayConfigChange={onDisplayConfigChange}
           importValue={profile?.basic_info}
+          importJobIntentions={profile?.job_intentions}
+          canSyncProfile={canSyncProfile}
         />
       )
     case 'education':
@@ -149,7 +151,7 @@ function renderModuleForm(
           mode="resume"
           canSyncProfile={canSyncProfile}
         />
-      )
+  )
     case 'summary':
       return (
         <SummaryForm
@@ -161,7 +163,7 @@ function renderModuleForm(
         />
       )
     default:
-      return <div>未知模块</div>
+      return null
   }
 }
 
@@ -188,7 +190,7 @@ function ModuleTitleLabel({
   const [hovered, setHovered] = useState(false)
   const [renameModalOpen, setRenameModalOpen] = useState(false)
   const [renameValue, setRenameValue] = useState('')
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
 
   const title = getResolvedModuleTitle(module, content, locale)
 
@@ -237,43 +239,43 @@ function ModuleTitleLabel({
             }}
             onClick={(event) => event.stopPropagation()}
           >
-            <Tooltip title="编辑名称">
+            <Tooltip title={t('resumeEditor.editName')}>
               <Button
                 type="text"
                 size="small"
-                aria-label={`重命名${title}`}
+                aria-label={t('resumeEditor.renameModuleAria', { title })}
                 icon={<EditOutlined style={iconStyle} />}
                 onClick={handleOpenRename}
               />
             </Tooltip>
             {canMoveUp && (
-              <Tooltip title="上移">
+              <Tooltip title={t('resumeEditor.moveUp')}>
                 <Button
                   type="text"
                   size="small"
-                  aria-label={`上移${title}`}
+                  aria-label={t('resumeEditor.moveUpAria', { title })}
                   icon={<ArrowUpOutlined style={iconStyle} />}
                   onClick={onMoveUp}
                 />
               </Tooltip>
             )}
             {canMoveDown && (
-              <Tooltip title="下移">
+              <Tooltip title={t('resumeEditor.moveDown')}>
                 <Button
                   type="text"
                   size="small"
-                  aria-label={`下移${title}`}
+                  aria-label={t('resumeEditor.moveDownAria', { title })}
                   icon={<ArrowDownOutlined style={iconStyle} />}
                   onClick={onMoveDown}
                 />
               </Tooltip>
             )}
-            <Tooltip title="删除模块">
+            <Tooltip title={t('resumeEditor.deleteModule')}>
               <Button
                 type="text"
                 size="small"
                 danger
-                aria-label={`删除${title}模块`}
+                aria-label={t('resumeEditor.deleteModuleAria', { title })}
                 icon={<DeleteOutlined style={iconStyle} />}
                 onClick={onDelete}
               />
@@ -283,17 +285,17 @@ function ModuleTitleLabel({
       </div>
 
       <Modal
-        title="重命名模块"
+        title={t('resumeEditor.renameModule')}
         open={renameModalOpen}
         onOk={handleConfirmRename}
         onCancel={() => setRenameModalOpen(false)}
-        okText="确认"
-        cancelText="取消"
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
       >
         <Input
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
-          placeholder="请输入模块名称"
+          placeholder={t('resumeEditor.renameModulePlaceholder')}
           onPressEnter={handleConfirmRename}
         />
       </Modal>

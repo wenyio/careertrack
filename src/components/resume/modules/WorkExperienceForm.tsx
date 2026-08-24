@@ -29,7 +29,7 @@ export default function WorkExperienceForm({ value, defaultValue, onChange, mode
     <ArrayModuleForm
       items={items}
       fields={WORK_EXPERIENCE_FIELDS}
-      addText="添加工作经历"
+      addTextKey="arrayForm.addWorkExperience"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.work_experience : undefined}

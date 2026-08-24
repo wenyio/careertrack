@@ -29,7 +29,7 @@ export default function AwardsForm({ value, defaultValue, onChange, mode, canSyn
     <ArrayModuleForm
       items={items}
       fields={AWARD_FIELDS}
-      addText="添加荣誉奖项"
+      addTextKey="arrayForm.addAwards"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.awards : undefined}

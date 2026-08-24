@@ -35,7 +35,6 @@ import {
 import {
   addVisibleBasicInfoField,
   calculateAgeFromBirthday,
-  formatWorkYears,
   hasBasicInfoExtraValue,
   normalizeWorkYearsInput,
   removeVisibleBasicInfoField,
@@ -153,7 +152,10 @@ export default function BasicInfoExtraFields({
         nextValue !== undefined
         && !options.some((option) => option.value === nextValue)
       ) {
-        options.push({ value: nextValue, label: nextValue === 0 ? t('resume.freshGraduate') : formatWorkYears(nextValue) })
+        options.push({
+          value: nextValue,
+          label: nextValue === 0 ? t('resume.freshGraduate') : t('resume.years', { count: nextValue }),
+        })
       }
     }
 
@@ -287,13 +289,15 @@ export default function BasicInfoExtraFields({
                         {label}
                         {fieldConfig.iconConfigurable
                           && onDisplayConfigChange && (
-                          <Tooltip title={hasIcon ? '隐藏图标' : '显示图标'}>
+                          <Tooltip title={hasIcon ? t('basicInfo.hideIcon') : t('basicInfo.showIcon')}>
                             <Button
                               type="text"
                               size="small"
                               icon={<SmileOutlined />}
                               aria-label={
-                                `${hasIcon ? '隐藏' : '显示'}${label}图标`
+                                hasIcon
+                                  ? t('basicInfo.hideFieldIconAria', { label })
+                                  : t('basicInfo.showFieldIconAria', { label })
                               }
                               style={{
                                 width: 20,
@@ -314,12 +318,12 @@ export default function BasicInfoExtraFields({
                     {renderFieldInput(field)}
                   </Form.Item>
                   {onDisplayConfigChange && (
-                    <Tooltip title="移除此字段">
+                    <Tooltip title={t('basicInfo.removeField')}>
                       <Button
                         type="text"
                         size="small"
                         icon={<CloseOutlined />}
-                        aria-label={`移除${label}字段`}
+                        aria-label={t('basicInfo.removeFieldAria', { label })}
                         style={{
                           position: 'absolute',
                           top: -6,
@@ -358,7 +362,7 @@ export default function BasicInfoExtraFields({
               color="blue"
               role="button"
               tabIndex={0}
-              aria-label={`添加${label}字段`}
+              aria-label={t('basicInfo.addFieldAria', { label })}
               style={{ cursor: 'pointer' }}
               onClick={() => handleAddField(fieldConfig.field)}
               onKeyDown={(event) => {

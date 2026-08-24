@@ -19,6 +19,7 @@ import { TextStyle, Color, FontSize, LineHeight } from '@tiptap/extension-text-s
 import { useEffect, useRef, useState } from 'react'
 import type { DescriptionField, RichTextNode } from '@/types/resume'
 import { isSafeUrl, textToDoc } from '@/utils/rich-text'
+import { useI18n } from '@/i18n'
 import RichTextToolbar from './toolbar/RichTextToolbar'
 
 // ============ 自定义扩展 ============
@@ -142,9 +143,11 @@ interface RichTextEditorProps {
 export default function RichTextEditor({
   value,
   onChange,
-  placeholder = '请输入内容...',
+  placeholder,
   minHeight = 120,
 }: RichTextEditorProps) {
+  const { t } = useI18n()
+  const effectivePlaceholder = placeholder ?? t('common.contentPlaceholder')
   const isInternalChange = useRef(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -185,7 +188,7 @@ export default function RichTextEditor({
       TextAlign.configure({
         types: ['paragraph', 'listItem'],
       }),
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder: effectivePlaceholder }),
       TextStyle,
       Color,
       FontSize,
@@ -217,7 +220,7 @@ export default function RichTextEditor({
       onChange(isEmpty ? '' : (json as RichTextNode))
       isInternalChange.current = false
     },
-  })
+  }, [effectivePlaceholder, minHeight])
 
   // 外部 value 变化时同步到编辑器
   useEffect(() => {

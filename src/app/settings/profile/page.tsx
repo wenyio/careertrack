@@ -205,6 +205,15 @@ export default function ProfilePage() {
       defaultProfileValue={profile?.self_evaluations}
       onProfileChange={(val) => handleChange('self_evaluations', val)}
     />
+  ) : activeModule === 'basic_info' ? (
+    <BasicInfoForm
+      value={formData.basic_info}
+      defaultValue={profile?.basic_info}
+      onChange={(val) => handleChange('basic_info', val)}
+      profileJobIntentions={formData.job_intentions}
+      defaultProfileJobIntentions={profile?.job_intentions}
+      onProfileJobIntentionsChange={(val) => handleChange('job_intentions', val)}
+    />
   ) : (
     <FormComponent
       value={formData[activeModule]}
@@ -277,7 +286,7 @@ export default function ProfilePage() {
               disabled={saveButtonDisabled}
               style={{ borderRadius: 6 }}
             >
-              保存
+              {t('common.save')}
             </Button>
           )}
         </div>

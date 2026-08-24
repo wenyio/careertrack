@@ -102,6 +102,42 @@ export const selfEvaluationEntrySchema = z.object({
   description: descriptionFieldSchema.optional(),
 }).loose()
 
+export const jobIntentionSchema = z.object({
+  current_status: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '当前状态必须是字符串' })
+      .max(100, '当前状态不能超过 100 个字符'),
+  ).optional(),
+  position: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '期望职位必须是字符串' })
+      .max(120, '期望职位不能超过 120 个字符'),
+  ).optional(),
+  expected_city: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '期望工作地必须是字符串' })
+      .max(120, '期望工作地不能超过 120 个字符'),
+  ).optional(),
+  expected_salary: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '期望薪资必须是字符串' })
+      .max(80, '期望薪资不能超过 80 个字符'),
+  ).optional(),
+}).loose()
+
+export const jobIntentionEntrySchema = jobIntentionSchema.extend({
+  id: z.string({ error: '求职意向 ID 必须是字符串' })
+    .trim()
+    .min(1, '求职意向 ID 不能为空')
+    .max(100, '求职意向 ID 不能超过 100 个字符')
+    .optional(),
+  title: z.preprocess(
+    emptyStringWhenNull,
+    z.string({ error: '求职意向标题必须是字符串' })
+      .max(100, '求职意向标题不能超过 100 个字符'),
+  ).optional(),
+}).loose()
+
 export const projectEntrySchema = profileEntrySchema.extend({
   link: safeWebUrlSchema.optional(),
 })
@@ -113,6 +149,7 @@ export const portfolioEntrySchema = profileEntrySchema.extend({
 
 export const basicInfoSchema = z.object({
   avatar: safeWebUrlSchema.optional(),
+  job_intention: jobIntentionSchema.optional(),
   other: z.object({
     website: safeWebUrlSchema.optional(),
     github: safeWebUrlSchema.optional(),
@@ -165,6 +202,7 @@ export const profileArrayEntrySchemas = {
   other_experience: profileEntrySchema,
   research: profileEntrySchema,
   self_evaluations: selfEvaluationEntrySchema,
+  job_intentions: jobIntentionEntrySchema,
 } as const
 
 const profileArrayFieldSchema = z.enum([
@@ -177,6 +215,7 @@ const profileArrayFieldSchema = z.enum([
   'other_experience',
   'research',
   'self_evaluations',
+  'job_intentions',
 ])
 
 const profileEntrySyncModeSchema = z.enum(['create', 'replace'])
@@ -272,6 +311,7 @@ export const profileUpdateBodySchema = z.object({
   other_experience: z.array(profileEntrySchema).max(200, '其他经历数量过多').optional(),
   research: z.array(profileEntrySchema).max(200, '研究经历数量过多').optional(),
   self_evaluations: z.array(selfEvaluationEntrySchema).max(200, '自我评价数量过多').optional(),
+  job_intentions: z.array(jobIntentionEntrySchema).max(200, '求职意向数量过多').optional(),
   summary: descriptionFieldSchema.optional(),
 })
 

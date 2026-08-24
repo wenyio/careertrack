@@ -49,15 +49,13 @@ export default function DateRangeField({
   startDate,
   endDate,
   onChange,
-  label = '时间',
-  placeholder = ['开始时间', '结束时间'],
+  label,
+  placeholder,
   picker = 'month',
 }: DateRangeFieldProps) {
   const { t } = useI18n()
-  const effectiveLabel = label === '时间' ? t('fields.time') : label
-  const effectivePlaceholder: [string, string] = placeholder[0] === '开始时间' && placeholder[1] === '结束时间'
-    ? [t('fields.time'), t('fields.time')]
-    : placeholder
+  const effectiveLabel = label || t('fields.time')
+  const effectivePlaceholder: [string, string] = placeholder ?? [t('fields.startTime'), t('fields.endTime')]
   // 直接从 endDate 派生"至今"状态，无需额外 state 同步
   // '' = 至今，其他值（含 null/undefined）= 非至今
   const isPresent = endDate === ''

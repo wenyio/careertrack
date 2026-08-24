@@ -29,7 +29,7 @@ export default function SkillsForm({ value, defaultValue, onChange, mode, canSyn
     <ArrayModuleForm
       items={items}
       fields={SKILLS_FIELDS}
-      addText="添加专业技能"
+      addTextKey="arrayForm.addSkills"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.skills : undefined}

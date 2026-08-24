@@ -29,6 +29,52 @@ test.describe('简历条目同步到个人信息', () => {
     expect(resume.content.self_evaluations).toBeUndefined()
   })
 
+  test('profile 可保存多条求职意向但新建简历只初始化一条', async ({ request }) => {
+    const account = await createUserByApi(request, 'job-intentions')
+    const profileResponse = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        basic_info: { name: '求职意向用户' },
+        job_intentions: [
+          {
+            id: 'job-1',
+            title: '技术岗位',
+            current_status: '在职',
+            position: '前端工程师',
+            expected_city: '上海',
+            expected_salary: '30-40K',
+          },
+          {
+            id: 'job-2',
+            title: '产品岗位',
+            current_status: '离职',
+            position: '产品经理',
+            expected_city: '北京',
+            expected_salary: '25-35K',
+          },
+        ],
+      },
+    })
+    expect(profileResponse.status(), await profileResponse.text()).toBe(200)
+    const profile = await profileResponse.json()
+    expect(profile.job_intentions).toHaveLength(2)
+    expect(profile.basic_info.job_intention).toMatchObject({
+      position: '前端工程师',
+      expected_city: '上海',
+    })
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_求职意向_${Date.now()}`,
+    )
+    expect(resume.content.basic_info.job_intention).toMatchObject({
+      position: '前端工程师',
+      expected_city: '上海',
+    })
+    expect(resume.content.job_intentions).toBeUndefined()
+  })
+
   test('可新增记录并覆盖指定 profile 条目', async ({ request }) => {
     const account = await createUserByApi(request, 'profile-sync')
 
@@ -177,6 +223,75 @@ test.describe('简历条目同步到个人信息', () => {
 
     await expect(page.locator('.tiptap, [contenteditable="true"], .ProseMirror').first()).toContainText('面向产品岗位')
     await expect(page.locator('.tiptap, [contenteditable="true"], .ProseMirror').first()).not.toContainText('面向技术岗位')
+  })
+
+  test('简历编辑页从多条求职意向中只导入一条', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'job-intention-import')
+    const profileResponse = await request.put('/api/profile', {
+      headers: { Cookie: account.token },
+      data: {
+        basic_info: {
+          name: '导入用户',
+          phone: '13800000000',
+          email: 'job-import@test.com',
+        },
+        job_intentions: [
+          {
+            id: 'job-tech',
+            title: '技术岗位版本',
+            current_status: '在职',
+            position: '前端工程师',
+            expected_city: '上海',
+            expected_salary: '30-40K',
+          },
+          {
+            id: 'job-product',
+            title: '产品岗位版本',
+            current_status: '离职',
+            position: '产品经理',
+            expected_city: '北京',
+            expected_salary: '25-35K',
+          },
+        ],
+      },
+    })
+    expect(profileResponse.status(), await profileResponse.text()).toBe(200)
+
+    const resume = await createResumeByApi(
+      request,
+      account.token,
+      `E2E_TEST_求职意向导入_${Date.now()}`,
+      { initialize_from_profile: false },
+    )
+    const updateResumeResponse = await request.put(`/api/resumes/${resume.id}`, {
+      headers: { Cookie: account.token },
+      data: {
+        revision: resume.revision,
+        content: {
+          basic_info: {
+            name: '当前简历用户',
+            job_intention: {
+              position: '当前岗位',
+              expected_city: '杭州',
+            },
+          },
+        },
+      },
+    })
+    expect(updateResumeResponse.status(), await updateResumeResponse.text()).toBe(200)
+
+    await loginByUi(page, account.username, account.password)
+    await goto(page, `/resumes/${resume.id}/edit`)
+    await expect(page.locator('.resume-a4-preview')).toBeVisible()
+
+    await page.locator('#module-panel-basic_info').getByRole('button', { name: '从个人信息填充' }).click()
+    await expect(page.getByText('选择一条求职意向')).toBeVisible()
+    await page.getByText('产品岗位版本').click()
+    await page.locator('.ant-modal-footer .ant-btn-primary').click()
+
+    await expect(page.getByPlaceholder('请输入姓名')).toHaveValue('导入用户')
+    await expect(page.getByPlaceholder('请输入期望职位')).toHaveValue('产品经理')
+    await expect(page.getByPlaceholder('请输入期望工作地')).toHaveValue('北京')
   })
 
   test('简历编辑页可将自我评价新增或覆盖到个人信息', async ({ page, request }) => {

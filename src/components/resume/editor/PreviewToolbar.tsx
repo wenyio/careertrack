@@ -8,6 +8,7 @@
 
 import { useRef } from 'react'
 import { useEntryGapAsPadding } from '@/hooks/useEntryGapAsPadding'
+import { useI18n } from '@/i18n'
 
 /** SVG 图标 */
 export const ChevronUp = () => (
@@ -60,6 +61,7 @@ export function SubItemActions({
   onMoveDown: (e: React.MouseEvent<HTMLButtonElement>) => void
   onDelete: (e: React.MouseEvent<HTMLButtonElement>) => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="preview-subitem-actions" style={{
       position: 'absolute',
@@ -76,9 +78,9 @@ export function SubItemActions({
       opacity: 0,
       pointerEvents: 'none',
     }}>
-      <button type="button" aria-label="上移条目" disabled={!canMoveUp} onClick={onMoveUp} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
-      <button type="button" aria-label="下移条目" disabled={!canMoveDown} onClick={onMoveDown} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
-      <button type="button" aria-label="删除条目" onClick={onDelete} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
+      <button type="button" aria-label={t('resumeEditor.moveItemUp')} disabled={!canMoveUp} onClick={onMoveUp} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
+      <button type="button" aria-label={t('resumeEditor.moveItemDown')} disabled={!canMoveDown} onClick={onMoveDown} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
+      <button type="button" aria-label={t('resumeEditor.deleteItem')} onClick={onDelete} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
     </div>
   )
 }
@@ -138,6 +140,7 @@ export function ModuleToolbar({
   onMoveUp: () => void
   onMoveDown: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="preview-module-toolbar" style={{
       position: 'absolute',
@@ -154,10 +157,10 @@ export function ModuleToolbar({
       opacity: 0,
       pointerEvents: 'none',
     }}>
-      {showAdd && <button type="button" aria-label="添加模块条目" onClick={(e) => { e.stopPropagation(); onAdd() }} style={toolbarBtnStyle(true, '#52c41a')}><PlusIcon /></button>}
-      <button type="button" aria-label="上移模块" disabled={!canMoveUp} onClick={(e) => { e.stopPropagation(); onMoveUp() }} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
-      <button type="button" aria-label="下移模块" disabled={!canMoveDown} onClick={(e) => { e.stopPropagation(); onMoveDown() }} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
-      <button type="button" aria-label="删除模块" onClick={(e) => { e.stopPropagation(); onDelete() }} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
+      {showAdd && <button type="button" aria-label={t('resumeEditor.addModuleItem')} onClick={(e) => { e.stopPropagation(); onAdd() }} style={toolbarBtnStyle(true, '#52c41a')}><PlusIcon /></button>}
+      <button type="button" aria-label={t('resumeEditor.moveModuleUp')} disabled={!canMoveUp} onClick={(e) => { e.stopPropagation(); onMoveUp() }} style={toolbarBtnStyle(canMoveUp)}><ChevronUp /></button>
+      <button type="button" aria-label={t('resumeEditor.moveModuleDown')} disabled={!canMoveDown} onClick={(e) => { e.stopPropagation(); onMoveDown() }} style={toolbarBtnStyle(canMoveDown)}><ChevronDown /></button>
+      <button type="button" aria-label={t('resumeEditor.deleteModule')} onClick={(e) => { e.stopPropagation(); onDelete() }} style={toolbarBtnStyle(true, '#ff4d4f')}><TrashIcon /></button>
     </div>
   )
 }

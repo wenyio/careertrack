@@ -18,6 +18,7 @@ export type QueryResult<T = Record<string, unknown>> = DatabaseQueryResult<T>
 const JSON_COLUMNS = new Set([
   'basic_info', 'education', 'skills', 'work_experience', 'projects',
   'portfolio', 'awards', 'other_experience', 'research', 'self_evaluations',
+  'job_intentions',
   'modules_config', 'modules_order', 'content',
   'otp_recovery_codes', 'snapshot',
   'metadata',

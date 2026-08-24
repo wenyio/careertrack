@@ -29,7 +29,7 @@ export default function PortfolioForm({ value, defaultValue, onChange, mode, can
     <ArrayModuleForm
       items={items}
       fields={PORTFOLIO_FIELDS}
-      addText="添加个人作品"
+      addTextKey="arrayForm.addPortfolio"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.portfolio : undefined}

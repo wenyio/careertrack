@@ -12,7 +12,7 @@ import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
 import { messages } from '@/i18n/messages'
 
 const MODULE_TITLE_KEYS: Record<ResumeModuleType, keyof typeof messages['en-US']['modules'] | ''> = {
-  basic_info: '',
+  basic_info: 'basic_info',
   summary: 'summary',
   skills: 'skills',
   education: 'education',

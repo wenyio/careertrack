@@ -25,6 +25,8 @@ const PROFILE_ARRAY_FIELDS = [
   'awards',
   'other_experience',
   'research',
+  'self_evaluations',
+  'job_intentions',
 ] as const
 
 /** 注册 Profile 领域工具；只读 Key 只会看到 profile_get。 */

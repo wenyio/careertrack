@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     other_experience TEXT DEFAULT '[]',
     research TEXT DEFAULT '[]',
     self_evaluations TEXT DEFAULT '[]',
+    job_intentions TEXT DEFAULT '[]',
     summary TEXT DEFAULT '',           -- 兼容默认自我评价
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -276,6 +277,7 @@ CREATE TABLE profiles (
     other_experience JSONB DEFAULT '[]',   -- 其他经历
     research JSONB DEFAULT '[]',           -- 研究经历
     self_evaluations JSONB DEFAULT '[]',   -- 多条自我评价
+    job_intentions JSONB DEFAULT '[]',      -- 多条求职意向
 
     -- 兼容旧版个人简介，保存默认自我评价
     summary TEXT DEFAULT '',
@@ -327,6 +329,16 @@ CREATE INDEX idx_profiles_user_id ON profiles(user_id);
   "college": "计算机学院",
   "city": "北京",
   "description": "在校经历描述"
+}
+
+// job_intentions 数组中的单个对象
+{
+  "id": "uuid",
+  "title": "技术岗位版本",
+  "current_status": "在职",
+  "position": "前端工程师",
+  "expected_city": "北京",
+  "expected_salary": "20-30K"
 }
 
 // skills 数组中的单个对象

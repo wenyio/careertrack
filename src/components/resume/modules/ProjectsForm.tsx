@@ -29,7 +29,7 @@ export default function ProjectsForm({ value, defaultValue, onChange, mode, canS
     <ArrayModuleForm
       items={items}
       fields={PROJECT_FIELDS}
-      addText="添加项目经历"
+      addTextKey="arrayForm.addProjects"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.projects : undefined}

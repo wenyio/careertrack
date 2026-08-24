@@ -370,6 +370,78 @@ const migrations: Migration[] = [
       )
     },
   },
+  {
+    version: '011_profile_job_intentions',
+    async run(driver, query) {
+      if (driver === 'sqlite') {
+        const table = await query<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'profiles'",
+        )
+        if (table.rows.length === 0) return
+
+        const columns = await query<{ name: string }>('PRAGMA table_info(profiles)')
+        if (!columns.rows.some((column) => column.name === 'job_intentions')) {
+          await query(
+            "ALTER TABLE profiles ADD COLUMN job_intentions TEXT DEFAULT '[]'",
+          )
+        }
+        if (!columns.rows.some((column) => column.name === 'basic_info')) return
+        await query(
+          `UPDATE profiles
+           SET job_intentions = json_array(json_object(
+             'id', 'legacy-job-intention',
+             'title', COALESCE(NULLIF(json_extract(basic_info, '$.job_intention.position'), ''), '默认求职意向'),
+             'current_status', COALESCE(json_extract(basic_info, '$.job_intention.current_status'), ''),
+             'position', COALESCE(json_extract(basic_info, '$.job_intention.position'), ''),
+             'expected_city', COALESCE(json_extract(basic_info, '$.job_intention.expected_city'), ''),
+             'expected_salary', COALESCE(json_extract(basic_info, '$.job_intention.expected_salary'), '')
+           ))
+           WHERE basic_info IS NOT NULL
+             AND json_type(basic_info, '$.job_intention') = 'object'
+             AND (
+               COALESCE(json_extract(basic_info, '$.job_intention.current_status'), '') <> ''
+               OR COALESCE(json_extract(basic_info, '$.job_intention.position'), '') <> ''
+               OR COALESCE(json_extract(basic_info, '$.job_intention.expected_city'), '') <> ''
+               OR COALESCE(json_extract(basic_info, '$.job_intention.expected_salary'), '') <> ''
+             )
+             AND (job_intentions IS NULL OR job_intentions = '[]')`,
+        )
+        return
+      }
+
+      const table = await query<{ table_name: string }>(
+        `SELECT table_name
+         FROM information_schema.tables
+         WHERE table_schema = current_schema()
+           AND table_name = 'profiles'`,
+      )
+      if (table.rows.length === 0) return
+
+      await query(
+        "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS job_intentions JSONB DEFAULT '[]'",
+      )
+      await query(
+        `UPDATE profiles
+         SET job_intentions = jsonb_build_array(jsonb_build_object(
+           'id', 'legacy-job-intention',
+           'title', COALESCE(NULLIF(basic_info #>> '{job_intention,position}', ''), '默认求职意向'),
+           'current_status', COALESCE(basic_info #>> '{job_intention,current_status}', ''),
+           'position', COALESCE(basic_info #>> '{job_intention,position}', ''),
+           'expected_city', COALESCE(basic_info #>> '{job_intention,expected_city}', ''),
+           'expected_salary', COALESCE(basic_info #>> '{job_intention,expected_salary}', '')
+         ))
+         WHERE basic_info ? 'job_intention'
+           AND jsonb_typeof(basic_info -> 'job_intention') = 'object'
+           AND (
+             COALESCE(basic_info #>> '{job_intention,current_status}', '') <> ''
+             OR COALESCE(basic_info #>> '{job_intention,position}', '') <> ''
+             OR COALESCE(basic_info #>> '{job_intention,expected_city}', '') <> ''
+             OR COALESCE(basic_info #>> '{job_intention,expected_salary}', '') <> ''
+           )
+           AND (job_intentions IS NULL OR job_intentions = '[]'::jsonb)`,
+      )
+    },
+  },
 ]
 
 export async function runMigrations(

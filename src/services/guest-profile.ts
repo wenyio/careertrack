@@ -20,6 +20,7 @@ import type {
   OtherExperience,
   Research,
   SelfEvaluation,
+  JobIntentionEntry,
 } from '@/types/profile'
 
 /**
@@ -39,6 +40,7 @@ export interface GuestProfile {
   other_experience?: Partial<OtherExperience>[]
   research?: Partial<Research>[]
   self_evaluations?: Partial<SelfEvaluation>[]
+  job_intentions?: Partial<JobIntentionEntry>[]
   summary?: string
 }
 

@@ -34,6 +34,7 @@ function createProfile(
     other_experience: [],
     research: [],
     self_evaluations: [],
+    job_intentions: [],
     summary: '',
     created_at: '2026-07-30T00:00:00.000Z',
     updated_at: '2026-07-30T00:00:00.000Z',
@@ -73,6 +74,33 @@ describe('profile service concurrency', () => {
         id: 'legacy-summary',
         title: '默认自我评价',
         description: '旧版简介',
+      }],
+    })
+  })
+
+  it('derives job intentions from legacy basic info when the array is missing', async () => {
+    const legacyProfile = createProfile([], {
+      job_intention: {
+        current_status: '在职',
+        position: '前端工程师',
+        expected_city: '上海',
+        expected_salary: '30-40K',
+      },
+    })
+    delete (legacyProfile as unknown as Record<string, unknown>).job_intentions
+    const database: DatabaseQuery = async () => ({
+      rows: [legacyProfile],
+      rowCount: 1,
+    })
+
+    await expect(getProfile('user-1', database)).resolves.toMatchObject({
+      job_intentions: [{
+        id: 'legacy-job-intention',
+        title: '前端工程师',
+        current_status: '在职',
+        position: '前端工程师',
+        expected_city: '上海',
+        expected_salary: '30-40K',
       }],
     })
   })
@@ -266,6 +294,88 @@ describe('profile service concurrency', () => {
     expect(replaced.summary).toBe('面向产品岗位')
   })
 
+  it('syncs job intentions from resume and refreshes the compatibility basic info', async () => {
+    let entries: Record<string, unknown>[] = []
+    let basicInfo: Record<string, unknown> = { name: '张三' }
+    const database: DatabaseQuery = async (sql, params) => {
+      if (sql.startsWith('SELECT')) {
+        return {
+          rows: [createProfile([], structuredClone(basicInfo), {
+            job_intentions: structuredClone(entries) as Profile['job_intentions'],
+          })],
+          rowCount: 1,
+        }
+      }
+
+      entries = JSON.parse(String(params?.[0])) as Record<string, unknown>[]
+      basicInfo = JSON.parse(String(params?.[3])) as Record<string, unknown>
+      return {
+        rows: [createProfile([], basicInfo, {
+          job_intentions: entries as Profile['job_intentions'],
+        })],
+        rowCount: 1,
+      }
+    }
+
+    const created = await addProfileEntryFromResume(
+      'user-1',
+      'job_intentions',
+      {
+        id: 'resume-intention',
+        title: '技术岗位',
+        current_status: '在职',
+        position: '前端工程师',
+        expected_city: '上海',
+        expected_salary: '30-40K',
+      },
+      database,
+    )
+
+    expect(created.job_intentions).toHaveLength(1)
+    expect(created.job_intentions[0]).toMatchObject({
+      title: '技术岗位',
+      position: '前端工程师',
+    })
+    expect(created.job_intentions[0].id).not.toBe('resume-intention')
+    expect(created.basic_info).toMatchObject({
+      name: '张三',
+      job_intention: {
+        position: '前端工程师',
+        expected_city: '上海',
+      },
+    })
+
+    const targetId = created.job_intentions[0].id
+    const replaced = await replaceProfileEntryFromResume(
+      'user-1',
+      'job_intentions',
+      targetId,
+      {
+        title: '产品岗位',
+        current_status: '离职',
+        position: '产品经理',
+        expected_city: '北京',
+        expected_salary: '25-35K',
+      },
+      database,
+    )
+
+    expect(replaced.job_intentions).toEqual([{
+      id: targetId,
+      title: '产品岗位',
+      current_status: '离职',
+      position: '产品经理',
+      expected_city: '北京',
+      expected_salary: '25-35K',
+    }])
+    expect(replaced.basic_info.job_intention).toMatchObject({
+      current_status: '离职',
+      position: '产品经理',
+      expected_city: '北京',
+      expected_salary: '25-35K',
+    })
+  })
+
   it('retries a nested basic-info patch without losing a concurrent field', async () => {
     let basicInfo: Record<string, unknown> = {
       name: 'Old',
@@ -357,6 +467,41 @@ describe('profile service SQLite dialect', () => {
             { id: 'eval-2', title: '产品岗位', description: '面向产品岗位' },
           ],
           summary: '面向技术岗位',
+        })
+        await expect(updateProfile(
+          'user-1',
+          {
+            job_intentions: [
+              {
+                id: 'job-1',
+                title: '技术岗位',
+                current_status: '在职',
+                position: '前端工程师',
+                expected_city: '上海',
+                expected_salary: '30-40K',
+              },
+              {
+                id: 'job-2',
+                title: '产品岗位',
+                current_status: '离职',
+                position: '产品经理',
+                expected_city: '北京',
+                expected_salary: '25-35K',
+              },
+            ],
+          },
+          database,
+        )).resolves.toMatchObject({
+          job_intentions: [
+            { id: 'job-1', title: '技术岗位', position: '前端工程师' },
+            { id: 'job-2', title: '产品岗位', position: '产品经理' },
+          ],
+          basic_info: {
+            job_intention: {
+              position: '前端工程师',
+              expected_city: '上海',
+            },
+          },
         })
         await expect(addProfileEntry(
           'user-1',

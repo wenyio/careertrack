@@ -9,6 +9,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useI18n } from '@/i18n'
 
 interface SortableItemProps {
   id: string
@@ -25,6 +26,7 @@ export default function SortableItem({
   disabled = false,
   dragHandle = true,
 }: SortableItemProps) {
+  const { t } = useI18n()
   const {
     attributes,
     listeners,
@@ -52,7 +54,7 @@ export default function SortableItem({
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
-            aria-label={`拖动${label}排序`}
+            aria-label={t('resumeEditor.dragModuleSortAria', { title: label })}
             style={{
               cursor: disabled ? 'default' : 'grab',
               padding: '8px 4px',

@@ -103,6 +103,7 @@ describe('versioned storage migrations', () => {
     expect(versions).toContain('008_job_application_events')
     expect(versions).toContain('009_job_application_event_utc_ordering')
     expect(versions).toContain('010_profile_self_evaluations')
+    expect(versions).toContain('011_profile_job_intentions')
 
     const versionTable = database.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'resume_versions'",
@@ -178,6 +179,75 @@ describe('versioned storage migrations', () => {
     expect(entries[0]).toMatchObject({
       title: '默认自我评价',
       description: '旧版简介',
+    })
+    expect(entries[0].id).toBeTruthy()
+
+    database.close()
+  })
+
+  it('adds job intentions and preserves legacy basic-info job intention', async () => {
+    const database = new Database(':memory:')
+    database.pragma('foreign_keys = ON')
+    database.exec(`
+      CREATE TABLE schema_migrations (
+        version VARCHAR(100) PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        otp_secret VARCHAR(100)
+      );
+      CREATE TABLE profiles (
+        id TEXT PRIMARY KEY,
+        user_id TEXT UNIQUE NOT NULL,
+        basic_info TEXT DEFAULT '{}',
+        summary TEXT DEFAULT ''
+      );
+      CREATE TABLE resumes (
+        id TEXT PRIMARY KEY,
+        revision INTEGER NOT NULL DEFAULT 1
+      );
+      CREATE TABLE registration_codes (
+        id TEXT PRIMARY KEY,
+        code_hash VARCHAR(64) NOT NULL
+      );
+      INSERT INTO profiles (id, user_id, basic_info)
+      VALUES (
+        'profile-legacy',
+        'user-legacy',
+        '{"job_intention":{"current_status":"在职","position":"前端工程师","expected_city":"上海","expected_salary":"30-40K"}}'
+      );
+    `)
+
+    const query = sqliteQuery(database)
+    const transaction: DatabaseTransaction = async (callback) => {
+      database.exec('BEGIN')
+      try {
+        const result = await callback(query)
+        database.exec('COMMIT')
+        return result
+      } catch (error) {
+        database.exec('ROLLBACK')
+        throw error
+      }
+    }
+
+    await runMigrations('sqlite', transaction)
+
+    const migrated = database.prepare(
+      `SELECT job_intentions
+       FROM profiles
+       WHERE id = 'profile-legacy'`,
+    ).get() as { job_intentions: string }
+    const entries = JSON.parse(migrated.job_intentions)
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      title: '前端工程师',
+      current_status: '在职',
+      position: '前端工程师',
+      expected_city: '上海',
+      expected_salary: '30-40K',
     })
     expect(entries[0].id).toBeTruthy()
 

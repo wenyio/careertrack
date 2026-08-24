@@ -157,7 +157,7 @@ curl -X POST https://your-domain.com/api/mcp \
 |--------|------|
 | `profile_get` | 获取当前用户的完整个人信息 |
 | `profile_update` | 局部更新 basic_info 和兼容单条 summary |
-| `profile_add_entry` | 向数组字段添加新条目（教育、工作经历等） |
+| `profile_add_entry` | 向数组字段添加新条目（教育、工作经历、自我评价、求职意向等） |
 | `profile_update_entry` | 更新数组字段中的某个条目（按 id，局部 merge） |
 | `profile_delete_entry` | 删除数组字段中的某个条目 |
 | `profile_update_rich_text` | 更新数组条目的富文本字段（支持 plainText/doc） |

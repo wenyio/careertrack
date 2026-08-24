@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     other_experience TEXT DEFAULT '[]',
     research TEXT DEFAULT '[]',
     self_evaluations TEXT DEFAULT '[]',
+    job_intentions TEXT DEFAULT '[]',
     summary TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -245,6 +246,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     other_experience JSONB DEFAULT '[]',
     research JSONB DEFAULT '[]',
     self_evaluations JSONB DEFAULT '[]',
+    job_intentions JSONB DEFAULT '[]',
     summary TEXT DEFAULT '',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

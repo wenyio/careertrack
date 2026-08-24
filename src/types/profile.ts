@@ -12,6 +12,12 @@ export interface JobIntention {
   expected_salary: string // 期望薪资
 }
 
+/** 个人信息中的多条求职意向 */
+export interface JobIntentionEntry extends JobIntention {
+  id: string
+  title: string
+}
+
 /** 其他基本信息 */
 export interface OtherInfo {
   education_level: string  // 最高学历
@@ -145,6 +151,7 @@ export type ProfileArrayField =
   | 'other_experience'
   | 'research'
   | 'self_evaluations'
+  | 'job_intentions'
 
 export type ProfileEntrySyncMode = 'create' | 'replace'
 
@@ -169,6 +176,7 @@ export interface Profile {
   other_experience: OtherExperience[]
   research: Research[]
   self_evaluations: SelfEvaluation[]
+  job_intentions: JobIntentionEntry[]
   summary: DescriptionField       // 兼容旧版个人简介，取默认自我评价
   created_at: string
   updated_at: string

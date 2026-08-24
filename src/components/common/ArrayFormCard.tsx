@@ -9,6 +9,7 @@
 
 import { Button, Card, Space } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useI18n } from '@/i18n'
 
 interface ArrayFormItemCardProps {
   /** 卡片内容 */
@@ -29,6 +30,7 @@ interface ArrayFormItemCardProps {
  * 统一了所有数组类表单的卡片样式和删除按钮
  */
 export function ArrayFormItemCard({ children, id, index, onRemove, actions }: ArrayFormItemCardProps) {
+  const { t } = useI18n()
   return (
     <Card
       key={id || index}
@@ -40,6 +42,7 @@ export function ArrayFormItemCard({ children, id, index, onRemove, actions }: Ar
             type="text"
             danger
             icon={<DeleteOutlined />}
+            aria-label={t('resumeEditor.deleteItem')}
             onClick={onRemove}
           />
         </Space>

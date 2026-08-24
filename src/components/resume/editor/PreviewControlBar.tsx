@@ -15,6 +15,7 @@ import {
   RESUME_PREVIEW_LINE_HEIGHT_MAX,
   RESUME_PREVIEW_LINE_HEIGHT_MIN,
 } from '@/config/resume-preview'
+import { useI18n } from '@/i18n'
 
 interface PreviewControlBarProps {
   /** 字体大小 */
@@ -39,6 +40,7 @@ export default function PreviewControlBar({
   zoom,
   onZoomChange,
 }: PreviewControlBarProps) {
+  const { t } = useI18n()
   return (
     <div style={{
       display: 'flex',
@@ -50,7 +52,7 @@ export default function PreviewControlBar({
       flexShrink: 0,
       flexWrap: 'wrap',
     }}>
-      <span style={{ fontSize: 11, color: '#999', flexShrink: 0 }}>预览</span>
+      <span style={{ fontSize: 11, color: '#999', flexShrink: 0 }}>{t('resumeEditor.preview')}</span>
       <div style={{ flex: 1 }} />
 
       {/* 字体大小 */}
@@ -58,11 +60,11 @@ export default function PreviewControlBar({
         htmlFor="resume-preview-font-size"
         style={{ fontSize: 10, color: '#999' }}
       >
-        字号
+        {t('resumeEditor.fontSize')}
       </label>
       <select
         id="resume-preview-font-size"
-        aria-label="预览字号"
+        aria-label={t('resumeEditor.previewFontSize')}
         value={fontSize}
         onChange={(e) => onFontSizeChange(Number(e.target.value))}
         style={{ fontSize: 11, border: '1px solid #d9d9d9', borderRadius: 4, padding: '1px 4px', color: '#555', backgroundColor: '#fff', cursor: 'pointer' }}
@@ -77,11 +79,11 @@ export default function PreviewControlBar({
         htmlFor="resume-preview-line-height"
         style={{ fontSize: 10, color: '#999', marginLeft: 4 }}
       >
-        行距
+        {t('resumeEditor.lineHeight')}
       </label>
       <input
         id="resume-preview-line-height"
-        aria-label="预览行距"
+        aria-label={t('resumeEditor.previewLineHeight')}
         type="number"
         min={RESUME_PREVIEW_LINE_HEIGHT_MIN}
         max={RESUME_PREVIEW_LINE_HEIGHT_MAX}
@@ -101,7 +103,7 @@ export default function PreviewControlBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
         <button
           type="button"
-          aria-label="缩小预览"
+          aria-label={t('resumeEditor.zoomOutPreview')}
           onClick={() => onZoomChange(Math.max(0.5, +(zoom - 0.1).toFixed(1)))}
           style={{
             width: 22, height: 22, border: '1px solid #d9d9d9', borderRadius: 4,
@@ -114,7 +116,7 @@ export default function PreviewControlBar({
         </span>
         <button
           type="button"
-          aria-label="放大预览"
+          aria-label={t('resumeEditor.zoomInPreview')}
           onClick={() => onZoomChange(Math.min(1.5, +(zoom + 0.1).toFixed(1)))}
           style={{
             width: 22, height: 22, border: '1px solid #d9d9d9', borderRadius: 4,
@@ -124,13 +126,13 @@ export default function PreviewControlBar({
         >+</button>
         <button
           type="button"
-          aria-label="重置预览缩放"
+          aria-label={t('resumeEditor.resetPreviewZoom')}
           onClick={() => onZoomChange(0.8)}
           style={{
             height: 20, border: '1px solid #d9d9d9', borderRadius: 4, padding: '0 6px',
             backgroundColor: '#fff', cursor: 'pointer', fontSize: 10, color: '#555',
           }}
-        >重置</button>
+        >{t('resumeEditor.reset')}</button>
       </div>
     </div>
   )

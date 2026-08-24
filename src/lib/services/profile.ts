@@ -13,6 +13,11 @@ import {
   normalizeSelfEvaluations,
   serializeDescriptionForTextColumn,
 } from '@/utils/self-evaluation'
+import {
+  getPrimaryJobIntention,
+  normalizeJobIntentions,
+  syncPrimaryJobIntentionEntry,
+} from '@/utils/job-intention'
 
 export type { ProfileArrayField } from '@/types/profile'
 
@@ -25,6 +30,10 @@ function normalizeProfile(row: unknown): Profile {
   profile.self_evaluations = normalizeSelfEvaluations(
     (profile as unknown as Record<string, unknown>).self_evaluations,
     profile.summary,
+  )
+  profile.job_intentions = normalizeJobIntentions(
+    (profile as unknown as Record<string, unknown>).job_intentions,
+    profile.basic_info?.job_intention,
   )
   return profile
 }
@@ -79,7 +88,7 @@ export async function updateProfile(
   const fields = [
     'basic_info', 'education', 'skills', 'work_experience',
     'projects', 'portfolio', 'awards', 'other_experience',
-    'research', 'self_evaluations', 'summary',
+    'research', 'self_evaluations', 'job_intentions', 'summary',
   ]
   const normalizedUpdates = { ...updates }
 
@@ -89,6 +98,16 @@ export async function updateProfile(
         normalizedUpdates.self_evaluations as Profile['self_evaluations'],
       ),
     )
+  }
+  if (normalizedUpdates.job_intentions !== undefined) {
+    const primary = getPrimaryJobIntention(normalizedUpdates.job_intentions)
+    const currentBasicInfo = normalizedUpdates.basic_info === undefined
+      ? (await getProfile(userId, database)).basic_info
+      : normalizedUpdates.basic_info
+    normalizedUpdates.basic_info = {
+      ...(currentBasicInfo && typeof currentBasicInfo === 'object' ? currentBasicInfo : {}),
+      job_intention: primary,
+    }
   }
 
   const setClauses: string[] = []
@@ -312,12 +331,29 @@ async function mutateJsonProfileField<T>(
         getPrimarySelfEvaluationDescription(updated as Profile['self_evaluations']),
       )
       : summary
-    const summaryClause = syncedSummary === undefined ? '' : ', summary = $4'
+    const syncedBasicInfo = field === 'job_intentions'
+      ? {
+        ...(profile.basic_info || {}),
+        job_intention: getPrimaryJobIntention(updated),
+      }
+      : undefined
+    const syncedJobIntentions = field === 'basic_info'
+      && (updated as Record<string, unknown>).job_intention !== undefined
+      ? syncPrimaryJobIntentionEntry(
+        (profile as unknown as Record<string, unknown>).job_intentions,
+        (updated as Record<string, unknown>).job_intention,
+      )
+      : undefined
+    const summaryClause = syncedSummary === undefined ? '' : `, summary = $${values.length + 1}`
     if (syncedSummary !== undefined) values.push(syncedSummary)
+    const basicInfoClause = syncedBasicInfo === undefined ? '' : `, basic_info = $${values.length + 1}`
+    if (syncedBasicInfo !== undefined) values.push(JSON.stringify(syncedBasicInfo))
+    const jobIntentionsClause = syncedJobIntentions === undefined ? '' : `, job_intentions = $${values.length + 1}`
+    if (syncedJobIntentions !== undefined) values.push(JSON.stringify(syncedJobIntentions))
 
     const result = await database(
       `UPDATE profiles
-       SET ${field} = $1${summaryClause}, updated_at = NOW()
+       SET ${field} = $1${summaryClause}${basicInfoClause}${jobIntentionsClause}, updated_at = NOW()
        WHERE user_id = $2 AND ${field} = $3
        RETURNING *`,
       values,

@@ -29,7 +29,7 @@ export default function EducationForm({ value, defaultValue, onChange, mode, can
     <ArrayModuleForm
       items={items}
       fields={EDUCATION_FIELDS}
-      addText="添加教育经历"
+      addTextKey="arrayForm.addEducation"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.education : undefined}

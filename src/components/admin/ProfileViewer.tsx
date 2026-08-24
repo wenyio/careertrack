@@ -8,7 +8,7 @@
 'use client'
 
 import { Descriptions, Tag, Typography, Card, Collapse } from 'antd'
-import type { Profile, Education, WorkExperience, Project, Skill, SelfEvaluation } from '@/types/profile'
+import type { Profile, Education, WorkExperience, Project, Skill, SelfEvaluation, JobIntentionEntry } from '@/types/profile'
 import { formatDate } from '@/utils/format'
 import { desc } from '@/utils/resume-preview'
 import { useI18n } from '@/i18n'
@@ -145,6 +145,26 @@ function SimpleList({ items, renderItem }: { items: any[]; renderItem: (item: an
   )
 }
 
+function JobIntentionList({ items }: { items: JobIntentionEntry[] }) {
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {items.map((item, index) => (
+        <Card key={item.id || index} size="small">
+          <Text strong>{item.title || item.position || t('basicInfo.defaultJobIntention')}</Text>
+          <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small" style={{ marginTop: 8 }}>
+            <Descriptions.Item label={t('admin.currentStatus')}>{item.current_status || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('admin.expectedPosition')}>{item.position || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('admin.expectedCity')}>{item.expected_city || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('admin.expectedSalary')}>{item.expected_salary || '-'}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 export default function ProfileViewer({ profile }: ProfileViewerProps) {
   const { t } = useI18n()
   const basicInfo = profile.basic_info
@@ -171,15 +191,8 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
     },
     {
       key: 'intention',
-      label: t('admin.jobIntention'),
-      children: basicInfo?.job_intention ? (
-        <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-          <Descriptions.Item label={t('admin.currentStatus')}>{basicInfo.job_intention.current_status || '-'}</Descriptions.Item>
-          <Descriptions.Item label={t('admin.expectedPosition')}>{basicInfo.job_intention.position || '-'}</Descriptions.Item>
-          <Descriptions.Item label={t('admin.expectedCity')}>{basicInfo.job_intention.expected_city || '-'}</Descriptions.Item>
-          <Descriptions.Item label={t('admin.expectedSalary')}>{basicInfo.job_intention.expected_salary || '-'}</Descriptions.Item>
-        </Descriptions>
-      ) : <Text type="secondary">{t('admin.none')}</Text>,
+      label: `${t('admin.jobIntention')} (${profile.job_intentions?.length ?? 0})`,
+      children: <JobIntentionList items={profile.job_intentions || []} />,
     },
     {
       key: 'education',

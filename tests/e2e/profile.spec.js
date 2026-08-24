@@ -23,7 +23,7 @@ test.describe('个人信息管理', () => {
     await expect(page.getByText('工作经历').first()).toBeVisible()
 
     // 回到基本信息并填写
-    await page.getByText('基本信息', { exact: true }).click()
+    await page.getByRole('button', { name: /基本信息/ }).click()
     await page.getByPlaceholder('请输入姓名').fill('E2E_测试用户')
     await page.getByPlaceholder('请输入电话').fill('13900139000')
     await page.getByPlaceholder('请输入邮箱').fill('e2e@test.com')
@@ -75,5 +75,32 @@ test.describe('个人信息管理', () => {
     await expect(page.getByPlaceholder('例如：产品岗位版本、技术岗位版本')).toHaveValue('产品岗位版本')
     await expect(page.getByText('面向技术岗位')).toBeVisible()
     await expect(page.getByText('面向产品岗位')).toBeVisible()
+  })
+
+  test('求职意向支持多条保存与刷新持久化', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'jobint')
+    await loginByUi(page, account.username, account.password)
+
+    await goto(page, '/settings/profile')
+    await page.getByRole('button', { name: /基本信息/ }).click()
+    await page.getByPlaceholder('默认求职意向').fill('技术岗位版本')
+    await page.getByPlaceholder('请输入期望职位').first().fill('前端工程师')
+    await page.getByPlaceholder('请输入期望工作地').first().fill('上海')
+    await page.getByRole('button', { name: '添加求职意向' }).click()
+    await page.getByPlaceholder('例如：前端岗位版本、产品岗位版本').fill('产品岗位版本')
+    await page.getByPlaceholder('请输入期望职位').nth(1).fill('产品经理')
+    await page.getByPlaceholder('请输入期望工作地').nth(1).fill('北京')
+
+    const profileResponse = page.waitForResponse((r) => r.url().includes('/api/profile') && r.request().method() === 'PUT')
+    await page.getByRole('button', { name: /保存更改/ }).click()
+    expect((await profileResponse).ok()).toBeTruthy()
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
+    await page.getByRole('button', { name: /基本信息/ }).click()
+    await expect(page.getByPlaceholder('默认求职意向')).toHaveValue('技术岗位版本')
+    await expect(page.getByPlaceholder('例如：前端岗位版本、产品岗位版本')).toHaveValue('产品岗位版本')
+    await expect(page.getByPlaceholder('请输入期望职位').first()).toHaveValue('前端工程师')
+    await expect(page.getByPlaceholder('请输入期望职位').nth(1)).toHaveValue('产品经理')
   })
 })

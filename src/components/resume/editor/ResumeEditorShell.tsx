@@ -20,6 +20,7 @@ import ResumeFormPane from './ResumeFormPane'
 import ResumePreviewPane from './ResumePreviewPane'
 import type { Profile } from '@/types/profile'
 import type { Resume } from '@/types/resume'
+import { useI18n } from '@/i18n'
 
 interface ResumeEditorShellProps {
   profile?: Profile | null
@@ -65,6 +66,7 @@ export default function ResumeEditorShell({
   flushCurrentSave,
 }: ResumeEditorShellProps) {
   const router = useRouter()
+  const { t } = useI18n()
 
   // 返回列表
   const handleBack = useCallback(() => {
@@ -114,8 +116,8 @@ export default function ResumeEditorShell({
   if (resumeNotFound) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
-        <span>简历不存在</span>
-        <Button type="link" onClick={handleBack}>返回列表</Button>
+        <span>{t('resume.notFound')}</span>
+        <Button type="link" onClick={handleBack}>{t('resumeEditor.notFoundBack')}</Button>
       </div>
     )
   }

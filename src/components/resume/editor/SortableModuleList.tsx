@@ -48,7 +48,7 @@ export default function SortableModuleList({
   onToggle,
   onSelect,
 }: SortableModuleListProps) {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -150,7 +150,7 @@ export default function SortableModuleList({
                       <Switch
                         size="small"
                         checked={isEnabled}
-                        aria-label={`显示${moduleTitle}`}
+                        aria-label={t('resumeEditor.showModuleAria', { title: moduleTitle })}
                         onChange={(checked) => onToggle(moduleKey, checked)}
                       />
                     </div>

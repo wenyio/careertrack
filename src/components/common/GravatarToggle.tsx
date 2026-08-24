@@ -11,23 +11,7 @@ import { useState } from 'react'
 import { Switch, Tooltip, Space, Avatar, Input, message } from 'antd'
 import { QuestionCircleOutlined, UserOutlined } from '@ant-design/icons'
 import { getGravatarUrl, isGravatarUrl } from '@/utils/avatar'
-
-const TOOLTIP_CONTENT = (
-  <span>
-    开启后，系统会使用邮箱对应的 Gravatar 作为头像。
-    <br />
-    你可以使用
-    <a
-      href="/settings/avatar-tool"
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ color: '#91caff', marginLeft: 4 }}
-    >
-      证件照工具
-    </a>
-    生成方图，再上传到 Gravatar。
-  </span>
-)
+import { useI18n } from '@/i18n'
 
 interface GravatarToggleProps {
   /** 当前头像 URL */
@@ -46,8 +30,25 @@ export default function GravatarToggle({
   showManualInput = false,
   onAvatarChange,
 }: GravatarToggleProps) {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(false)
   const usingGravatar = isGravatarUrl(avatar)
+  const tooltipContent = (
+    <span>
+      {t('basicInfo.gravatarTooltipPrefix')}
+      <br />
+      {t('basicInfo.gravatarTooltipActionPrefix')}{' '}
+      <a
+        href="/settings/avatar-tool"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#91caff' }}
+      >
+        {t('basicInfo.gravatarTooltipLink')}
+      </a>{' '}
+      {t('basicInfo.gravatarTooltipSuffix')}
+    </span>
+  )
 
   const handleToggle = async (on: boolean) => {
     if (on) {
@@ -57,7 +58,7 @@ export default function GravatarToggle({
         const url = await getGravatarUrl(email)
         if (url) onAvatarChange(url)
       } catch {
-        message.warning('当前环境不支持 Gravatar，请使用 HTTPS 访问')
+        message.warning(t('basicInfo.gravatarUnavailable'))
       } finally {
         setLoading(false)
       }
@@ -76,8 +77,8 @@ export default function GravatarToggle({
           onChange={handleToggle}
           disabled={!email}
         />
-        <span style={{ fontSize: 14 }}>使用 Gravatar 头像</span>
-        <Tooltip title={TOOLTIP_CONTENT}>
+        <span style={{ fontSize: 14 }}>{t('basicInfo.useGravatar')}</span>
+        <Tooltip title={tooltipContent}>
           <QuestionCircleOutlined style={{ color: '#999', cursor: 'help' }} />
         </Tooltip>
       </Space>
@@ -85,7 +86,7 @@ export default function GravatarToggle({
         <Input
           value={avatar}
           onChange={(e) => onAvatarChange(e.target.value)}
-          placeholder="请输入头像图片链接"
+          placeholder={t('basicInfo.avatarUrlPlaceholder')}
           allowClear
           style={{ flex: '1 1 260px', minWidth: 220, maxWidth: 420 }}
         />

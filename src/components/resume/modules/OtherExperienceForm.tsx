@@ -29,7 +29,7 @@ export default function OtherExperienceForm({ value, defaultValue, onChange, mod
     <ArrayModuleForm
       items={items}
       fields={OTHER_EXPERIENCE_FIELDS}
-      addText="添加其他经历"
+      addTextKey="arrayForm.addOtherExperience"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.other_experience : undefined}

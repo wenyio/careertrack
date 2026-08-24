@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useResumeEditorStore } from '@/stores/resume-editor'
 import { selectResumeModuleSidebar } from '@/stores/resume-editor-selectors'
 import type { ResumeContent, ResumeModuleType } from '@/types/resume'
+import { useI18n } from '@/i18n'
 import SortableModuleList from './SortableModuleList'
 
 interface ResumeModuleSidebarProps {
@@ -30,6 +31,7 @@ export default function ResumeModuleSidebar({
     sidebarCollapsed,
     moduleTitles,
   } = useResumeEditorStore(useShallow(selectResumeModuleSidebar))
+  const { t } = useI18n()
 
   const titleContent = useMemo<ResumeContent>(
     () => ({ module_titles: moduleTitles }),
@@ -71,7 +73,7 @@ export default function ResumeModuleSidebar({
     >
       <button
         type="button"
-        aria-label={sidebarCollapsed ? '展开模块侧栏' : '折叠模块侧栏'}
+        aria-label={sidebarCollapsed ? t('resumeEditor.expandSidebar') : t('resumeEditor.collapseSidebar')}
         style={{
           padding: '8px 12px',
           border: 0,

@@ -145,6 +145,38 @@ test.describe('简历编辑器', () => {
     })
   })
 
+  test('基本信息区随英文语言环境渲染 label、placeholder 和下拉选项', async ({ page, request }) => {
+    const account = await createUserByApi(request, 'i18n')
+    const resume = await createResumeByApi(request, account.token, `E2E_TEST_I18N_${Date.now()}`)
+    await loginByUi(page, account.username, account.password)
+
+    await goto(page, '/resumes')
+    await page.getByRole('button', { name: '语言' }).click()
+    await page.getByRole('menuitem', { name: 'English' }).click()
+
+    await goto(page, `/resumes/${resume.id}/edit`)
+    await expect(page.locator('.ant-card-head-title').getByText('Basic Info', { exact: true })).toBeVisible()
+    await expect(page.locator('.ant-form-item-label').getByText('Name', { exact: true })).toBeVisible()
+    await expect(page.getByPlaceholder('Enter name')).toBeVisible()
+    await expect(page.getByText('Job Intention', { exact: true })).toBeVisible()
+    await expect(page.locator('.ant-form-item').filter({ hasText: 'Current Status' }))
+      .toContainText('Select or enter current status')
+
+    const statusField = page.locator('.ant-form-item').filter({ hasText: 'Current Status' }).getByRole('combobox')
+    await statusField.click()
+    await expect(page.getByText('Employed - Open to Opportunities')).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: 'Add Highest Education field' }).click()
+    const educationField = page.locator('.ant-form-item').filter({ hasText: 'Highest Education' }).getByRole('combobox')
+    await educationField.click()
+    await expect(page.getByText('Doctorate')).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    const bodyText = await page.locator('body').innerText()
+    expect(bodyText).not.toMatch(/基本信息|当前状态|请输入姓名|最高学历/)
+  })
+
   test('额外字段隐藏时保留字段值和头像布局配置', async ({ page, request }) => {
     const account = await createUserByApi(request, 'basicinfo')
     const resume = await createResumeByApi(

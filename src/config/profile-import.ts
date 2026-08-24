@@ -18,13 +18,17 @@ import type {
 import { formatDateRange } from '@/utils/format'
 import { richTextToPlainText } from '@/utils/rich-text'
 import type { DescriptionField } from '@/types/resume'
+import type { Locale } from '@/i18n'
 
 /** 数组模块导入配置 */
 export interface ArrayModuleImportConfig<T> {
   modalTitle: string
+  modalTitleKey?: string
   emptyText: string
+  emptyTextKey?: string
+  fallbackTitleKey?: string
   getItemTitle: (item: T) => string
-  getItemSubtitle?: (item: T) => string | undefined
+  getItemSubtitle?: (item: T, locale?: Locale) => string | undefined
   getSignature: (item: T) => string
 }
 
@@ -42,11 +46,14 @@ function normalizeText(value: string | undefined): string {
 
 export const PROFILE_IMPORT_CONFIG = {
   education: {
-    modalTitle: '从个人信息导入教育经历',
-    emptyText: '个人信息中暂无教育经历',
-    getItemTitle: (item: Education) => item.school || '未填写学校',
-    getItemSubtitle: (item: Education) =>
-      [item.major, item.degree, formatDateRange(item.start_date, item.end_date)]
+    modalTitle: 'profileImport.educationTitle',
+    modalTitleKey: 'profileImport.educationTitle',
+    emptyText: 'profileImport.educationEmpty',
+    emptyTextKey: 'profileImport.educationEmpty',
+    fallbackTitleKey: 'profileImport.educationUntitled',
+    getItemTitle: (item: Education) => item.school || '',
+    getItemSubtitle: (item: Education, locale?: Locale) =>
+      [item.major, item.degree, formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)]
         .filter(Boolean)
         .join(' · ') || undefined,
     getSignature: (item: Education) =>
@@ -54,9 +61,12 @@ export const PROFILE_IMPORT_CONFIG = {
   } satisfies ArrayModuleImportConfig<Education>,
 
   skills: {
-    modalTitle: '从个人信息导入专业技能',
-    emptyText: '个人信息中暂无专业技能',
-    getItemTitle: (item: Skill) => item.name || '未填写技能',
+    modalTitle: 'profileImport.skillsTitle',
+    modalTitleKey: 'profileImport.skillsTitle',
+    emptyText: 'profileImport.skillsEmpty',
+    emptyTextKey: 'profileImport.skillsEmpty',
+    fallbackTitleKey: 'profileImport.skillsUntitled',
+    getItemTitle: (item: Skill) => item.name || '',
     getItemSubtitle: (item: Skill) => truncateDescription(item.description) || undefined,
     getSignature: (item: Skill) => {
       const name = normalizeText(item.name)
@@ -65,11 +75,14 @@ export const PROFILE_IMPORT_CONFIG = {
   } satisfies ArrayModuleImportConfig<Skill>,
 
   work_experience: {
-    modalTitle: '从个人信息导入工作经历',
-    emptyText: '个人信息中暂无工作经历',
-    getItemTitle: (item: WorkExperience) => item.company || '未填写公司',
-    getItemSubtitle: (item: WorkExperience) =>
-      [item.position, formatDateRange(item.start_date, item.end_date)]
+    modalTitle: 'profileImport.workExperienceTitle',
+    modalTitleKey: 'profileImport.workExperienceTitle',
+    emptyText: 'profileImport.workExperienceEmpty',
+    emptyTextKey: 'profileImport.workExperienceEmpty',
+    fallbackTitleKey: 'profileImport.workExperienceUntitled',
+    getItemTitle: (item: WorkExperience) => item.company || '',
+    getItemSubtitle: (item: WorkExperience, locale?: Locale) =>
+      [item.position, formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)]
         .filter(Boolean)
         .join(' · ') || undefined,
     getSignature: (item: WorkExperience) =>
@@ -77,11 +90,14 @@ export const PROFILE_IMPORT_CONFIG = {
   } satisfies ArrayModuleImportConfig<WorkExperience>,
 
   projects: {
-    modalTitle: '从个人信息导入项目经历',
-    emptyText: '个人信息中暂无项目经历',
-    getItemTitle: (item: Project) => item.name || '未填写项目',
-    getItemSubtitle: (item: Project) =>
-      [item.role, formatDateRange(item.start_date, item.end_date)]
+    modalTitle: 'profileImport.projectsTitle',
+    modalTitleKey: 'profileImport.projectsTitle',
+    emptyText: 'profileImport.projectsEmpty',
+    emptyTextKey: 'profileImport.projectsEmpty',
+    fallbackTitleKey: 'profileImport.projectsUntitled',
+    getItemTitle: (item: Project) => item.name || '',
+    getItemSubtitle: (item: Project, locale?: Locale) =>
+      [item.role, formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)]
         .filter(Boolean)
         .join(' · ') || undefined,
     getSignature: (item: Project) =>
@@ -89,27 +105,36 @@ export const PROFILE_IMPORT_CONFIG = {
   } satisfies ArrayModuleImportConfig<Project>,
 
   portfolio: {
-    modalTitle: '从个人信息导入个人作品',
-    emptyText: '个人信息中暂无个人作品',
-    getItemTitle: (item: Portfolio) => item.name || '未填写作品',
+    modalTitle: 'profileImport.portfolioTitle',
+    modalTitleKey: 'profileImport.portfolioTitle',
+    emptyText: 'profileImport.portfolioEmpty',
+    emptyTextKey: 'profileImport.portfolioEmpty',
+    fallbackTitleKey: 'profileImport.portfolioUntitled',
+    getItemTitle: (item: Portfolio) => item.name || '',
     getItemSubtitle: (item: Portfolio) => truncateDescription(item.description) || undefined,
     getSignature: (item: Portfolio) => `port:${item.name}`,
   } satisfies ArrayModuleImportConfig<Portfolio>,
 
   awards: {
-    modalTitle: '从个人信息导入荣誉奖项',
-    emptyText: '个人信息中暂无荣誉奖项',
-    getItemTitle: (item: Award) => item.name || '未填写奖项',
+    modalTitle: 'profileImport.awardsTitle',
+    modalTitleKey: 'profileImport.awardsTitle',
+    emptyText: 'profileImport.awardsEmpty',
+    emptyTextKey: 'profileImport.awardsEmpty',
+    fallbackTitleKey: 'profileImport.awardsUntitled',
+    getItemTitle: (item: Award) => item.name || '',
     getItemSubtitle: (item: Award) => item.date || undefined,
     getSignature: (item: Award) => `award:${item.name}:${item.date}`,
   } satisfies ArrayModuleImportConfig<Award>,
 
   other_experience: {
-    modalTitle: '从个人信息导入其他经历',
-    emptyText: '个人信息中暂无其他经历',
-    getItemTitle: (item: OtherExperience) => item.name || '未填写经历',
-    getItemSubtitle: (item: OtherExperience) =>
-      [item.role, formatDateRange(item.start_date, item.end_date)]
+    modalTitle: 'profileImport.otherExperienceTitle',
+    modalTitleKey: 'profileImport.otherExperienceTitle',
+    emptyText: 'profileImport.otherExperienceEmpty',
+    emptyTextKey: 'profileImport.otherExperienceEmpty',
+    fallbackTitleKey: 'profileImport.otherExperienceUntitled',
+    getItemTitle: (item: OtherExperience) => item.name || '',
+    getItemSubtitle: (item: OtherExperience, locale?: Locale) =>
+      [item.role, formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)]
         .filter(Boolean)
         .join(' · ') || undefined,
     getSignature: (item: OtherExperience) =>
@@ -117,11 +142,14 @@ export const PROFILE_IMPORT_CONFIG = {
   } satisfies ArrayModuleImportConfig<OtherExperience>,
 
   research: {
-    modalTitle: '从个人信息导入研究经历',
-    emptyText: '个人信息中暂无研究经历',
-    getItemTitle: (item: Research) => item.name || '未填写研究',
-    getItemSubtitle: (item: Research) =>
-      [item.role, formatDateRange(item.start_date, item.end_date)]
+    modalTitle: 'profileImport.researchTitle',
+    modalTitleKey: 'profileImport.researchTitle',
+    emptyText: 'profileImport.researchEmpty',
+    emptyTextKey: 'profileImport.researchEmpty',
+    fallbackTitleKey: 'profileImport.researchUntitled',
+    getItemTitle: (item: Research) => item.name || '',
+    getItemSubtitle: (item: Research, locale?: Locale) =>
+      [item.role, formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)]
         .filter(Boolean)
         .join(' · ') || undefined,
     getSignature: (item: Research) =>

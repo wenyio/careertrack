@@ -29,7 +29,7 @@ export default function ResearchForm({ value, defaultValue, onChange, mode, canS
     <ArrayModuleForm
       items={items}
       fields={RESEARCH_FIELDS}
-      addText="添加研究经历"
+      addTextKey="arrayForm.addResearch"
       createItem={handleCreate}
       importItems={isResumeMode ? (defaultValue || []) : undefined}
       importConfig={isResumeMode ? PROFILE_IMPORT_CONFIG.research : undefined}
