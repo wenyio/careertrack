@@ -8,6 +8,7 @@
 'use client'
 
 import { Card, Typography } from 'antd'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher'
 import BrandMark from './BrandMark'
 
 const { Title, Text } = Typography
@@ -39,6 +40,9 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
           borderRadius: 16,
         }}
       >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <LanguageSwitcher />
+        </div>
         {/* Logo + 标题 */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <BrandMark

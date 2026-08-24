@@ -68,11 +68,11 @@ function BlackWhiteSkeletonPreview() {
 // ── 自定义模块渲染器 ──
 
 /** black-white portfolio：flex 行 + 缩略图 */
-function BlackWhitePortfolioRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+function BlackWhitePortfolioRenderer({ content, styles, renderSubItem, locale }: ModuleRendererProps) {
   const portfolio: AnyItem[] = content.portfolio || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('portfolio', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('portfolio', content, locale)}</SectionTitle>
       {portfolio.map((item, i) => renderSubItem('portfolio', i, portfolio.length, (
         <div style={{ ...styles.entry, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -99,16 +99,16 @@ function BlackWhitePortfolioRenderer({ content, styles, renderSubItem }: ModuleR
 }
 
 /** black-white projects：role/city 第二行 + 可选链接 */
-function BlackWhiteProjectsRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+function BlackWhiteProjectsRenderer({ content, styles, renderSubItem, locale }: ModuleRendererProps) {
   const projects: AnyItem[] = content.projects || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('projects', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('projects', content, locale)}</SectionTitle>
       {projects.map((project, i) => renderSubItem('projects', i, projects.length, (
         <div style={styles.entry}>
           <div style={styles.entryHeader}>
             <span style={styles.entryTitle}>{project.name}</span>
-            <span style={styles.entryDate}>{formatDateRange(project.start_date, project.end_date)}</span>
+            <span style={styles.entryDate}>{formatDateRange(project.start_date, project.end_date, 'YYYY-MM', locale)}</span>
           </div>
           {([!isFieldHiddenOnItem(project, 'role') && project.role, !isFieldHiddenOnItem(project, 'city') && project.city].filter(Boolean).length > 0 || (project.link && !isFieldHiddenOnItem(project, 'link'))) && (
             <div style={{ ...styles.entryHeader, marginBottom: 4 }}>
@@ -137,11 +137,11 @@ function joinVisibleParts(item: AnyItem, parts: Array<{ field: string; value: un
 }
 
 /** black-white education compact：学校 + 教育短信息同行 */
-function BlackWhiteCompactEducationRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+function BlackWhiteCompactEducationRenderer({ content, styles, renderSubItem, locale }: ModuleRendererProps) {
   const education: AnyItem[] = content.education || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('education', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('education', content, locale)}</SectionTitle>
       {education.map((item, i) => {
         const inlineInfo = joinVisibleParts(item, [
           { field: 'major', value: item.major },
@@ -162,7 +162,7 @@ function BlackWhiteCompactEducationRenderer({ content, styles, renderSubItem }: 
                   </span>
                 )}
               </span>
-              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date)}</span>
+              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)}</span>
             </div>
             {item.description && (
               <DescriptionHtml value={item.description} style={styles.description} />
@@ -175,11 +175,11 @@ function BlackWhiteCompactEducationRenderer({ content, styles, renderSubItem }: 
 }
 
 /** black-white work compact：公司 + 岗位/部门/城市同行 */
-function BlackWhiteCompactWorkExperienceRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+function BlackWhiteCompactWorkExperienceRenderer({ content, styles, renderSubItem, locale }: ModuleRendererProps) {
   const workExperience: AnyItem[] = content.work_experience || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('work_experience', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('work_experience', content, locale)}</SectionTitle>
       {workExperience.map((item, i) => {
         const inlineInfo = joinVisibleParts(item, [
           { field: 'position', value: item.position },
@@ -198,7 +198,7 @@ function BlackWhiteCompactWorkExperienceRenderer({ content, styles, renderSubIte
                   </span>
                 )}
               </span>
-              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date)}</span>
+              <span style={styles.entryDate}>{formatDateRange(item.start_date, item.end_date, 'YYYY-MM', locale)}</span>
             </div>
             {item.description && (
               <DescriptionHtml value={item.description} style={styles.description} />
@@ -211,11 +211,11 @@ function BlackWhiteCompactWorkExperienceRenderer({ content, styles, renderSubIte
 }
 
 /** black-white projects compact：项目名 + 角色/城市同行，链接保持独立以避免挤压标题 */
-function BlackWhiteCompactProjectsRenderer({ content, styles, renderSubItem }: ModuleRendererProps) {
+function BlackWhiteCompactProjectsRenderer({ content, styles, renderSubItem, locale }: ModuleRendererProps) {
   const projects: AnyItem[] = content.projects || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('projects', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('projects', content, locale)}</SectionTitle>
       {projects.map((project, i) => {
         const inlineInfo = joinVisibleParts(project, [
           { field: 'role', value: project.role },
@@ -233,7 +233,7 @@ function BlackWhiteCompactProjectsRenderer({ content, styles, renderSubItem }: M
                   </span>
                 )}
               </span>
-              <span style={styles.entryDate}>{formatDateRange(project.start_date, project.end_date)}</span>
+              <span style={styles.entryDate}>{formatDateRange(project.start_date, project.end_date, 'YYYY-MM', locale)}</span>
             </div>
             {project.link && !isFieldHiddenOnItem(project, 'link') && (
               <a href={project.link} style={{ ...styles.entrySubtitle, display: 'inline-block', color: '#2f67ff', textDecoration: 'none' }}>
@@ -261,6 +261,7 @@ function BlackWhiteRenderer({
   viewModel,
   config,
   resolvedFontSize,
+  locale,
   renderSection,
   renderSubItem,
 }: TemplateRendererProps) {
@@ -303,6 +304,7 @@ function BlackWhiteRenderer({
           intentionMode="items"
           itemStyle={{ whiteSpace: 'nowrap', marginRight: 12 }}
           avatarLeft={content.basic_info_display?.avatar_left}
+          locale={locale}
         />
       )
     }
@@ -315,6 +317,7 @@ function BlackWhiteRenderer({
         styles,
         renderSubItem,
         resolvedFontSize,
+        locale,
         s,
       })
     }
@@ -322,7 +325,7 @@ function BlackWhiteRenderer({
     // 其余模块使用默认渲染
     switch (module) {
       case 'summary':
-        return renderSummaryModule({ content, styles })
+        return renderSummaryModule({ content, styles, locale })
       case 'education':
       case 'work_experience':
       case 'research':
@@ -333,6 +336,7 @@ function BlackWhiteRenderer({
             content={content}
             styles={styles}
             renderSubItem={renderSubItem}
+            locale={locale}
           />
         )
       default:

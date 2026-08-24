@@ -26,6 +26,7 @@ import { hasGuestData } from '@/services/guest-migration'
 import AuthShell from '@/components/layout/AuthShell'
 import { getErrorCode, getErrorMessage } from '@/utils/error'
 import type { LoginRequest } from '@/types/auth'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -34,6 +35,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { loginSuccess } = useAuthStore()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const [showOtp, setShowOtp] = useState(false)
   const [useRecoveryCode, setUseRecoveryCode] = useState(false)
 
@@ -44,19 +46,19 @@ export default function LoginPage() {
     if (!error) return
 
     const errorMessages: Record<string, string> = {
-      github_config: 'GitHub OAuth 未配置，请联系管理员',
-      github_state: 'GitHub 登录请求已过期，请重试',
-      github_token: 'GitHub 授权失败，请重试',
-      github_callback: 'GitHub 登录失败，请检查网络后重试',
-      account_disabled: '账号已被禁用，请联系管理员',
+      github_config: t('auth.githubConfig'),
+      github_state: t('auth.githubState'),
+      github_token: t('auth.githubToken'),
+      github_callback: t('auth.githubCallback'),
+      account_disabled: t('auth.accountDisabled'),
     }
-    message.error(errorMessages[error] || '登录失败，请重试')
+    message.error(errorMessages[error] || t('auth.loginFailed'))
 
     // 清除 URL 中的 error 参数
     const cleanUrl = new URL(window.location.href)
     cleanUrl.searchParams.delete('error')
     window.history.replaceState(null, '', cleanUrl.toString())
-  }, [message])
+  }, [message, t])
 
   const { mutate: login, isPending } = useMutation({
     mutationFn: (credentials: LoginRequest) => loginApi(credentials),
@@ -65,10 +67,10 @@ export default function LoginPage() {
       loginSuccess(data.user)
       if (data.recovery_code_used) {
         message.warning(
-          `恢复码已使用，还剩 ${data.recovery_codes_remaining ?? 0} 个`,
+          t('auth.recoveryUsed', { count: data.recovery_codes_remaining ?? 0 }),
         )
       } else {
-        message.success('登录成功')
+        message.success(t('auth.loginSuccess'))
       }
       router.push(hasGuestData() ? '/auth/migrate' : '/resumes')
     },
@@ -76,13 +78,13 @@ export default function LoginPage() {
       if (getErrorCode(error) === 'OTP_REQUIRED') {
         setShowOtp(true)
       } else {
-        message.error(getErrorMessage(error, '登录失败'))
+        message.error(getErrorMessage(error, t('auth.loginFailed')))
       }
     },
   })
 
   return (
-    <AuthShell title="继续使用职迹">
+    <AuthShell title={t('auth.continue')}>
       {/* GitHub 登录 — 推荐入口 */}
       <Button
         block
@@ -91,7 +93,7 @@ export default function LoginPage() {
         href="/api/auth/github/start?mode=login"
         style={{ marginBottom: 20 }}
       >
-        使用 GitHub 登录
+        {t('auth.githubLogin')}
       </Button>
 
       {/* 分隔线 */}
@@ -105,7 +107,7 @@ export default function LoginPage() {
       >
         <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
         <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-          或使用账号密码
+          {t('auth.orPassword')}
         </Text>
         <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
       </div>
@@ -120,18 +122,18 @@ export default function LoginPage() {
       >
         <Form.Item
           name="username"
-          rules={[{ required: true, message: '请输入用户名' }]}
+          rules={[{ required: true, message: t('auth.usernameRequired') }]}
           style={{ marginBottom: 12 }}
         >
-          <Input prefix={<UserOutlined />} placeholder="用户名" />
+          <Input prefix={<UserOutlined />} placeholder={t('auth.username')} />
         </Form.Item>
 
         <Form.Item
           name="password"
-          rules={[{ required: true, message: '请输入密码' }]}
+          rules={[{ required: true, message: t('auth.passwordRequired') }]}
           style={{ marginBottom: showOtp ? 12 : 16 }}
         >
-          <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+          <Input.Password prefix={<LockOutlined />} placeholder={t('auth.password')} />
         </Form.Item>
 
         {showOtp && (
@@ -141,15 +143,15 @@ export default function LoginPage() {
               style={{ marginBottom: 8 }}
               rules={useRecoveryCode
                 ? [
-                  { required: true, message: '请输入恢复码' },
+                  { required: true, message: t('auth.recoveryCodeRequired') },
                   {
                     pattern: /^[A-Fa-f0-9]{4}(?:-?[A-Fa-f0-9]{4}){3}$/,
-                    message: '恢复码格式错误',
+                    message: t('auth.recoveryCodeInvalid'),
                   },
                 ]
                 : [
-                  { required: true, message: '请输入 OTP 验证码' },
-                  { pattern: /^\d{6}$/, message: 'OTP 验证码为 6 位数字' },
+                  { required: true, message: t('auth.otpRequired') },
+                  { pattern: /^\d{6}$/, message: t('auth.otpDigits') },
                 ]}
               extra={
                 <span style={{ fontSize: 12 }}>
@@ -159,8 +161,8 @@ export default function LoginPage() {
                     <SafetyOutlined style={{ marginRight: 4 }} />
                   )}
                   {useRecoveryCode
-                    ? '每个恢复码只能使用一次'
-                    : '请输入身份验证器应用中的验证码'}
+                    ? t('auth.recoveryOnce')
+                    : t('auth.authenticatorHint')}
                 </span>
               }
             >
@@ -168,7 +170,7 @@ export default function LoginPage() {
                 prefix={useRecoveryCode
                   ? <KeyOutlined />
                   : <SafetyOutlined />}
-                placeholder={useRecoveryCode ? 'XXXX-XXXX-XXXX-XXXX' : '6 位 OTP 验证码'}
+                placeholder={useRecoveryCode ? 'XXXX-XXXX-XXXX-XXXX' : t('auth.otpPlaceholder')}
                 maxLength={useRecoveryCode ? 19 : 6}
                 autoComplete="one-time-code"
                 autoFocus
@@ -186,14 +188,14 @@ export default function LoginPage() {
                 setUseRecoveryCode((current) => !current)
               }}
             >
-              {useRecoveryCode ? '使用身份验证器验证码' : '改用恢复码'}
+              {useRecoveryCode ? t('auth.useAuthenticator') : t('auth.useRecovery')}
             </Button>
           </>
         )}
 
         <Form.Item style={{ marginBottom: 12 }}>
           <Button type="primary" htmlType="submit" loading={isPending} block>
-            登录
+            {t('auth.login')}
           </Button>
         </Form.Item>
       </Form>
@@ -201,11 +203,11 @@ export default function LoginPage() {
       {/* 底部链接 */}
       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Text type="secondary" style={{ fontSize: 13 }}>
-          还没有账号？{' '}
-          <Link href="/auth/register">注册新账号</Link>
+          {t('auth.noAccount')}{' '}
+          <Link href="/auth/register">{t('auth.register')}</Link>
         </Text>
         <Text type="secondary" style={{ fontSize: 13 }}>
-          <Link href="/resumes">以游客身份使用</Link>
+          <Link href="/resumes">{t('auth.guest')}</Link>
         </Text>
       </div>
     </AuthShell>

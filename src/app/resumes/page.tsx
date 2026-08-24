@@ -30,12 +30,14 @@ import type { GuestProfile } from '@/services/guest-profile'
 import type { Profile } from '@/types/profile'
 import ResumeListView from '@/components/resume/list/ResumeListView'
 import type { ResumeListResume } from '@/components/resume/list/ResumeListCard'
+import { useI18n } from '@/i18n'
 
 // ─── 已登录用户列表 ───
 
 function AuthenticatedResumeList() {
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(12)
@@ -66,40 +68,40 @@ function AuthenticatedResumeList() {
     try {
       await updateResume(id, { name })
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
-      message.success('重命名成功')
+      message.success(t('resume.renameSuccess'))
     } catch {
-      message.error('重命名失败')
+      message.error(t('resume.renameFailed'))
     }
-  }, [queryClient, message])
+  }, [queryClient, message, t])
 
   const handlePrint = useCallback(async (id: string) => {
     try {
       const resume = await getResume(id)
       await printResume(resume)
     } catch {
-      message.error({ content: '打印失败', key: 'print' })
+      message.error({ content: t('resume.printFailed'), key: 'print' })
     }
-  }, [message])
+  }, [message, t])
 
   const handleTogglePublic = useCallback(async (resumeId: string, isPublic: boolean, slug?: string) => {
     if (isPublic) {
       try {
         await publishResume(resumeId, { slug: slug || '' })
         queryClient.invalidateQueries({ queryKey: ['resumes'] })
-        message.success('简历已公开')
+        message.success(t('resume.publishSuccess'))
       } catch {
-        message.error('公开失败，链接可能已被占用')
+        message.error(t('resume.publishFailed'))
       }
     } else {
       try {
         await unpublishResume(resumeId)
         queryClient.invalidateQueries({ queryKey: ['resumes'] })
-        message.success('已取消公开')
+        message.success(t('resume.unpublishSuccess'))
       } catch {
-        message.error('操作失败')
+        message.error(t('resume.operationFailed'))
       }
     }
-  }, [queryClient, message])
+  }, [queryClient, message, t])
 
   const handleEdit = useCallback((id: string) => {
     router.push(`/resumes/${id}/edit`)
@@ -110,8 +112,8 @@ function AuthenticatedResumeList() {
       resumes={resumePage?.items || []}
       profile={profile}
       isLoading={isLoading}
-      title="我的简历"
-      subtitle="管理您的所有简历"
+      title={t('resume.myResumes')}
+      subtitle={t('resume.manageSubtitle')}
       showPublic
       showInitFromProfile
       isCreating={isCreating}
@@ -136,6 +138,7 @@ function AuthenticatedResumeList() {
 function GuestResumeList() {
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   const [resumes, setResumes] = useState<GuestResume[]>(
     () => getGuestResumes(),
@@ -155,33 +158,33 @@ function GuestResumeList() {
   const handleDelete = useCallback((id: string) => {
     deleteGuestResume(id)
     loadData()
-    message.success('已删除')
-  }, [loadData, message])
+    message.success(t('resume.deleted'))
+  }, [loadData, message, t])
 
   const handleDuplicate = useCallback((id: string) => {
     duplicateGuestResume(id)
     loadData()
-    message.success('已复制')
-  }, [loadData, message])
+    message.success(t('resume.duplicated'))
+  }, [loadData, message, t])
 
   const handleRename = useCallback((id: string, name: string) => {
     try {
       updateGuestResume(id, { name })
       loadData()
-      message.success('重命名成功')
+      message.success(t('resume.renameSuccess'))
     } catch {
-      message.error('重命名失败')
+      message.error(t('resume.renameFailed'))
     }
-  }, [loadData, message])
+  }, [loadData, message, t])
 
   const handlePrint = useCallback(async (id: string) => {
     const resume = getGuestResume(id)
     if (!resume) {
-      message.error({ content: '简历不存在', key: 'print' })
+      message.error({ content: t('resume.notFound'), key: 'print' })
       return
     }
     await printResume(resume as Parameters<typeof printResume>[0])
-  }, [message])
+  }, [message, t])
 
   const handleEdit = useCallback((id: string) => {
     router.push(`/resumes/${id}/edit`)
@@ -202,8 +205,8 @@ function GuestResumeList() {
       resumes={listResumes}
       profile={profile as unknown as Profile | null}
       isLoading={isLoading}
-      title="我的简历"
-      subtitle="游客模式 · 数据保存在浏览器本地"
+      title={t('resume.myResumes')}
+      subtitle={t('resume.guestSubtitle')}
       showPublic={false}
       showInitFromProfile={false}
       onEdit={handleEdit}

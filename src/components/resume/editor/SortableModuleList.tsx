@@ -25,6 +25,7 @@ import type { ResumeModuleType, ResumeContent } from '@/types/resume'
 import { getModuleIcon } from '@/config/modules'
 import { getResolvedModuleTitle } from '@/utils/module-title'
 import { Switch } from 'antd'
+import { useI18n } from '@/i18n'
 
 interface SortableModuleListProps {
   modulesOrder: ResumeModuleType[]
@@ -47,6 +48,7 @@ export default function SortableModuleList({
   onToggle,
   onSelect,
 }: SortableModuleListProps) {
+  const { locale } = useI18n()
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -79,7 +81,7 @@ export default function SortableModuleList({
           {modulesOrder.map((moduleKey) => {
             const isActive = activeModule === moduleKey
             const isEnabled = modulesConfig[moduleKey]
-            const moduleTitle = getResolvedModuleTitle(moduleKey, content)
+            const moduleTitle = getResolvedModuleTitle(moduleKey, content, locale)
 
             return (
               <SortableItem key={moduleKey} id={moduleKey} label={moduleTitle}>

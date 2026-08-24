@@ -26,6 +26,7 @@ import { getPreviewConfig } from '@/utils/resume-preview'
 import { resolveResumeView } from '@/utils/resolve-resume-view'
 import { DefaultBasicInfoHeader } from './common/BasicInfoHeader'
 import { renderStandardModule } from './common/StandardModuleRenderer'
+import { useI18n } from '@/i18n'
 
 // ── 默认渲染回调 ──
 
@@ -97,6 +98,7 @@ export function BaseResumePreview({
   renderSection = defaultSectionRenderer,
   renderSubItem = defaultSubItemRenderer,
 }: BaseResumePreviewProps) {
+  const { locale } = useI18n()
   // ── 解析模板定义 ──
   const templateDef = getTemplateDefinition(template)
   const { renderer } = templateDef
@@ -116,7 +118,7 @@ export function BaseResumePreview({
   const s = (n: number) => Math.round(resolvedFontSize * n * 10) / 10
 
   // ── 解析 ViewModel ──
-  const viewModel = resolveResumeView(content, profile, modulesConfig, modulesOrder, template)
+  const viewModel = resolveResumeView(content, profile, modulesConfig, modulesOrder, template, { locale })
 
   // ── 如果模板定义了完全自定义 Renderer，委托给它 ──
   if (renderer.Renderer) {
@@ -133,6 +135,7 @@ export function BaseResumePreview({
         config={config}
         resolvedFontSize={resolvedFontSize}
         resolvedLineHeight={resolvedLineHeight}
+        locale={locale}
         renderSection={renderSection}
         renderSubItem={renderSubItem}
       />
@@ -161,6 +164,7 @@ export function BaseResumePreview({
           intentionFontSize={s(0.9)}
           iconOverrides={renderer.iconOverrides}
           avatarLeft={content.basic_info_display?.avatar_left}
+          locale={locale}
         />
       )
     }
@@ -176,6 +180,7 @@ export function BaseResumePreview({
           styles={styles}
           renderSubItem={renderSubItem}
           resolvedFontSize={resolvedFontSize}
+          locale={locale}
           s={s}
         />
       )
@@ -187,6 +192,7 @@ export function BaseResumePreview({
       content,
       styles,
       renderSubItem,
+      locale,
       s,
     })
   }
@@ -217,7 +223,7 @@ export function BaseResumePreview({
             <div key={slotName} style={slotStyle}>
               {slotName === 'sidebar' && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={styles.sidebarName}>{content.basic_info?.name || '您的姓名'}</div>
+                  <div style={styles.sidebarName}>{content.basic_info?.name || (locale === 'en-US' ? 'Your Name' : '您的姓名')}</div>
                 </div>
               )}
               {slotModulesInOrder.map((m) => renderSectionContent(m))}

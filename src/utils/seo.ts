@@ -279,12 +279,13 @@ export function generateTwitterCard(
  * 包含 ProfilePage 和 Person 两个实体，通过 @graph 关联。
  * 所有字段均经过隐私脱敏处理。
  */
-export function generateResumeJsonLd(content: ResumeContent, slug: string) {
-  const name = content.basic_info?.name || '求职者'
+export function generateResumeJsonLd(content: ResumeContent, slug: string, lang: 'zh' | 'en' = 'zh') {
+  const name = content.basic_info?.name || (lang === 'en' ? 'Job seeker' : '求职者')
   const jobTitle = content.basic_info?.job_intention?.position || ''
   const avatar = content.basic_info?.avatar
   const city = content.basic_info?.other?.city
-  const description = generateSeoDescription(content)
+  const description = lang === 'en' ? generateSeoDescriptionEN(content) : generateSeoDescription(content)
+  const language = lang === 'en' ? 'en-US' : 'zh-CN'
 
   // 教育经历 → alumniOf
   const alumniOf = (content.education || [])
@@ -320,7 +321,7 @@ export function generateResumeJsonLd(content: ResumeContent, slug: string) {
         '@id': `${SITE_URL}#website`,
         url: SITE_URL,
         name: SITE_NAME,
-        inLanguage: 'zh-CN',
+        inLanguage: language,
         publisher: { '@id': `${SITE_URL}#organization` },
       },
       {
@@ -340,9 +341,9 @@ export function generateResumeJsonLd(content: ResumeContent, slug: string) {
         '@type': 'ProfilePage',
         '@id': `${pageUrl}#webpage`,
         url: pageUrl,
-        name: `${name}的简历 | ${SITE_NAME}`,
+        name: lang === 'en' ? `${name}'s Resume | ${SITE_NAME}` : `${name}的简历 | ${SITE_NAME}`,
         description,
-        inLanguage: 'zh-CN',
+        inLanguage: language,
         isPartOf: { '@id': `${SITE_URL}#website` },
         about: { '@id': `${pageUrl}#person` },
       },

@@ -12,6 +12,7 @@
 
 import type { ResumeContent, ResumeModuleType } from '@/types/resume'
 import type { ResolvedStyles, SubItemRenderer } from '../types'
+import type { Locale } from '@/i18n/locales'
 import {
   desc,
   MODULE_RENDERERS,
@@ -30,11 +31,13 @@ export function StandardArrayEntries({
   content,
   styles,
   renderSubItem,
+  locale,
 }: {
   module: keyof typeof MODULE_RENDERERS
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
 }) {
   const renderer = MODULE_RENDERERS[module]
   if (!renderer) return null
@@ -42,12 +45,12 @@ export function StandardArrayEntries({
 
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle(module, content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle(module, content, locale)}</SectionTitle>
       {items.map((item, i) => renderSubItem(module, i, items.length, (
         <div style={styles.entry}>
           <div style={styles.entryHeader}>
             <span style={styles.entryTitle}>{renderer.getTitle(item)}</span>
-            {renderer.getDate && <span style={styles.entryDate}>{renderer.getDate(item)}</span>}
+            {renderer.getDate && <span style={styles.entryDate}>{renderer.getDate(item, locale)}</span>}
           </div>
           {renderer.getSubtitle && (
             <div style={styles.entrySubtitle}>{renderer.getSubtitle(item)}</div>
@@ -65,15 +68,17 @@ export function StandardArrayEntries({
 export function renderSummaryModule({
   content,
   styles,
+  locale,
 }: {
   content: ResumeContent
   styles: ResolvedStyles
+  locale: Locale
 }) {
   const text = desc(content.summary)
   if (!text) return null
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('summary', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('summary', content, locale)}</SectionTitle>
       {text && <DescriptionHtml value={content.summary} style={styles.description} />}
     </>
   )
@@ -84,16 +89,18 @@ export function renderSkillsModule({
   content,
   styles,
   renderSubItem,
+  locale,
 }: {
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
   s: (scale: number) => number
 }) {
   const skills: AnyItem[] = content.skills || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('skills', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('skills', content, locale)}</SectionTitle>
       {skills.map((skill, i) => {
         const showName = skill.name && !isFieldHiddenOnItem(skill, 'name')
         return renderSubItem('skills', i, skills.length, (
@@ -117,15 +124,17 @@ export function renderAwardsModule({
   content,
   styles,
   renderSubItem,
+  locale,
 }: {
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
 }) {
   const awards: AnyItem[] = content.awards || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('awards', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('awards', content, locale)}</SectionTitle>
       {awards.map((award, i) => renderSubItem('awards', i, awards.length, (
         <div style={styles.entry}>
           <div style={styles.entryHeader}>
@@ -146,15 +155,17 @@ export function renderPortfolioModule({
   content,
   styles,
   renderSubItem,
+  locale,
 }: {
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
 }) {
   const portfolio: AnyItem[] = content.portfolio || []
   return (
     <>
-      <SectionTitle styles={styles}>{getResolvedModuleTitle('portfolio', content)}</SectionTitle>
+      <SectionTitle styles={styles}>{getResolvedModuleTitle('portfolio', content, locale)}</SectionTitle>
       {portfolio.map((item, i) => renderSubItem('portfolio', i, portfolio.length, (
         <div style={styles.entry}>
           <div style={styles.entryTitle}>{item.name}</div>
@@ -173,10 +184,12 @@ export function renderProjectsModule({
   content,
   styles,
   renderSubItem,
+  locale,
 }: {
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
 }) {
   return (
     <StandardArrayEntries
@@ -184,6 +197,7 @@ export function renderProjectsModule({
       content={content}
       styles={styles}
       renderSubItem={renderSubItem}
+      locale={locale}
     />
   )
 }
@@ -194,25 +208,27 @@ export function renderStandardModule({
   content,
   styles,
   renderSubItem,
+  locale,
   s,
 }: {
   module: ResumeModuleType
   content: ResumeContent
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
+  locale: Locale
   s: (scale: number) => number
 }): React.ReactNode {
   switch (module) {
     case 'summary':
-      return renderSummaryModule({ content, styles })
+      return renderSummaryModule({ content, styles, locale })
     case 'skills':
-      return renderSkillsModule({ content, styles, renderSubItem, s })
+      return renderSkillsModule({ content, styles, renderSubItem, locale, s })
     case 'awards':
-      return renderAwardsModule({ content, styles, renderSubItem })
+      return renderAwardsModule({ content, styles, renderSubItem, locale })
     case 'portfolio':
-      return renderPortfolioModule({ content, styles, renderSubItem })
+      return renderPortfolioModule({ content, styles, renderSubItem, locale })
     case 'projects':
-      return renderProjectsModule({ content, styles, renderSubItem })
+      return renderProjectsModule({ content, styles, renderSubItem, locale })
     case 'education':
     case 'work_experience':
     case 'research':
@@ -223,6 +239,7 @@ export function renderStandardModule({
           content={content}
           styles={styles}
           renderSubItem={renderSubItem}
+          locale={locale}
         />
       )
     default:

@@ -56,6 +56,7 @@ export function StandardBasicInfoHeader({
   avatarStyle: avatarStyleProp,
   containerStyle: containerStyleProp,
   itemStyle: itemStyleProp,
+  locale,
 }: BasicInfoHeaderProps) {
   if (!basicInfo) return null
 
@@ -266,7 +267,7 @@ export function StandardBasicInfoHeader({
             marginBottom: 6,
           }}
         >
-          {basicInfo.name || '您的姓名'}
+          {basicInfo.name || (locale === 'en-US' ? 'Your Name' : '您的姓名')}
         </div>
       )}
       {renderContactItems()}

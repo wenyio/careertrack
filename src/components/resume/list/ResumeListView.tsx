@@ -18,6 +18,7 @@ import ResumeRenameModal from './ResumeRenameModal'
 import type { ResumeListResume } from './ResumeListCard'
 import type { Profile } from '@/types/profile'
 import type { PaginationMeta } from '@/types/pagination'
+import { useI18n } from '@/i18n'
 
 interface ResumeListViewProps {
   /** 简历列表数据 */
@@ -75,6 +76,7 @@ export default function ResumeListView({
   onPageChange,
 }: ResumeListViewProps) {
   const { message, modal } = App.useApp()
+  const { t } = useI18n()
   const router = useRouter()
 
   // 弹窗状态
@@ -88,7 +90,7 @@ export default function ResumeListView({
   // 创建简历
   const handleCreate = (name: string, initFromProfile: boolean) => {
     if (!name.trim()) {
-      message.warning('请输入简历名称')
+      message.warning(t('resume.nameRequired'))
       return
     }
     onCreate(name.trim(), initFromProfile)
@@ -98,11 +100,11 @@ export default function ResumeListView({
   // 删除简历（带确认弹窗）
   const handleDelete = (id: string, name: string) => {
     modal.confirm({
-      title: '确认删除',
-      content: `确定要删除简历"${name}"吗？此操作不可恢复。`,
-      okText: '删除',
+      title: t('resume.confirmDeleteTitle'),
+      content: t('resume.confirmDeleteContent', { name }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => onDelete(id, name),
     })
   }
@@ -116,7 +118,7 @@ export default function ResumeListView({
 
   const handleRenameOk = (id: string, name: string) => {
     if (!name.trim()) {
-      message.warning('请输入简历名称')
+      message.warning(t('resume.nameRequired'))
       return
     }
     onRename(id, name.trim())
@@ -148,7 +150,7 @@ export default function ResumeListView({
           icon={<PlusOutlined />}
           onClick={() => setCreateModalVisible(true)}
         >
-          新建简历
+          {t('resume.newResume')}
         </Button>
       }
     >
@@ -186,21 +188,21 @@ export default function ResumeListView({
                 total={pagination.total}
                 pageSizeOptions={[12, 24, 48]}
                 showSizeChanger
-                showTotal={(total) => `共 ${total} 份简历`}
+                showTotal={(total) => t('resume.total', { total })}
                 onChange={onPageChange}
               />
             </div>
           )}
         </>
       ) : (
-        <Empty description="暂无简历" style={{ marginTop: 120 }}>
+        <Empty description={t('resume.empty')} style={{ marginTop: 120 }}>
           {showInitFromProfile && (
             <Button
               icon={<UserOutlined />}
               style={{ marginBottom: 12 }}
               onClick={() => router.push('/profile')}
             >
-              先完善个人信息
+              {t('resume.completeProfileFirst')}
             </Button>
           )}
           <div>
@@ -209,7 +211,7 @@ export default function ResumeListView({
               icon={<PlusOutlined />}
               onClick={() => setCreateModalVisible(true)}
             >
-              创建第一份简历
+              {t('resume.firstResume')}
             </Button>
           </div>
         </Empty>

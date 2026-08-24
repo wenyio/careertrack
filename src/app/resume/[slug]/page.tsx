@@ -98,6 +98,7 @@ export default async function PublicResumePage({ params }: PageProps) {
   }
   const row = result.rows[0]
   const resumeContent = parseJsonValue<ResumeContent>(row.content, {})
+  const lang = detectResumeLanguage(resumeContent)
   // 传递给客户端组件，避免重复请求
   const initialData = {
     name: row.name,
@@ -110,7 +111,7 @@ export default async function PublicResumePage({ params }: PageProps) {
   }
 
   // 生成 JSON-LD 结构化数据
-  const jsonLd = generateResumeJsonLd(resumeContent, slug)
+  const jsonLd = generateResumeJsonLd(resumeContent, slug, lang)
 
   return (
     <>

@@ -25,6 +25,7 @@ import ResearchForm from '@/components/resume/modules/ResearchForm'
 import SummaryForm from '@/components/resume/modules/SummaryForm'
 import type { Profile } from '@/types/profile'
 import type { ResumeModuleType } from '@/types/resume'
+import { useI18n } from '@/i18n'
 
 // 动态渲染不同模块表单，各表单 Props 不同，此处使用 any 做类型擦除
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,6 +77,7 @@ function removeSavedProfileFields(current: Partial<Profile>, saved: Partial<Prof
 }
 
 export default function ProfilePage() {
+  const { t } = useI18n()
   const { data: profile, isLoading } = useProfile()
   const { mutate: updateProfile, isPending: isSaving } = useUpdateProfile()
   const { mutate: updateProfileSilently, isPending: isAutoSaving } = useUpdateProfile({ silent: true })
@@ -163,7 +165,7 @@ export default function ProfilePage() {
 
     const snapshot = { ...formDataRef.current }
     if (!hasProfileChanges(snapshot)) {
-      message.info('没有需要保存的更改')
+      message.info(t('profile.noChanges'))
       return
     }
 
@@ -212,7 +214,14 @@ export default function ProfilePage() {
   )
   const hasChanges = hasProfileChanges(formData)
   const effectiveSaveStatus: ProfileSaveStatus = isSaving || isAutoSaving ? 'saving' : saveStatus
-  const status = SAVE_STATUS_MAP[effectiveSaveStatus]
+  const status = {
+    ...SAVE_STATUS_MAP[effectiveSaveStatus],
+    text: effectiveSaveStatus === 'idle' ? ''
+      : effectiveSaveStatus === 'pending' ? t('profile.pending')
+      : effectiveSaveStatus === 'saving' ? t('profile.saving')
+      : effectiveSaveStatus === 'saved' ? t('profile.saved')
+      : t('profile.error'),
+  }
   const showFloatingSave = hasChanges || effectiveSaveStatus !== 'idle'
   const showFloatingAction = hasChanges
   const saveButtonDisabled = !hasChanges || isSaving || isAutoSaving
@@ -220,9 +229,13 @@ export default function ProfilePage() {
   return (
     <>
       <SettingsPageLayout
-        title="个人信息管理"
-        subtitle="维护您的个人信息，创建简历时可直接引用"
-        navItems={[...MODULES]}
+        title={t('profile.title')}
+        subtitle={t('profile.subtitle')}
+        navItems={MODULES.map((module) => ({
+          ...module,
+          label: module.labelKey ? t(module.labelKey) : module.label,
+          description: module.descriptionKey ? t(module.descriptionKey) : module.description,
+        }))}
         activeKey={activeModule}
         onNavChange={(key) => setActiveModule(key as ResumeModuleType)}
         loading={isLoading}
@@ -236,7 +249,7 @@ export default function ProfilePage() {
             disabled={saveButtonDisabled}
             style={{ borderRadius: 8, height: 38, paddingLeft: 20, paddingRight: 20 }}
           >
-            保存更改
+            {t('profile.saveChanges')}
           </Button>
         }
       >

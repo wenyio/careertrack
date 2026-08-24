@@ -20,6 +20,7 @@ import {
 export interface NavItem {
   key: string
   label: string
+  labelKey?: string
   href: string
   icon?: React.ComponentType
   /** 需要的角色，不设置则对所有登录用户可见 */
@@ -34,12 +35,14 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/resumes',
     label: '我的简历',
+    labelKey: 'nav.resumes',
     href: '/resumes',
     match: (p) => p.startsWith('/resumes') && !p.includes('/edit'),
   },
   {
     key: '/applications',
     label: '求职进展',
+    labelKey: 'nav.applications',
     href: '/applications',
     icon: FundProjectionScreenOutlined,
     match: (p) => p.startsWith('/applications'),
@@ -47,6 +50,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/profile',
     label: '个人信息',
+    labelKey: 'nav.profile',
     href: '/profile',
     icon: UserOutlined,
     match: (p) => p === '/profile' || p === '/settings/profile',
@@ -54,6 +58,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/admin',
     label: '管理后台',
+    labelKey: 'nav.admin',
     href: '/admin',
     roles: ['admin'],
     match: (p) => p.startsWith('/admin'),
@@ -66,6 +71,7 @@ export const ACCOUNT_NAV_ITEMS: NavItem[] = [
   {
     key: '/settings/security',
     label: '账号安全',
+    labelKey: 'nav.security',
     href: '/settings/security',
     icon: SafetyOutlined,
     match: (p) => p === '/settings/security',
@@ -73,6 +79,7 @@ export const ACCOUNT_NAV_ITEMS: NavItem[] = [
   {
     key: '/settings/mcp',
     label: 'MCP 服务',
+    labelKey: 'nav.mcp',
     href: '/settings/mcp',
     icon: ApiOutlined,
     match: (p) => p === '/settings/mcp',
@@ -85,6 +92,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/admin',
     label: '概览',
+    labelKey: 'nav.overview',
     href: '/admin',
     icon: DashboardOutlined,
     match: (p) => p === '/admin',
@@ -92,6 +100,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/admin/users',
     label: '用户管理',
+    labelKey: 'nav.users',
     href: '/admin/users',
     icon: TeamOutlined,
     match: (p) => p.startsWith('/admin/users'),
@@ -99,6 +108,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/admin/resumes',
     label: '简历管理',
+    labelKey: 'nav.adminResumes',
     href: '/admin/resumes',
     icon: FileTextOutlined,
     match: (p) => p.startsWith('/admin/resumes'),
@@ -106,6 +116,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
     key: '/admin/registration-codes',
     label: '注册码管理',
+    labelKey: 'nav.registrationCodes',
     href: '/admin/registration-codes',
     icon: KeyOutlined,
     match: (p) => p.startsWith('/admin/registration-codes'),

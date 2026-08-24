@@ -21,6 +21,8 @@ import { useProfile } from '@/hooks/useProfile'
 import { useGravatarUrl } from '@/utils/avatar'
 import { getAppNavigationMode, isAdminRoute } from '@/utils/navigation'
 import { ACCOUNT_NAV_ITEMS, MAIN_NAV_ITEMS, USER_MENU_ITEMS } from '@/config/navigation'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher'
+import { useI18n } from '@/i18n'
 import HeaderBrand from './HeaderBrand'
 import GuestHeader from './GuestHeader'
 
@@ -35,6 +37,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname()
   const { isAuthenticated, user } = useAuthStore()
   const logout = useLogout()
+  const { t } = useI18n()
   const { data: profile } = useProfile(isAuthenticated)
   const gravatarUrl = useGravatarUrl(profile?.basic_info?.email)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -61,7 +64,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           color: '#999',
           fontSize: 12,
         }}>
-          职迹 CareerTrack v{process.env.NEXT_PUBLIC_VERSION || 'dev'}
+          {t('common.appName')} v{process.env.NEXT_PUBLIC_VERSION || 'dev'}
         </Footer>
       </div>
     )
@@ -76,14 +79,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
     ...filterByRole(USER_MENU_ITEMS).map((item) => ({
       key: item.key,
       icon: item.icon ? <item.icon /> : undefined,
-      label: item.label,
+      label: item.labelKey ? t(item.labelKey) : item.label,
       onClick: () => router.push(item.href),
     })),
     { type: 'divider' as const },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: '退出登录',
+      label: t('nav.logout'),
       danger: true,
       onClick: logout,
     },
@@ -96,7 +99,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const mobileMenuItems = [
     ...mainNavItems.map((item) => ({
       key: item.key,
-      label: item.label,
+      label: item.labelKey ? t(item.labelKey) : item.label,
       onClick: () => {
         router.push(item.href)
         setMobileMenuOpen(false)
@@ -106,7 +109,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     ...accountNavItems.map((item) => ({
       key: item.key,
       icon: item.icon ? <item.icon /> : undefined,
-      label: item.label,
+      label: item.labelKey ? t(item.labelKey) : item.label,
       onClick: () => {
         router.push(item.href)
         setMobileMenuOpen(false)
@@ -115,7 +118,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { type: 'divider' as const },
     {
       key: 'logout',
-      label: '退出登录',
+      label: t('nav.logout'),
       danger: true,
       onClick: () => {
         logout()
@@ -151,7 +154,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             type="text"
             icon={<MenuOutlined />}
             onClick={() => setMobileMenuOpen(true)}
-            aria-label="打开导航菜单"
+            aria-label={t('nav.openMenu')}
             style={{ display: 'none' }}
             className="mobile-menu-btn"
           />
@@ -192,7 +195,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   if (!isActive) e.currentTarget.style.color = '#666'
                 }}
               >
-                {item.label}
+                {item.labelKey ? t(item.labelKey) : item.label}
                 {isActive && (
                   <div
                     style={{
@@ -212,51 +215,54 @@ export default function AppLayout({ children }: AppLayoutProps) {
           })}
         </div>
 
-        {/* 右侧：用户头像 */}
-        <Dropdown
-          menu={{ items: userMenuItems }}
-          placement="bottomRight"
-          trigger={['hover', 'click']}
-        >
-          <button
-            type="button"
-            aria-label={`${user?.username || '用户'}的用户菜单`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              padding: '4px 12px',
-              borderRadius: 8,
-              transition: 'background 0.2s',
-              height: 40,
-              border: 0,
-              background: 'transparent',
-              fontFamily: 'inherit',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f5f5f5'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-            }}
+        {/* 右侧：语言与用户头像 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <LanguageSwitcher />
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            placement="bottomRight"
+            trigger={['hover', 'click']}
           >
-            <Avatar
-              size={28}
-              src={gravatarUrl || undefined}
-              icon={<UserOutlined />}
-              style={{ background: '#1677ff', flexShrink: 0 }}
-            />
-            <span className="user-name" style={{ fontSize: 14, lineHeight: 1 }}>
-              {user?.username || '用户'}
-            </span>
-          </button>
-        </Dropdown>
+            <button
+              type="button"
+              aria-label={t('nav.userMenu', { username: user?.username || t('common.user') })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 8,
+                transition: 'background 0.2s',
+                height: 40,
+                border: 0,
+                background: 'transparent',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f5f5f5'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <Avatar
+                size={28}
+                src={gravatarUrl || undefined}
+                icon={<UserOutlined />}
+                style={{ background: '#1677ff', flexShrink: 0 }}
+              />
+              <span className="user-name" style={{ fontSize: 14, lineHeight: 1 }}>
+                {user?.username || t('common.user')}
+              </span>
+            </button>
+          </Dropdown>
+        </div>
       </Header>
 
       {/* 移动端抽屉菜单 */}
       <Drawer
-        title="菜单"
+        title={t('nav.menu')}
         placement="left"
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
@@ -286,7 +292,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           color: '#999',
           fontSize: 12,
         }}>
-          职迹 CareerTrack v{process.env.NEXT_PUBLIC_VERSION || 'dev'}
+          {t('common.appName')} v{process.env.NEXT_PUBLIC_VERSION || 'dev'}
         </Footer>
       )}
 

@@ -25,6 +25,7 @@ import { useResume } from '@/hooks/useResume'
 import { DEFAULT_MODULES_ORDER } from '@/types/resume'
 import type { ResumeContent, ModulesConfig, ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 import type { Profile } from '@/types/profile'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -100,6 +101,7 @@ export default function ResumeListCard({
   onTogglePublic,
   onPopoverChange,
 }: ResumeListCardProps) {
+  const { t } = useI18n()
   const hasInlinePreview = Boolean(resume.content && resume.modules_config)
   const { targetRef, isInViewport } = usePreviewInViewport()
   const { data: previewResume } = useResume(resume.id, {
@@ -168,11 +170,11 @@ export default function ResumeListCard({
             >
               {resume.name}
             </Text>
-            {showPublic && resume.is_public && <Tag color="blue" style={{ flexShrink: 0 }}>已公开</Tag>}
+            {showPublic && resume.is_public && <Tag color="blue" style={{ flexShrink: 0 }}>{t('resume.publicTag')}</Tag>}
           </div>
 
           <Text type="secondary" style={{ fontSize: 12, marginTop: 4 }}>
-            更新于 {formatDate(resume.updated_at, 'YYYY-MM-DD HH:mm')}
+            {t('resume.updatedAt', { time: formatDate(resume.updated_at, 'YYYY-MM-DD HH:mm') })}
           </Text>
 
           {/* 底部：操作按钮 */}

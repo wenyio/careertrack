@@ -5,6 +5,7 @@
  */
 
 import dayjs from 'dayjs'
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
 
 /**
  * 格式化日期
@@ -39,10 +40,11 @@ export function formatDate(date: string | dayjs.Dayjs | null | undefined, format
 export function formatDateRange(
   startDate: string | null | undefined,
   endDate: string | null | undefined,
-  format = 'YYYY-MM'
+  format = 'YYYY-MM',
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   const start = startDate ? formatDate(startDate, format) : ''
-  const end = endDate === '' ? '至今' : endDate ? formatDate(endDate, format) : ''
+  const end = endDate === '' ? (locale === 'en-US' ? 'Present' : '至今') : endDate ? formatDate(endDate, format) : ''
 
   if (!start) return end
   if (!end) return start

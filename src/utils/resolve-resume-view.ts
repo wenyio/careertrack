@@ -24,6 +24,7 @@ import {
 import { getResolvedModuleTitle } from '@/utils/module-title'
 import { getTemplateDefinition } from '@/components/resume/templates/registry'
 import type { BasicInfoContactField, BasicInfoIntentionField } from '@/utils/resume-preview'
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
 
 /** 各模板的联系方式字段 */
 const TEMPLATE_CONTACT_FIELDS: Record<string, BasicInfoContactField[]> = {
@@ -63,14 +64,15 @@ export function resolveResumeView(
   modulesConfig: ModulesConfig,
   modulesOrder: ResumeModuleType[],
   template?: ResumeTemplateId,
-  options?: { fallbackProfile?: boolean },
+  options?: { fallbackProfile?: boolean; locale?: Locale },
 ): ResumeViewModel {
+  const locale = options?.locale ?? DEFAULT_LOCALE
   const data = options?.fallbackProfile ? mergeResumeContentWithProfile(content, profile) : content
   const basicInfo = data.basic_info as Partial<BasicInfo> | undefined
   const displayConfig = data.basic_info_display as BasicInfoDisplayConfig | undefined
 
   // ── 基本信息 ──
-  const basicInfoVM = resolveBasicInfo(basicInfo, displayConfig, template)
+  const basicInfoVM = resolveBasicInfo(basicInfo, displayConfig, template, locale)
 
   // ── 模块列表 ──
   const modules: ResolvedModule[] = []
@@ -84,7 +86,7 @@ export function resolveResumeView(
       if (data.summary) {
         modules.push({
           type: 'summary',
-          title: getResolvedModuleTitle('summary', content),
+          title: getResolvedModuleTitle('summary', content, locale),
           entries: [{
             title: '',
             description: data.summary,
@@ -105,14 +107,14 @@ export function resolveResumeView(
     const entries: ResolvedEntry[] = items.map((item) => ({
       title: renderer.getTitle(item),
       subtitle: renderer.getSubtitle?.(item),
-      date: renderer.getDate?.(item),
+      date: renderer.getDate?.(item, locale),
       description: renderer.getDescription?.(item) as DescriptionField | undefined,
       raw: item,
     }))
 
     modules.push({
       type: moduleType,
-      title: getResolvedModuleTitle(moduleType, content),
+      title: getResolvedModuleTitle(moduleType, content, locale),
       entries,
     })
   }
@@ -129,8 +131,9 @@ function resolveBasicInfo(
   basicInfo: Partial<BasicInfo> | undefined,
   displayConfig: BasicInfoDisplayConfig | undefined,
   template?: ResumeTemplateId,
+  locale: Locale = DEFAULT_LOCALE,
 ): BasicInfoViewModel {
-  const displayName = basicInfo?.name || '您的姓名'
+  const displayName = basicInfo?.name || (locale === 'en-US' ? 'Your Name' : '您的姓名')
   const avatar = basicInfo?.avatar
 
   // 从模板定义获取 resolveOverrides（新架构），回退到硬编码映射（兼容）
@@ -140,7 +143,7 @@ function resolveBasicInfo(
   // 根据模板选择联系方式字段，排除已在 extra 中显示的字段
   const templateKey = template && template in TEMPLATE_CONTACT_FIELDS ? template : 'default'
   const allContactFields = TEMPLATE_CONTACT_FIELDS[templateKey] || TEMPLATE_CONTACT_FIELDS.default
-  const extras = getBasicInfoExtraDisplayItems(basicInfo, displayConfig)
+  const extras = getBasicInfoExtraDisplayItems(basicInfo, displayConfig, locale)
   const extraFields = new Set(extras.map((e) => e.field))
   const contactFields = allContactFields.filter((f) => !extraFields.has(f))
   const contacts = getBasicInfoContactItemsStructured(basicInfo, contactFields)
@@ -158,7 +161,9 @@ function resolveBasicInfo(
     for (const field of intentionFields) {
       let value: string | undefined
       if (field === 'position_label') {
-        value = jobIntention.position ? `期望职位：${jobIntention.position}` : undefined
+        value = jobIntention.position
+          ? (locale === 'en-US' ? `Target Role: ${jobIntention.position}` : `期望职位：${jobIntention.position}`)
+          : undefined
       } else {
         value = jobIntention[field as keyof typeof jobIntention] as string | undefined
       }

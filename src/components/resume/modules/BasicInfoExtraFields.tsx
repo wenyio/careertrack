@@ -41,6 +41,7 @@ import {
   removeVisibleBasicInfoField,
   toggleBasicInfoFieldIcon,
 } from '@/utils/basic-info-display'
+import { useI18n } from '@/i18n'
 
 interface BasicInfoExtraFieldsProps {
   value?: BasicInfo['other']
@@ -63,6 +64,20 @@ export default function BasicInfoExtraFields({
     : (displayConfig?.visible_extra_fields || [])
   const fieldIcons = displayConfig?.field_icons || {}
   const [workYearsSearch, setWorkYearsSearch] = useState('')
+  const { t } = useI18n()
+
+  const getFieldLabel = (fieldConfig: BasicInfoExtraFieldConfig) =>
+    fieldConfig.labelKey ? t(fieldConfig.labelKey) : fieldConfig.label
+
+  const getFieldPlaceholder = (fieldConfig: BasicInfoExtraFieldConfig) =>
+    fieldConfig.placeholderKey ? t(fieldConfig.placeholderKey) : fieldConfig.placeholder
+
+  const getOptionLabel = (option: { value: string | number; label: string; labelKey?: string }) => {
+    if (option.value === 10 && option.labelKey === 'resume.yearsPlus') {
+      return t(option.labelKey, { count: option.value })
+    }
+    return option.labelKey ? t(option.labelKey) : option.label
+  }
 
   const handleFieldChange = (field: BasicInfoExtraField, fieldValue: unknown) => {
     const updates: Partial<OtherInfo> = {
@@ -129,7 +144,7 @@ export default function BasicInfoExtraFields({
         const normalizedValue = normalizeWorkYearsInput(option.value)
         return normalizedValue === undefined
           ? null
-          : { value: normalizedValue, label: option.label }
+          : { value: normalizedValue, label: getOptionLabel(option) }
       })
       .filter(Boolean) as { value: number; label: string }[]
 
@@ -138,7 +153,7 @@ export default function BasicInfoExtraFields({
         nextValue !== undefined
         && !options.some((option) => option.value === nextValue)
       ) {
-        options.push({ value: nextValue, label: formatWorkYears(nextValue) })
+        options.push({ value: nextValue, label: nextValue === 0 ? t('resume.freshGraduate') : formatWorkYears(nextValue) })
       }
     }
 
@@ -171,7 +186,7 @@ export default function BasicInfoExtraFields({
           onInputKeyDown={(event) => {
             if (event.key === 'Enter') commitWorkYearsSearch()
           }}
-          placeholder={fieldConfig.placeholder}
+          placeholder={getFieldPlaceholder(fieldConfig)}
           options={getWorkYearsOptions(fieldConfig, fieldValue)}
           showSearch={{
             onSearch: setWorkYearsSearch,
@@ -189,8 +204,11 @@ export default function BasicInfoExtraFields({
           <Select
             value={fieldValue as string | number}
             onChange={(nextValue) => handleFieldChange(field, nextValue)}
-            placeholder={fieldConfig.placeholder}
-            options={fieldConfig.options ? [...fieldConfig.options] : []}
+            placeholder={getFieldPlaceholder(fieldConfig)}
+            options={fieldConfig.options ? fieldConfig.options.map((option) => ({
+              ...option,
+              label: getOptionLabel(option),
+            })) : []}
             allowClear
           />
         )
@@ -199,7 +217,7 @@ export default function BasicInfoExtraFields({
           <InputNumber
             value={fieldValue as number}
             onChange={(nextValue) => handleFieldChange(field, nextValue ?? 0)}
-            placeholder={fieldConfig.placeholder}
+            placeholder={getFieldPlaceholder(fieldConfig)}
             min={0}
             style={{ width: '100%' }}
           />
@@ -211,7 +229,7 @@ export default function BasicInfoExtraFields({
             onChange={(_date, dateString) =>
               handleFieldChange(field, dateString || '')
             }
-            placeholder={fieldConfig.placeholder}
+            placeholder={getFieldPlaceholder(fieldConfig)}
             style={{ width: '100%' }}
           />
         )
@@ -223,7 +241,7 @@ export default function BasicInfoExtraFields({
             onChange={(_date, dateString) =>
               handleFieldChange(field, dateString || '')
             }
-            placeholder={fieldConfig.placeholder || '请选择月份'}
+            placeholder={getFieldPlaceholder(fieldConfig) || t('basicInfo.select')}
             format="YYYY-MM"
             style={{ width: '100%' }}
           />
@@ -233,7 +251,7 @@ export default function BasicInfoExtraFields({
           <Input
             value={fieldValue as string}
             onChange={(event) => handleFieldChange(field, event.target.value)}
-            placeholder={fieldConfig.placeholder}
+            placeholder={getFieldPlaceholder(fieldConfig)}
             allowClear
           />
         )
@@ -252,6 +270,7 @@ export default function BasicInfoExtraFields({
             const fieldConfig = EXTRA_FIELDS_MAP[field]
             if (!fieldConfig) return null
             const hasIcon = !!fieldIcons[field]
+            const label = getFieldLabel(fieldConfig)
 
             return (
               <Col key={field} xs={24} sm={12} md={8}>
@@ -265,7 +284,7 @@ export default function BasicInfoExtraFields({
                           gap: 4,
                         }}
                       >
-                        {fieldConfig.label}
+                        {label}
                         {fieldConfig.iconConfigurable
                           && onDisplayConfigChange && (
                           <Tooltip title={hasIcon ? '隐藏图标' : '显示图标'}>
@@ -274,7 +293,7 @@ export default function BasicInfoExtraFields({
                               size="small"
                               icon={<SmileOutlined />}
                               aria-label={
-                                `${hasIcon ? '隐藏' : '显示'}${fieldConfig.label}图标`
+                                `${hasIcon ? '隐藏' : '显示'}${label}图标`
                               }
                               style={{
                                 width: 20,
@@ -300,7 +319,7 @@ export default function BasicInfoExtraFields({
                         type="text"
                         size="small"
                         icon={<CloseOutlined />}
-                        aria-label={`移除${fieldConfig.label}字段`}
+                        aria-label={`移除${label}字段`}
                         style={{
                           position: 'absolute',
                           top: -6,
@@ -331,12 +350,15 @@ export default function BasicInfoExtraFields({
           }}
         >
           {availableFields.map((fieldConfig) => (
+            (() => {
+              const label = getFieldLabel(fieldConfig)
+              return (
             <Tag
               key={fieldConfig.field}
               color="blue"
               role="button"
               tabIndex={0}
-              aria-label={`添加${fieldConfig.label}字段`}
+              aria-label={`添加${label}字段`}
               style={{ cursor: 'pointer' }}
               onClick={() => handleAddField(fieldConfig.field)}
               onKeyDown={(event) => {
@@ -346,8 +368,10 @@ export default function BasicInfoExtraFields({
                 }
               }}
             >
-              + {fieldConfig.label}
+              + {label}
             </Tag>
+              )
+            })()
           ))}
         </div>
       )}

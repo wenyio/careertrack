@@ -25,6 +25,7 @@ import {
   DEFAULT_MODULES_ORDER,
 } from '@/types/resume'
 import { parseJsonValue } from '@/utils/safe-json'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -54,6 +55,7 @@ export default function PublicResumeClient({
   )
   const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (initialData) return
@@ -68,8 +70,8 @@ export default function PublicResumeClient({
           const axiosError = fetchError as { response?: { status?: number } }
           setError(
             axiosError.response?.status === 404
-              ? '简历不存在或未公开'
-              : '加载失败，请稍后重试',
+              ? t('resume.publicNotFound')
+              : t('resume.operationFailed'),
           )
         }
       } finally {
@@ -81,7 +83,7 @@ export default function PublicResumeClient({
     return () => {
       cancelled = true
     }
-  }, [slug, initialData])
+  }, [slug, initialData, t])
 
   if (loading) {
     return (
@@ -112,11 +114,11 @@ export default function PublicResumeClient({
       >
         <Result
           status="404"
-          title="简历不存在或未公开"
-          subTitle={error || '该简历可能已被删除或取消公开'}
+          title={t('resume.publicNotFound')}
+          subTitle={error || t('resume.publicNotFoundSubtitle')}
           extra={
             <Link href="/">
-              <Button type="primary">创建我的简历</Button>
+              <Button type="primary">{t('resume.createMine')}</Button>
             </Link>
           }
         />
@@ -169,15 +171,15 @@ export default function PublicResumeClient({
             fontSize: 13,
           }}
         >
-          由
+          {t('resume.poweredByPrefix')}
           <BrandMark size={16} radius={4} />
           <Link
             href="/"
             style={{ color: 'inherit', textDecoration: 'none', margin: '0 4px' }}
           >
-            职迹 CareerTrack
+            {t('common.appName')}
           </Link>
-          生成
+          {t('resume.poweredBySuffix')}
         </Text>
       </div>
 

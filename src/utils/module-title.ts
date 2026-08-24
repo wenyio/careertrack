@@ -8,6 +8,21 @@
 import type { ResumeModuleType, ResumeContent } from '@/types/resume'
 import { MODULE_TITLES } from '@/utils/resume-preview'
 import { getModuleLabel } from '@/config/modules'
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
+import { messages } from '@/i18n/messages'
+
+const MODULE_TITLE_KEYS: Record<ResumeModuleType, keyof typeof messages['en-US']['modules'] | ''> = {
+  basic_info: '',
+  summary: 'summary',
+  skills: 'skills',
+  education: 'education',
+  work_experience: 'work_experience',
+  projects: 'projects',
+  awards: 'awards',
+  portfolio: 'portfolio',
+  research: 'research',
+  other_experience: 'other_experience',
+}
 
 /**
  * 获取模块的最终显示标题
@@ -18,8 +33,11 @@ import { getModuleLabel } from '@/config/modules'
 export function getResolvedModuleTitle(
   module: ResumeModuleType,
   content?: ResumeContent,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   const customTitle = content?.module_titles?.[module]
   if (customTitle && customTitle.trim()) return customTitle.trim()
+  const key = MODULE_TITLE_KEYS[module]
+  if (key && locale !== DEFAULT_LOCALE) return messages[locale].modules[key]
   return MODULE_TITLES[module] || getModuleLabel(module)
 }

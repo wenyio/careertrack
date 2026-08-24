@@ -10,10 +10,13 @@
 import { useRouter } from 'next/navigation'
 import { Button, Tag } from 'antd'
 import { LoginOutlined } from '@ant-design/icons'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher'
+import { useI18n } from '@/i18n'
 import HeaderBrand from './HeaderBrand'
 
 export default function GuestHeader() {
   const router = useRouter()
+  const { t } = useI18n()
 
   return (
     <>
@@ -49,15 +52,16 @@ export default function GuestHeader() {
           }}
         >
           <span style={{ fontSize: 14, color: '#1677ff', fontWeight: 600 }}>
-            我的简历
+            {t('nav.resumes')}
           </span>
         </div>
 
         {/* 右侧：游客标签 + 登录按钮 */}
         <div className="guest-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <Tag className="guest-mode-tag" color="orange" style={{ margin: 0 }}>
-            游客模式
+            {t('nav.guestMode')}
           </Tag>
+          <LanguageSwitcher />
           <Button
             className="guest-login-button"
             type="primary"
@@ -65,7 +69,7 @@ export default function GuestHeader() {
             icon={<LoginOutlined />}
             onClick={() => router.push('/auth/login')}
           >
-            <span className="guest-login-text">登录 / 注册</span>
+            <span className="guest-login-text">{t('nav.loginRegister')}</span>
           </Button>
         </div>
       </header>

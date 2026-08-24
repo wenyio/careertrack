@@ -6,11 +6,11 @@
 
 /** 当前状态选项 */
 export const CURRENT_STATUS_OPTIONS = [
-  { value: '在职', label: '在职' },
-  { value: '在职-考虑机会', label: '在职-考虑机会' },
-  { value: '离职', label: '离职' },
-  { value: '应届生', label: '应届生' },
-  { value: '在校生', label: '在校生' },
+  { value: '在职', label: '在职', labelKey: 'basicInfo.employed' },
+  { value: '在职-考虑机会', label: '在职-考虑机会', labelKey: 'basicInfo.employedOpen' },
+  { value: '离职', label: '离职', labelKey: 'basicInfo.unemployed' },
+  { value: '应届生', label: '应届生', labelKey: 'resume.freshGraduate' },
+  { value: '在校生', label: '在校生', labelKey: 'basicInfo.student' },
 ] as const
 
 /** 期望薪资选项 */
@@ -25,27 +25,27 @@ export const SALARY_OPTIONS = [
 
 /** 学历选项 */
 export const EDUCATION_LEVEL_OPTIONS = [
-  { value: '博士', label: '博士' },
-  { value: '硕士', label: '硕士' },
-  { value: '本科', label: '本科' },
-  { value: '大专', label: '大专' },
-  { value: '高中', label: '高中' },
+  { value: '博士', label: '博士', labelKey: 'basicInfo.doctor' },
+  { value: '硕士', label: '硕士', labelKey: 'basicInfo.master' },
+  { value: '本科', label: '本科', labelKey: 'basicInfo.bachelor' },
+  { value: '大专', label: '大专', labelKey: 'basicInfo.juniorCollege' },
+  { value: '高中', label: '高中', labelKey: 'basicInfo.highSchool' },
 ] as const
 
 /** 工作年限选项 */
 export const WORK_YEARS_OPTIONS = [
-  { value: 0, label: '应届生' },
+  { value: 0, label: '应届生', labelKey: 'resume.freshGraduate' },
   { value: 1, label: '1年' },
   { value: 2, label: '2年' },
   { value: 3, label: '3年' },
   { value: 5, label: '5年' },
-  { value: 10, label: '10年+' },
+  { value: 10, label: '10年+', labelKey: 'resume.yearsPlus' },
 ] as const
 
 /** 性别选项 */
 export const GENDER_OPTIONS = [
-  { value: '男', label: '男' },
-  { value: '女', label: '女' },
+  { value: '男', label: '男', labelKey: 'basicInfo.male' },
+  { value: '女', label: '女', labelKey: 'basicInfo.female' },
 ] as const
 
 /** Cookie 配置 */

@@ -9,6 +9,7 @@
 
 import { Form, DatePicker, Checkbox } from 'antd'
 import dayjs from 'dayjs'
+import { useI18n } from '@/i18n'
 
 interface DateRangeFieldProps {
   /** 开始日期值 */
@@ -52,6 +53,11 @@ export default function DateRangeField({
   placeholder = ['开始时间', '结束时间'],
   picker = 'month',
 }: DateRangeFieldProps) {
+  const { t } = useI18n()
+  const effectiveLabel = label === '时间' ? t('fields.time') : label
+  const effectivePlaceholder: [string, string] = placeholder[0] === '开始时间' && placeholder[1] === '结束时间'
+    ? [t('fields.time'), t('fields.time')]
+    : placeholder
   // 直接从 endDate 派生"至今"状态，无需额外 state 同步
   // '' = 至今，其他值（含 null/undefined）= 非至今
   const isPresent = endDate === ''
@@ -75,12 +81,12 @@ export default function DateRangeField({
   }
 
   return (
-    <Form.Item label={label}>
+    <Form.Item label={effectiveLabel}>
       <div className="date-range-field" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <DatePicker
           value={safeParseDate(startDate)}
           onChange={handleStartDateChange}
-          placeholder={placeholder[0]}
+          placeholder={effectivePlaceholder[0]}
           style={{ flex: 1, minWidth: 100 }}
           picker={picker}
           allowClear
@@ -89,7 +95,7 @@ export default function DateRangeField({
         <DatePicker
           value={isPresent ? null : safeParseDate(endDate)}
           onChange={handleEndDateChange}
-          placeholder={isPresent ? '至今' : placeholder[1]}
+          placeholder={isPresent ? t('resume.present') : effectivePlaceholder[1]}
           style={{ flex: 1, minWidth: 100 }}
           picker={picker}
           disabled={isPresent}
@@ -100,7 +106,7 @@ export default function DateRangeField({
           onChange={(e) => handlePresentChange(e.target.checked)}
           style={{ lineHeight: '32px', whiteSpace: 'nowrap' }}
         >
-          至今
+          {t('resume.present')}
         </Checkbox>
       </div>
     </Form.Item>

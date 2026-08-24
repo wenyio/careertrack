@@ -5,6 +5,7 @@
 'use client'
 
 import BrandMark from './BrandMark'
+import { useI18n } from '@/i18n'
 
 interface HeaderBrandProps {
   onClick?: () => void
@@ -13,18 +14,20 @@ interface HeaderBrandProps {
 
 export default function HeaderBrand({
   onClick,
-  ariaLabel = '返回简历列表',
+  ariaLabel,
 }: HeaderBrandProps) {
+  const { t } = useI18n()
+
   return (
     <>
       <button
         type="button"
         className="header-brand"
         onClick={onClick}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel || t('nav.backToResumes')}
       >
         <BrandMark className="header-brand-mark" />
-        <span className="header-brand-text">职迹</span>
+        <span className="header-brand-text">{t('common.brandShort')}</span>
       </button>
 
       <style jsx global>{`

@@ -19,6 +19,7 @@ import {
 import type { ResumeModuleType, ResumeContent, ModulesConfig, BasicInfoDisplayConfig } from '@/types/resume'
 import type { Profile } from '@/types/profile'
 import { getResolvedModuleTitle } from '@/utils/module-title'
+import { useI18n } from '@/i18n'
 import BasicInfoForm from './modules/BasicInfoForm'
 import EducationForm from './modules/EducationForm'
 import SkillsForm from './modules/SkillsForm'
@@ -187,8 +188,9 @@ function ModuleTitleLabel({
   const [hovered, setHovered] = useState(false)
   const [renameModalOpen, setRenameModalOpen] = useState(false)
   const [renameValue, setRenameValue] = useState('')
+  const { locale } = useI18n()
 
-  const title = getResolvedModuleTitle(module, content)
+  const title = getResolvedModuleTitle(module, content, locale)
 
   const handleOpenRename = () => {
     setRenameValue(title)

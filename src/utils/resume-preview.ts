@@ -16,6 +16,7 @@ import { richTextToPlainText } from '@/utils/rich-text'
 import { richTextToHtml } from '@/utils/rich-text'
 import { formatDateRange } from '@/utils/format'
 import { getPrimarySelfEvaluationDescription } from '@/utils/self-evaluation'
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
 
 /** 富文本 → 纯文本（三处预览统一使用） */
 export function desc(d?: DescriptionField | unknown): string {
@@ -91,6 +92,7 @@ export function getBasicInfoIntentionItems(
   basicInfo: Partial<BasicInfo> | undefined,
   fields: BasicInfoIntentionField[],
   options?: { requirePosition?: boolean },
+  locale: Locale = DEFAULT_LOCALE,
 ): string[] {
   const jobIntention = basicInfo?.job_intention
   if (!jobIntention || (options?.requirePosition && !jobIntention.position)) return []
@@ -98,7 +100,9 @@ export function getBasicInfoIntentionItems(
   const values: Record<BasicInfoIntentionField, string | undefined> = {
     current_status: jobIntention.current_status,
     position: jobIntention.position,
-    position_label: jobIntention.position ? `期望职位：${jobIntention.position}` : undefined,
+    position_label: jobIntention.position
+      ? (locale === 'en-US' ? `Target Role: ${jobIntention.position}` : `期望职位：${jobIntention.position}`)
+      : undefined,
     expected_city: jobIntention.expected_city,
     expected_salary: jobIntention.expected_salary,
   }
@@ -110,6 +114,7 @@ export function getBasicInfoIntentionItems(
 export function getBasicInfoExtraDisplayItems(
   basicInfo: Partial<BasicInfo> | undefined,
   displayConfig?: BasicInfoDisplayConfig,
+  locale: Locale = DEFAULT_LOCALE,
 ): BasicInfoDisplayItem[] {
   if (!basicInfo || !displayConfig?.visible_extra_fields?.length) return []
 
@@ -138,10 +143,42 @@ export function getBasicInfoExtraDisplayItems(
       }
       if (value === undefined || value === null || value === '') return null
       if (field !== 'work_years' && value === 0) return null
-      const displayValue = field === 'work_years' ? (value === 0 ? '应届生' : `${value}年`) : String(value)
+      const displayValue = formatBasicInfoExtraDisplayValue(field, value, locale)
       return { field, value: displayValue }
     })
     .filter(Boolean) as BasicInfoDisplayItem[]
+}
+
+function formatBasicInfoExtraDisplayValue(
+  field: string,
+  value: string | number,
+  locale: Locale,
+): string {
+  if (field === 'work_years') {
+    if (value === 0) return locale === 'en-US' ? 'New Graduate' : '应届生'
+    return locale === 'en-US' ? `${value} yr${Number(value) === 1 ? '' : 's'}` : `${value}年`
+  }
+
+  if (locale === 'en-US') {
+    const knownValues: Record<string, string> = {
+      博士: 'Doctorate',
+      硕士: "Master's",
+      本科: "Bachelor's",
+      大专: 'Associate',
+      高中: 'High School',
+      男: 'Male',
+      女: 'Female',
+      在职: 'Employed',
+      '在职-考虑机会': 'Employed - Open to Opportunities',
+      离职: 'Unemployed',
+      应届生: 'New Graduate',
+      在校生: 'Student',
+      全日制: 'Full-time',
+    }
+    return knownValues[String(value)] || String(value)
+  }
+
+  return String(value)
 }
 
 /** 检查数组模块条目中某字段是否被隐藏 */
@@ -243,7 +280,7 @@ export interface ModuleRenderer {
   getTitle: (item: any) => string
   /** 提取日期字段（可选） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getDate?: (item: any) => string
+  getDate?: (item: any, locale?: Locale) => string
   /** 提取副标题字段（可选） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getSubtitle?: (item: any) => string | undefined
@@ -265,7 +302,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   education: {
     getItems: (c) => c.education || [],
     getTitle: (e) => e.school || '',
-    getDate: (e) => formatDateRange(e.start_date, e.end_date),
+    getDate: (e, locale) => formatDateRange(e.start_date, e.end_date, 'YYYY-MM', locale),
     getSubtitle: (e) => buildSubtitle(e, [
       { field: 'major', value: e.major },
       { field: 'degree', value: e.degree },
@@ -278,7 +315,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   work_experience: {
     getItems: (c) => c.work_experience || [],
     getTitle: (w) => w.company || '',
-    getDate: (w) => formatDateRange(w.start_date, w.end_date),
+    getDate: (w, locale) => formatDateRange(w.start_date, w.end_date, 'YYYY-MM', locale),
     getSubtitle: (w) => buildSubtitle(w, [
       { field: 'position', value: w.position },
       { field: 'department', value: w.department },
@@ -289,7 +326,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   projects: {
     getItems: (c) => c.projects || [],
     getTitle: (p) => p.name || '',
-    getDate: (p) => formatDateRange(p.start_date, p.end_date),
+    getDate: (p, locale) => formatDateRange(p.start_date, p.end_date, 'YYYY-MM', locale),
     getSubtitle: (p) => buildSubtitle(p, [
       { field: 'role', value: p.role },
       { field: 'city', value: p.city },
@@ -299,7 +336,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   research: {
     getItems: (c) => c.research || [],
     getTitle: (r) => r.name || '',
-    getDate: (r) => formatDateRange(r.start_date, r.end_date),
+    getDate: (r, locale) => formatDateRange(r.start_date, r.end_date, 'YYYY-MM', locale),
     getSubtitle: (r) => buildSubtitle(r, [
       { field: 'role', value: r.role },
       { field: 'department', value: r.department },
@@ -310,7 +347,7 @@ export const MODULE_RENDERERS: Partial<Record<ResumeModuleType, ModuleRenderer>>
   other_experience: {
     getItems: (c) => c.other_experience || [],
     getTitle: (o) => o.name || '',
-    getDate: (o) => formatDateRange(o.start_date, o.end_date),
+    getDate: (o, locale) => formatDateRange(o.start_date, o.end_date, 'YYYY-MM', locale),
     getSubtitle: (o) => buildSubtitle(o, [
       { field: 'role', value: o.role },
       { field: 'department', value: o.department },

@@ -31,6 +31,7 @@ function ModernRenderer({
   viewModel,
   config,
   resolvedFontSize,
+  locale,
   renderSection,
   renderSubItem,
 }: TemplateRendererProps) {
@@ -76,16 +77,17 @@ function ModernRenderer({
           textColor="rgba(255, 255, 255, 0.9)"
           contactFontSize={s(0.9)}
           intentionFontSize={s(0.9)}
+          locale={locale}
         />
       )
     }
-    return renderStandardModule({ module, content, styles: sidebarStyles, renderSubItem, s })
+    return renderStandardModule({ module, content, styles: sidebarStyles, renderSubItem, locale, s })
   }
 
   /** 渲染主区域模块内容 */
   function renderMainContent(module: ResumeModuleType): ReactNode {
-    if (module === 'skills') return renderSkillsModule({ content, styles, renderSubItem, s })
-    return renderStandardModule({ module, content, styles, renderSubItem, s })
+    if (module === 'skills') return renderSkillsModule({ content, styles, renderSubItem, locale, s })
+    return renderStandardModule({ module, content, styles, renderSubItem, locale, s })
   }
 
   function renderSidebarModule(module: ResumeModuleType): ReactNode {

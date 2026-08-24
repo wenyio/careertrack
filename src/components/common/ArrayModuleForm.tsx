@@ -24,6 +24,7 @@ import { ArrayFormItemCard, AddItemButton } from '@/components/common/ArrayFormC
 import DateRangeField from '@/components/common/DateRangeField'
 import { FormGrid, FormGridNormal, FormGridWide, FormGridFull } from '@/components/common/FormGrid'
 import { generateId, deepClone } from '@/utils/format'
+import { useI18n } from '@/i18n'
 
 type EntrySyncMode = ProfileEntrySyncMode | 'pull'
 
@@ -64,6 +65,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
 }: ArrayModuleFormProps<T>) {
   const isResumeMode = mode === 'resume'
   const canSyncToProfile = isResumeMode && !!profileSyncField
+  const { t } = useI18n()
   const { mutateAsync: syncProfileEntry, isPending: isSyncingProfileEntry } = useSyncProfileEntry()
 
   /** 切换某条目某字段的隐藏状态 */
@@ -224,6 +226,8 @@ export default function ArrayModuleForm<T extends { id?: string }>({
   function renderField(field: ModuleFieldConfig, item: Partial<T>, index: number) {
     const GridSpan = getGridSpan(field.span)
     const value = (item as Record<string, unknown>)[field.field]
+    const label = field.labelKey ? t(field.labelKey) : field.label
+    const placeholder = field.placeholderKey ? t(field.placeholderKey) : field.placeholder
 
     let input: React.ReactNode
 
@@ -233,8 +237,11 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           <Select
             value={value as string}
             onChange={(val) => handleChange(index, field.field, val)}
-            placeholder={field.placeholder}
-            options={field.options ? [...field.options] : []}
+            placeholder={placeholder}
+            options={field.options ? field.options.map((option) => ({
+              ...option,
+              label: 'labelKey' in option && option.labelKey ? t(option.labelKey as string) : option.label,
+            })) : []}
             allowClear
           />
         )
@@ -250,7 +257,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
             startDate={startDate}
             endDate={endDate}
             onChange={(start, end) => handleMultiChange(index, { [field.field]: start, [endDateField]: end })}
-            label={field.label}
+            label={label}
           />
         )
         break
@@ -262,7 +269,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
             picker="month"
             value={value ? dayjs(value as string) : null}
             onChange={(_date, dateString) => handleChange(index, field.field, dateString || '')}
-            placeholder={field.placeholder || '请选择月份'}
+            placeholder={placeholder || t('basicInfo.select')}
             format="YYYY-MM"
             style={{ width: '100%' }}
           />
@@ -274,7 +281,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           <RichTextEditor
             value={value as DescriptionField}
             onChange={(val) => handleChange(index, field.field, val)}
-            placeholder={field.placeholder}
+            placeholder={placeholder}
             minHeight={80}
           />
         )
@@ -285,7 +292,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           <Input
             value={value as string}
             onChange={(e) => handleChange(index, field.field, e.target.value)}
-            placeholder={field.placeholder}
+            placeholder={placeholder}
             allowClear
           />
         )
@@ -300,12 +307,12 @@ export default function ArrayModuleForm<T extends { id?: string }>({
     const hidden = isResumeMode && field.hideable && isFieldHiddenOnItem(item, field.field)
     const labelNode = isResumeMode && field.hideable ? (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        {field.label}
+        {label}
         <Tooltip title={hidden ? '显示此字段' : '隐藏此字段（不删除值）'}>
           <Button
             type="text"
             size="small"
-            aria-label={`${hidden ? '显示' : '隐藏'}第 ${index + 1} 项${field.label}`}
+            aria-label={`${hidden ? '显示' : '隐藏'}第 ${index + 1} 项${label}`}
             icon={hidden
               ? <EyeInvisibleOutlined style={{ color: '#999', fontSize: 12 }} />
               : <EyeOutlined style={{ color: '#1677ff', fontSize: 12 }} />}
@@ -314,7 +321,7 @@ export default function ArrayModuleForm<T extends { id?: string }>({
           />
         </Tooltip>
       </span>
-    ) : field.label
+    ) : label
 
     return (
       <GridSpan key={field.field}>

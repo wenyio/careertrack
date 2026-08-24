@@ -8,9 +8,11 @@
 
 import { Button, Result } from 'antd'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/i18n'
 
 export default function NotFound() {
   const router = useRouter()
+  const { t } = useI18n()
 
   return (
     <div
@@ -26,10 +28,10 @@ export default function NotFound() {
       <Result
         status="404"
         title="404"
-        subTitle="抱歉，您访问的页面不存在"
+        subTitle={t('notFound.subtitle')}
         extra={
           <Button type="primary" onClick={() => router.push('/')}>
-            返回首页
+            {t('notFound.backHome')}
           </Button>
         }
       />

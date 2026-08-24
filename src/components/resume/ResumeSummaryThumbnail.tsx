@@ -7,7 +7,7 @@
 
 'use client'
 
-import { getModuleLabel } from '@/config/modules'
+import { useI18n } from '@/i18n'
 import { A4_PAGE_RATIO } from '@/constants'
 import type { ResumeModuleType, ResumeTemplateId } from '@/types/resume'
 
@@ -33,6 +33,7 @@ export default function ResumeSummaryThumbnail({
   template,
   width = 120,
 }: ResumeSummaryThumbnailProps) {
+  const { t } = useI18n()
   const height = Math.round(width * A4_PAGE_RATIO)
   const colors = TEMPLATE_ACCENTS[template] || TEMPLATE_ACCENTS.classic
   const visibleSections = sections
@@ -75,7 +76,7 @@ export default function ResumeSummaryThumbnail({
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <div style={{ width: 2, height: 7, background: colors.accent }} />
                 <div style={{ fontSize: 4.5, lineHeight: 1, fontWeight: 600, color: colors.accent }}>
-                  {getModuleLabel(section)}
+                  {t(`modules.${section}`)}
                 </div>
               </div>
               <div style={{ width: '92%', height: 2, marginTop: 4, background: '#d9d9d9' }} />

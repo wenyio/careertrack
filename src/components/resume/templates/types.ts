@@ -17,6 +17,7 @@ import type {
 } from '@/types/resume'
 import type { Profile, BasicInfo } from '@/types/profile'
 import type { ResumeViewModel, IntentionDisplayItem } from '@/types/resume-view'
+import type { Locale } from '@/i18n/locales'
 
 // ── 样式相关 ──
 
@@ -63,6 +64,7 @@ export interface ModuleRendererProps {
   styles: ResolvedStyles
   renderSubItem: SubItemRenderer
   resolvedFontSize: number
+  locale: Locale
   s: (scale: number) => number
 }
 
@@ -125,6 +127,7 @@ export interface BasicInfoHeaderProps {
   containerStyle?: CSSProperties
   /** StandardBasicInfoHeader 使用：条目样式覆盖 */
   itemStyle?: CSSProperties
+  locale?: Locale
 }
 
 // ── 自定义 Renderer ──
@@ -141,6 +144,7 @@ export interface TemplateRendererProps {
   config: ResumeTemplateConfig
   resolvedFontSize: number
   resolvedLineHeight: number
+  locale: Locale
   renderSection: SectionRenderer
   renderSubItem: SubItemRenderer
 }

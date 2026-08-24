@@ -11,22 +11,24 @@ import type { ResumeModuleType, ModulesConfig } from '@/types/resume'
 export interface ModuleConfig {
   key: ResumeModuleType
   label: string
+  labelKey?: string
   icon: string
   description?: string
+  descriptionKey?: string
 }
 
 /** 所有模块配置 */
 export const MODULES: ModuleConfig[] = [
-  { key: 'basic_info', label: '基本信息', icon: '👤', description: '姓名、联系方式、求职意向等' },
-  { key: 'education', label: '教育经历', icon: '🎓', description: '学校、专业、学历等' },
-  { key: 'skills', label: '专业技能', icon: '⚡', description: '技能名称、熟练程度等' },
-  { key: 'work_experience', label: '工作经历', icon: '💼', description: '公司、职位、工作内容等' },
-  { key: 'projects', label: '项目经历', icon: '🚀', description: '项目名称、角色、成果等' },
-  { key: 'portfolio', label: '个人作品', icon: '🎨', description: '作品名称、链接、描述等' },
-  { key: 'awards', label: '荣誉奖项', icon: '🏆', description: '获奖名称、时间、级别等' },
-  { key: 'other_experience', label: '其他经历', icon: '📌', description: '志愿者、社团、其他经历等' },
-  { key: 'research', label: '研究经历', icon: '📚', description: '研究课题、成果、发表论文等' },
-  { key: 'summary', label: '自我评价', icon: '📝', description: '个人总结、职业目标等' },
+  { key: 'basic_info', label: '基本信息', labelKey: 'modules.basic_info', icon: '👤', description: '姓名、联系方式、求职意向等', descriptionKey: 'modules.basic_infoDesc' },
+  { key: 'education', label: '教育经历', labelKey: 'modules.education', icon: '🎓', description: '学校、专业、学历等', descriptionKey: 'modules.educationDesc' },
+  { key: 'skills', label: '专业技能', labelKey: 'modules.skills', icon: '⚡', description: '技能名称、熟练程度等', descriptionKey: 'modules.skillsDesc' },
+  { key: 'work_experience', label: '工作经历', labelKey: 'modules.work_experience', icon: '💼', description: '公司、职位、工作内容等', descriptionKey: 'modules.work_experienceDesc' },
+  { key: 'projects', label: '项目经历', labelKey: 'modules.projects', icon: '🚀', description: '项目名称、角色、成果等', descriptionKey: 'modules.projectsDesc' },
+  { key: 'portfolio', label: '个人作品', labelKey: 'modules.portfolio', icon: '🎨', description: '作品名称、链接、描述等', descriptionKey: 'modules.portfolioDesc' },
+  { key: 'awards', label: '荣誉奖项', labelKey: 'modules.awards', icon: '🏆', description: '获奖名称、时间、级别等', descriptionKey: 'modules.awardsDesc' },
+  { key: 'other_experience', label: '其他经历', labelKey: 'modules.other_experience', icon: '📌', description: '志愿者、社团、其他经历等', descriptionKey: 'modules.other_experienceDesc' },
+  { key: 'research', label: '研究经历', labelKey: 'modules.research', icon: '📚', description: '研究课题、成果、发表论文等', descriptionKey: 'modules.researchDesc' },
+  { key: 'summary', label: '自我评价', labelKey: 'modules.summary', icon: '📝', description: '个人总结、职业目标等', descriptionKey: 'modules.summaryDesc' },
 ]
 
 /** 默认模块排序（从 MODULES 数组自动派生，修改 MODULES 即可同步） */
