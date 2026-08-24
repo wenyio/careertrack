@@ -15,12 +15,14 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useOAuthAccounts, useUnbindOAuthAccount } from '@/hooks/useAuth'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { useAuthStore as useAuthStoreHook } from '@/stores/useAuthStore'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
 export default function GitHubBindingCard() {
   const { user } = useAuthStore()
   const { message, modal } = App.useApp()
+  const { locale, t } = useI18n()
   const searchParams = useSearchParams()
   const { data: accounts, isLoading, refetch } = useOAuthAccounts()
   const { mutate: unbind, isPending: isUnbinding } = useUnbindOAuthAccount()
@@ -52,14 +54,14 @@ export default function GitHubBindingCard() {
           auth_provider: currentUser.auth_provider | AUTH_PROVIDER.GITHUB,
         })
       }
-      message.success('GitHub 账号绑定成功')
+      message.success(t('security.githubBindSuccess'))
     } else if (bindStatus === 'error') {
       const reason = searchParams.get('reason')
       const errorMsg = reason === 'already_bound'
-        ? '该 GitHub 账号已被其他用户绑定'
+        ? t('security.githubAlreadyBound')
         : reason === 'invalid_state'
-          ? '绑定请求已过期，请重试'
-          : '绑定失败，请重试'
+          ? t('security.githubBindExpired')
+          : t('security.githubBindFailed')
       message.error(errorMsg)
     }
   })
@@ -73,16 +75,17 @@ export default function GitHubBindingCard() {
     if (!githubAccount) return
 
     if (!hasPassword) {
-      message.warning('请先设置账号密码后再解绑 GitHub')
+      message.warning(t('security.githubSetPasswordBeforeUnbind'))
       return
     }
 
+    const username = githubAccount.provider_username || t('security.unknown')
     modal.confirm({
-      title: '确认解绑 GitHub',
-      content: `确定要解绑 GitHub 账号 @${githubAccount.provider_username || '未知'} 吗？解绑后将无法使用 GitHub 登录。`,
-      okText: '解绑',
+      title: t('security.githubUnbindTitle'),
+      content: t('security.githubUnbindContent', { username }),
+      okText: t('security.githubUnbind'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => unbind(githubAccount.id),
     })
   }
@@ -117,12 +120,14 @@ export default function GitHubBindingCard() {
         )}
         <div>
           <Text strong style={{ display: 'block', fontSize: 14, marginBottom: 2 }}>
-            GitHub 绑定：{githubAccount ? '已绑定' : '未绑定'}
+            {t('security.githubBindingStatus', {
+              status: githubAccount ? t('security.githubBound') : t('security.githubUnbound'),
+            })}
           </Text>
           <Text type="secondary" style={{ fontSize: 13 }}>
             {githubAccount
-              ? `已关联 @${githubAccount.provider_username || '未知'}`
-              : '绑定 GitHub 后可以使用 GitHub 快速登录'}
+              ? t('security.githubLinked', { username: githubAccount.provider_username || t('security.unknown') })
+              : t('security.githubLoginHint')}
           </Text>
         </div>
       </div>
@@ -149,10 +154,12 @@ export default function GitHubBindingCard() {
             )}
             <div style={{ flex: 1 }}>
               <Text strong style={{ display: 'block', fontSize: 14 }}>
-                @{githubAccount.provider_username || '未知'}
+                @{githubAccount.provider_username || t('security.unknown')}
               </Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                绑定于 {new Date(githubAccount.created_at).toLocaleDateString('zh-CN')}
+                {t('security.githubBoundAt', {
+                  date: new Date(githubAccount.created_at).toLocaleDateString(locale),
+                })}
               </Text>
             </div>
           </div>
@@ -168,7 +175,7 @@ export default function GitHubBindingCard() {
               }}
             >
               <Text type="warning" style={{ fontSize: 13 }}>
-                当前账号未设置密码，解绑 GitHub 后将无法登录。请先在「修改密码」中设置密码。
+                {t('security.githubNoPasswordWarning')}
               </Text>
             </div>
           )}
@@ -181,7 +188,7 @@ export default function GitHubBindingCard() {
             onClick={handleUnbind}
             style={{ height: 42, borderRadius: 8, width: '100%', fontSize: 15 }}
           >
-            解绑 GitHub
+            {t('security.githubUnbindAccount')}
           </Button>
         </div>
       ) : (
@@ -191,7 +198,7 @@ export default function GitHubBindingCard() {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               <Text type="secondary" style={{ fontSize: 13 }}>
-                绑定 GitHub 后可以快速登录，无需输入密码
+                {t('security.githubEmpty')}
               </Text>
             }
             style={{ marginBottom: 20 }}
@@ -202,7 +209,7 @@ export default function GitHubBindingCard() {
             onClick={handleBind}
             style={{ height: 42, borderRadius: 8, width: '100%', fontSize: 15, backgroundColor: '#24292f', borderColor: '#24292f' }}
           >
-            绑定 GitHub 账号
+            {t('security.githubBindAccount')}
           </Button>
         </div>
       )}

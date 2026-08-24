@@ -14,12 +14,14 @@ import { changePassword } from '@/services/auth'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { AUTH_PROVIDER } from '@/constants/auth'
 import { getErrorMessage } from '@/utils/error'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
 export default function ChangePasswordForm() {
   const { user, updateUser } = useAuthStore()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -31,7 +33,7 @@ export default function ChangePasswordForm() {
     confirm_password: string
   }) => {
     if (values.new_password !== values.confirm_password) {
-      message.error('两次输入的密码不一致')
+      message.error(t('security.passwordMismatch'))
       return
     }
 
@@ -41,14 +43,14 @@ export default function ChangePasswordForm() {
         current_password: values.current_password,
         new_password: values.new_password,
       })
-      message.success(hasPassword ? '密码修改成功' : '密码设置成功')
+      message.success(hasPassword ? t('security.passwordChanged') : t('security.passwordSet'))
       form.resetFields()
       // 如果是首次设置密码，更新本地 auth_provider
       if (!hasPassword && user) {
         updateUser({ auth_provider: user.auth_provider | AUTH_PROVIDER.PASSWORD })
       }
     } catch (error: unknown) {
-      message.error(getErrorMessage(error, '密码修改失败'))
+      message.error(getErrorMessage(error, t('security.passwordChangeFailed')))
     } finally {
       setLoading(false)
     }
@@ -76,12 +78,12 @@ export default function ChangePasswordForm() {
         )}
         <div>
           <Text strong style={{ display: 'block', fontSize: 14, marginBottom: 2 }}>
-            {hasPassword ? '密码安全' : '设置账号密码'}
+            {hasPassword ? t('security.passwordSafe') : t('security.setupPasswordTitle')}
           </Text>
           <Text type="secondary" style={{ fontSize: 13 }}>
             {hasPassword
-              ? '定期更换密码有助于保护您的账号安全'
-              : '当前账号通过 GitHub 登录，设置本地密码后可使用密码登录并启用 OTP 二次验证'}
+              ? t('security.passwordSafeHint')
+              : t('security.setupPasswordHint')}
           </Text>
         </div>
       </div>
@@ -97,13 +99,13 @@ export default function ChangePasswordForm() {
         {hasPassword && (
           <Form.Item
             name="current_password"
-            label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>当前密码</Text>}
-            rules={[{ required: true, message: '请输入当前密码' }]}
+            label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>{t('security.currentPassword')}</Text>}
+            rules={[{ required: true, message: t('security.currentPasswordRequired') }]}
             style={{ marginBottom: 16 }}
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-              placeholder="输入当前密码"
+              placeholder={t('security.enterCurrentPassword')}
               style={{ height: 42, borderRadius: 8 }}
             />
           </Form.Item>
@@ -111,29 +113,29 @@ export default function ChangePasswordForm() {
 
         <Form.Item
           name="new_password"
-          label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>{hasPassword ? '新密码' : '设置密码'}</Text>}
+          label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>{hasPassword ? t('security.newPassword') : t('security.setupPassword')}</Text>}
           rules={[
-            { required: true, message: '请输入新密码' },
-            { min: 10, message: '密码至少 10 个字符' },
+            { required: true, message: t('security.newPasswordRequired') },
+            { min: 10, message: t('auth.passwordMin') },
           ]}
           style={{ marginBottom: 16 }}
         >
           <Input.Password
             prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-            placeholder="输入新密码（至少 10 位）"
+            placeholder={t('security.newPasswordPlaceholder')}
             style={{ height: 42, borderRadius: 8 }}
           />
         </Form.Item>
 
         <Form.Item
           name="confirm_password"
-          label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>确认新密码</Text>}
-          rules={[{ required: true, message: '请再次输入新密码' }]}
+          label={<Text style={{ fontSize: 13, color: '#8c8c8c' }}>{t('security.confirmNewPassword')}</Text>}
+          rules={[{ required: true, message: t('security.confirmNewPasswordRequired') }]}
           style={{ marginBottom: 24 }}
         >
           <Input.Password
             prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-            placeholder="再次输入新密码"
+            placeholder={t('security.confirmNewPasswordPlaceholder')}
             style={{ height: 42, borderRadius: 8 }}
           />
         </Form.Item>
@@ -145,7 +147,7 @@ export default function ChangePasswordForm() {
             loading={loading}
             style={{ height: 42, borderRadius: 8, width: '100%', fontSize: 15 }}
           >
-            {hasPassword ? '修改密码' : '设置密码'}
+            {hasPassword ? t('security.changePassword') : t('security.setupPassword')}
           </Button>
         </Form.Item>
       </Form>

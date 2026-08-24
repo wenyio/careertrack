@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { Modal, Input, Typography } from 'antd'
 import { MAX_RESUME_NAME_LENGTH } from '@/constants'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -25,6 +26,7 @@ export default function ResumeRenameModal({
   onOk,
   onCancel,
 }: ResumeRenameModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState(initialName)
 
   const handleOk = () => {
@@ -39,18 +41,18 @@ export default function ResumeRenameModal({
 
   return (
     <Modal
-      title="重命名简历"
+      title={t('resume.renameTitle')}
       open={open}
       onOk={handleOk}
       onCancel={handleCancel}
-      okText="确定"
-      cancelText="取消"
+      okText={t('common.confirm')}
+      cancelText={t('common.cancel')}
       destroyOnHidden
     >
       <div style={{ marginTop: 16 }}>
-        <Text style={{ marginBottom: 8, display: 'block' }}>简历名称</Text>
+        <Text style={{ marginBottom: 8, display: 'block' }}>{t('resume.name')}</Text>
         <Input
-          placeholder="请输入新的简历名称"
+          placeholder={t('resume.renamePlaceholder')}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onPressEnter={handleOk}

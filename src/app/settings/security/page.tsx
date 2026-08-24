@@ -16,19 +16,20 @@ import ChangePasswordForm from '@/components/settings/ChangePasswordForm'
 import OtpSettings from '@/components/settings/OtpSettings'
 import ChangeUsernameForm from '@/components/settings/ChangeUsernameForm'
 import GitHubBindingCard from '@/components/settings/GitHubBindingCard'
-
-const SECURITY_NAV = [
-  { key: 'username', label: '用户名', icon: '👤' },
-  { key: 'password', label: '修改密码', icon: '🔒' },
-  { key: 'otp', label: '二次验证', icon: '🛡️' },
-  { key: 'github', label: 'GitHub 绑定', icon: '🔗' },
-]
+import { useI18n } from '@/i18n'
 
 function SecurityPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { t } = useI18n()
   const tabParam = searchParams.get('tab')
   const activeTab = tabParam || 'username'
+  const securityNav = [
+    { key: 'username', label: t('security.usernameTab'), icon: '👤' },
+    { key: 'password', label: t('security.passwordTab'), icon: '🔒' },
+    { key: 'otp', label: t('security.otpTab'), icon: '🛡️' },
+    { key: 'github', label: t('security.githubTab'), icon: '🔗' },
+  ]
 
   const handleTabChange = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -38,9 +39,9 @@ function SecurityPageInner() {
 
   return (
     <SettingsPageLayout
-      title="账号安全"
-      subtitle="管理您的账号安全设置"
-      navItems={SECURITY_NAV}
+      title={t('security.title')}
+      subtitle={t('security.subtitle')}
+      navItems={securityNav}
       activeKey={activeTab}
       onNavChange={handleTabChange}
       size="lg"

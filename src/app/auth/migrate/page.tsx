@@ -30,6 +30,7 @@ import {
 } from '@/services/guest-migration'
 import { formatDate } from '@/utils/format'
 import AuthShell from '@/components/layout/AuthShell'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -38,6 +39,7 @@ type MigrationPhase = 'confirm' | 'migrating' | 'done'
 export default function MigratePage() {
   const router = useRouter()
   const { message } = App.useApp()
+  const { t } = useI18n()
   const [phase, setPhase] = useState<MigrationPhase>('confirm')
   const [result, setResult] = useState<MigrationResult | null>(null)
   const [guestResumes] = useState<ReturnType<typeof getGuestResumes>>(
@@ -59,7 +61,7 @@ export default function MigratePage() {
       setResult(migrationResult)
       setPhase('done')
     } catch {
-      message.error('迁移过程发生异常')
+      message.error(t('auth.migrateException'))
       setPhase('confirm')
     }
   }
@@ -67,9 +69,9 @@ export default function MigratePage() {
   const handleSkip = () => {
     if (clearOnSkip) {
       clearAllGuestData()
-      message.info('已跳过，游客数据已清除')
+      message.info(t('auth.skippedCleared'))
     } else {
-      message.info('已跳过，游客数据保留在浏览器本地')
+      message.info(t('auth.skippedKept'))
     }
     router.replace('/resumes')
   }
@@ -82,13 +84,12 @@ export default function MigratePage() {
   if (phase === 'confirm') {
     return (
       <AuthShell
-        title="导入游客数据"
-        subtitle="将浏览器本地的游客简历导入到您的账号"
+        title={t('auth.migrateTitle')}
+        subtitle={t('auth.migrateSubtitle')}
       >
         <div style={{ marginBottom: 20 }}>
           <Text>
-            检测到您有 <Text strong>{guestResumes.length}</Text> 份游客简历保存在浏览器本地，
-            是否导入到您的账号？
+            {t('auth.migrateDetected', { count: guestResumes.length })}
           </Text>
         </div>
 
@@ -113,7 +114,7 @@ export default function MigratePage() {
             >
               <Text>{item.name}</Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                更新于 {formatDate(item.updated_at, 'MM-DD HH:mm')}
+                {t('resume.updatedAt', { time: formatDate(item.updated_at, 'MM-DD HH:mm') })}
               </Text>
             </div>
           ))}
@@ -126,7 +127,7 @@ export default function MigratePage() {
           size="large"
           onClick={handleMigrate}
         >
-          导入全部简历
+          {t('auth.migrateAll')}
         </Button>
 
         <div style={{ height: 12 }} />
@@ -137,7 +138,7 @@ export default function MigratePage() {
           icon={<RightOutlined />}
           onClick={handleSkip}
         >
-          跳过，不导入
+          {t('auth.skipMigrate')}
         </Button>
 
         <div style={{ marginTop: 16 }}>
@@ -146,14 +147,14 @@ export default function MigratePage() {
             onChange={(e) => setClearOnSkip(e.target.checked)}
           >
             <Text type="secondary" style={{ fontSize: 13 }}>
-              同时清除浏览器本地的游客数据
+              {t('auth.clearGuestData')}
             </Text>
           </Checkbox>
         </div>
 
         <div style={{ marginTop: 12, textAlign: 'center' }}>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            跳过后游客数据将保留，下次登录仍可导入。
+            {t('auth.skipHint')}
           </Text>
         </div>
       </AuthShell>
@@ -164,13 +165,13 @@ export default function MigratePage() {
   if (phase === 'migrating') {
     return (
       <AuthShell
-        title="正在导入"
-        subtitle="请稍候，正在将游客简历导入到您的账号..."
+        title={t('auth.migratingTitle')}
+        subtitle={t('auth.migratingSubtitle')}
       >
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
           <Spin size="large" />
           <div style={{ marginTop: 24 }}>
-            <Text>正在导入 {guestResumes.length} 份简历...</Text>
+            <Text>{t('auth.migratingCount', { count: guestResumes.length })}</Text>
           </div>
         </div>
       </AuthShell>
@@ -180,8 +181,8 @@ export default function MigratePage() {
   // 完成阶段
   return (
     <AuthShell
-      title="导入完成"
-      subtitle="游客简历导入结果"
+      title={t('auth.migrateDoneTitle')}
+      subtitle={t('auth.migrateDoneSubtitle')}
     >
       {result && (
         <Result
@@ -189,8 +190,8 @@ export default function MigratePage() {
           icon={result.failed === 0 ? <CheckCircleOutlined /> : undefined}
           title={
             result.failed === 0
-              ? `成功导入 ${result.success} 份简历`
-              : `导入完成：成功 ${result.success}，失败 ${result.failed}`
+              ? t('auth.migrateSuccessTitle', { success: result.success })
+              : t('auth.migratePartialTitle', { success: result.success, failed: result.failed })
           }
           subTitle={
             result.errors.length > 0 ? (
@@ -198,7 +199,7 @@ export default function MigratePage() {
                 {result.errors.map((err, i) => (
                   <div key={i} style={{ fontSize: 13, color: '#ff4d4f', marginBottom: 4 }}>
                     <CloseCircleOutlined style={{ marginRight: 4 }} />
-                    {err.name}：{err.error}
+                    {err.name}: {err.error}
                   </div>
                 ))}
               </div>
@@ -214,7 +215,7 @@ export default function MigratePage() {
         size="large"
         onClick={handleDone}
       >
-        查看我的简历
+        {t('auth.viewMyResumes')}
       </Button>
     </AuthShell>
   )

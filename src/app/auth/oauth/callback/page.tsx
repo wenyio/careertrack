@@ -13,12 +13,14 @@ import { Spin, Typography } from 'antd'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { queryClient } from '@/lib/query-client'
 import { getCurrentUser } from '@/services/auth'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
 export default function OAuthCallbackPage() {
   const router = useRouter()
   const { loginSuccess } = useAuthStore()
+  const { t } = useI18n()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function OAuthCallbackPage() {
         // 跳转到简历页
         router.replace('/resumes')
       } catch {
-        setError('获取用户信息失败')
+        setError(t('auth.oauthUserFailed'))
         // 清除无效的客户端认证状态
         const { logout } = useAuthStore.getState()
         logout()
@@ -43,7 +45,7 @@ export default function OAuthCallbackPage() {
     }
 
     handleCallback()
-  }, [router, loginSuccess])
+  }, [router, loginSuccess, t])
 
   return (
     <div
@@ -59,12 +61,12 @@ export default function OAuthCallbackPage() {
       {error ? (
         <>
           <Text type="danger" style={{ fontSize: 16 }}>{error}</Text>
-          <Text type="secondary">正在跳转到登录页...</Text>
+          <Text type="secondary">{t('auth.redirectingLogin')}</Text>
         </>
       ) : (
         <>
           <Spin size="large" />
-          <Text type="secondary" style={{ fontSize: 16 }}>正在完成登录...</Text>
+          <Text type="secondary" style={{ fontSize: 16 }}>{t('auth.completingLogin')}</Text>
         </>
       )}
     </div>

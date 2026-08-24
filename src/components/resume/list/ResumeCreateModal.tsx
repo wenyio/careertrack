@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { Modal, Input, Checkbox, Typography } from 'antd'
 import { MAX_RESUME_NAME_LENGTH } from '@/constants'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -27,6 +28,7 @@ export default function ResumeCreateModal({
   onOk,
   onCancel,
 }: ResumeCreateModalProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [initFromProfile, setInitFromProfile] = useState(true)
 
@@ -40,19 +42,19 @@ export default function ResumeCreateModal({
 
   return (
     <Modal
-      title="新建简历"
+      title={t('resume.createTitle')}
       open={open}
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={confirmLoading}
-      okText="创建"
-      cancelText="取消"
+      okText={t('common.create')}
+      cancelText={t('common.cancel')}
       destroyOnHidden
     >
       <div style={{ marginTop: 16 }}>
-        <Text style={{ marginBottom: 8, display: 'block' }}>简历名称</Text>
+        <Text style={{ marginBottom: 8, display: 'block' }}>{t('resume.name')}</Text>
         <Input
-          placeholder="例如：前端工程师简历、产品经理简历"
+          placeholder={t('resume.namePlaceholder')}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onPressEnter={handleOk}
@@ -64,7 +66,7 @@ export default function ResumeCreateModal({
             onChange={(e) => setInitFromProfile(e.target.checked)}
             style={{ marginTop: 12 }}
           >
-            从个人信息初始化简历
+            {t('resume.initFromProfile')}
           </Checkbox>
         )}
       </div>

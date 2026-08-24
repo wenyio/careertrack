@@ -14,6 +14,7 @@ import { Button, Input, Switch, Typography, App, Divider } from 'antd'
 import { CopyOutlined, CheckOutlined, LinkOutlined } from '@ant-design/icons'
 import QRCode from 'qrcode'
 import { getPreviewToken } from '@/services/resume'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -34,6 +35,7 @@ function nameToSlug(name: string): string {
 
 export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resumeName, onTogglePublic }: PublicLinkPopoverProps) {
   const { message } = App.useApp()
+  const { t } = useI18n()
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
   // slug 编辑状态：用户手动修改后锁定，不再跟随 resumeName 自动更新
@@ -89,10 +91,10 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
     const success = await copyToClipboard(publicUrl)
     if (success) {
       setCopied(true)
-      message.success('链接已复制')
+      message.success(t('publicLink.linkCopied'))
       setTimeout(() => setCopied(false), 2000)
     } else {
-      message.error('复制失败，请手动复制')
+      message.error(t('publicLink.copyFailed'))
     }
   }
 
@@ -101,10 +103,10 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
     const success = await copyToClipboard(previewUrl)
     if (success) {
       setPreviewCopied(true)
-      message.success('预览链接已复制')
+      message.success(t('publicLink.previewCopied'))
       setTimeout(() => setPreviewCopied(false), 2000)
     } else {
-      message.error('复制失败，请手动复制')
+      message.error(t('publicLink.copyFailed'))
     }
   }
 
@@ -114,11 +116,11 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
       const result = await getPreviewToken(resumeId)
       setPreviewUrl(`${origin}${result.preview_url}`)
     } catch {
-      message.error('生成预览链接失败')
+      message.error(t('publicLink.generateFailed'))
     } finally {
       setPreviewLoading(false)
     }
-  }, [resumeId, origin, message])
+  }, [resumeId, origin, message, t])
 
   const handleToggle = (checked: boolean) => {
     if (!checked) {
@@ -138,7 +140,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
   return (
     <div style={{ width: 340, padding: '4px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Text strong>公开简历</Text>
+        <Text strong>{t('publicLink.title')}</Text>
         <Switch size="small" checked={isPublic} disabled={!isPublic && !publicSlug && !displayedSlug.trim()} onChange={handleToggle} />
       </div>
 
@@ -159,7 +161,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
             {qrDataUrl && (
               /* eslint-disable-next-line @next/next/no-img-element -- generated QR data URL */
-              <img src={qrDataUrl} alt="QR Code" style={{ width: 90, height: 90, borderRadius: 4 }} />
+              <img src={qrDataUrl} alt={t('publicLink.qrAlt')} style={{ width: 90, height: 90, borderRadius: 4 }} />
             )}
             <div style={{ flex: 1, paddingTop: 2 }}>
               <Button
@@ -168,10 +170,10 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
                 onClick={handleCopyLink}
                 style={{ marginBottom: 8 }}
               >
-                {copied ? '已复制' : '复制链接'}
+                {copied ? t('publicLink.copied') : t('publicLink.copyLink')}
               </Button>
               <div style={{ fontSize: 11, color: '#999', lineHeight: 1.5 }}>
-                分享此链接给招聘方，无需登录即可查看
+                {t('publicLink.shareHint')}
               </div>
             </div>
           </div>
@@ -179,7 +181,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
       ) : !publicSlug ? (
         <div>
           <div style={{ fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 1.5 }}>
-            打开开关即可生成公开链接
+            {t('publicLink.enableHint')}
           </div>
           <div style={{ display: 'flex', gap: 0 }}>
             <Input
@@ -211,7 +213,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
             {publicUrl}
           </div>
           <div style={{ fontSize: 11, color: '#999', marginTop: 8, lineHeight: 1.5 }}>
-            打开开关即可重新公开此简历
+            {t('publicLink.reenableHint')}
           </div>
         </div>
       )}
@@ -222,7 +224,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
           <Divider style={{ margin: '14px 0 12px' }} />
           <div>
             <div style={{ fontSize: 12, color: '#666', marginBottom: 8, lineHeight: 1.5 }}>
-              临时预览链接（24 小时有效）
+              {t('publicLink.temporaryPreview')}
             </div>
             {previewUrl ? (
               <>
@@ -244,7 +246,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
                   icon={previewCopied ? <CheckOutlined /> : <CopyOutlined />}
                   onClick={handleCopyPreview}
                 >
-                  {previewCopied ? '已复制' : '复制链接'}
+                  {previewCopied ? t('publicLink.copied') : t('publicLink.copyLink')}
                 </Button>
               </>
             ) : (
@@ -254,7 +256,7 @@ export default function PublicLinkPopover({ isPublic, publicSlug, resumeId, resu
                 loading={previewLoading}
                 onClick={handleGeneratePreview}
               >
-                生成临时预览链接
+                {t('publicLink.generatePreview')}
               </Button>
             )}
           </div>

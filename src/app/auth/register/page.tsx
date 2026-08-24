@@ -20,10 +20,12 @@ import { queryClient } from '@/lib/query-client'
 import { hasGuestData } from '@/services/guest-migration'
 import AuthShell from '@/components/layout/AuthShell'
 import { getErrorMessage } from '@/utils/error'
+import { useI18n } from '@/i18n'
 
 function RegisterPageContent() {
   const [form] = Form.useForm()
   const router = useRouter()
+  const { t } = useI18n()
   const searchParams = useSearchParams()
   const registrationCode = searchParams.get('code') || undefined
   const { loginSuccess } = useAuthStore()
@@ -52,7 +54,7 @@ function RegisterPageContent() {
     // 第一步的注册码字段在第二步不会渲染；读取完整表单状态以保留该值。
     const values = form.getFieldsValue(true)
     if (values.password !== values.confirmPassword) {
-      message.error('两次输入的密码不一致')
+      message.error(t('auth.passwordMismatch'))
       return
     }
 
@@ -67,10 +69,10 @@ function RegisterPageContent() {
 
       queryClient.clear()
       loginSuccess(data.user)
-      message.success('注册成功')
+      message.success(t('auth.registerSuccess'))
       router.push(hasGuestData() ? '/auth/migrate' : '/resumes')
     } catch (error: unknown) {
-      message.error(getErrorMessage(error, '注册失败'))
+      message.error(getErrorMessage(error, t('auth.registerFailed')))
       setCurrentStep(1)
     } finally {
       setLoading(false)
@@ -78,13 +80,13 @@ function RegisterPageContent() {
   }
 
   const steps = [
-    { title: '注册码' },
-    { title: '设置账号' },
-    { title: '完成' },
+    { title: t('auth.registrationCode') },
+    { title: t('auth.setupAccount') },
+    { title: t('auth.done') },
   ]
 
   return (
-    <AuthShell title="创建账号" subtitle="使用注册码注册职迹账号">
+    <AuthShell title={t('auth.createAccount')} subtitle={t('auth.registerSubtitle')}>
       <Steps
         current={currentStep}
         items={steps}
@@ -105,13 +107,13 @@ function RegisterPageContent() {
           <>
             <Form.Item
               name="registration_code"
-              rules={[{ required: true, message: '请输入注册码' }]}
+              rules={[{ required: true, message: t('auth.registrationCodeRequired') }]}
             >
-              <Input prefix={<KeyOutlined />} placeholder="注册码" autoFocus />
+              <Input prefix={<KeyOutlined />} placeholder={t('auth.registrationCode')} autoFocus />
             </Form.Item>
             <Form.Item style={{ marginBottom: 12 }}>
               <Button type="primary" onClick={handleNext} block>
-                下一步
+                {t('auth.next')}
               </Button>
             </Form.Item>
           </>
@@ -123,38 +125,38 @@ function RegisterPageContent() {
             <Form.Item
               name="username"
               rules={[
-                { required: true, message: '请输入用户名' },
-                { min: 3, message: '用户名至少 3 个字符' },
-                { max: 50, message: '用户名最多 50 个字符' },
+                { required: true, message: t('auth.usernameRequired') },
+                { min: 3, message: t('auth.usernameMin') },
+                { max: 50, message: t('auth.usernameMax') },
               ]}
               style={{ marginBottom: 12 }}
             >
-              <Input prefix={<UserOutlined />} placeholder="用户名" autoFocus />
+              <Input prefix={<UserOutlined />} placeholder={t('auth.username')} autoFocus />
             </Form.Item>
             <Form.Item
               name="password"
               rules={[
-                { required: true, message: '请输入密码' },
-                { min: 10, message: '密码至少 10 个字符' },
+                { required: true, message: t('auth.passwordRequired') },
+                { min: 10, message: t('auth.passwordMin') },
               ]}
               style={{ marginBottom: 12 }}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+              <Input.Password prefix={<LockOutlined />} placeholder={t('auth.password')} />
             </Form.Item>
             <Form.Item
               name="confirmPassword"
-              rules={[{ required: true, message: '请再次输入密码' }]}
+              rules={[{ required: true, message: t('auth.confirmPasswordRequired') }]}
               style={{ marginBottom: 16 }}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
+              <Input.Password prefix={<LockOutlined />} placeholder={t('auth.confirmPassword')} />
             </Form.Item>
             <Form.Item style={{ marginBottom: 12 }}>
               <Button type="primary" htmlType="submit" loading={loading} block>
-                注册
+                {t('auth.register')}
               </Button>
             </Form.Item>
             <Button block type="text" onClick={() => setCurrentStep(0)}>
-              返回上一步
+              {t('auth.previous')}
             </Button>
           </>
         )}
@@ -163,7 +165,7 @@ function RegisterPageContent() {
         {currentStep === 2 && (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
             <Button type="primary" loading block size="large">
-              正在注册…
+              {t('auth.registering')}
             </Button>
           </div>
         )}
@@ -176,14 +178,14 @@ function RegisterPageContent() {
           icon={<GithubOutlined />}
           href="/api/auth/github/start?mode=register"
         >
-          使用 GitHub 注册（无需注册码）
+          {t('auth.githubRegister')}
         </Button>
       </div>
 
       <div style={{ textAlign: 'center', marginTop: 16 }}>
         <span style={{ color: '#8c8c8c', fontSize: 13 }}>
-          已有账号？{' '}
-          <Link href="/auth/login">登录</Link>
+          {t('auth.hasAccount')}{' '}
+          <Link href="/auth/login">{t('auth.login')}</Link>
         </span>
       </div>
     </AuthShell>
