@@ -19,14 +19,16 @@ import { useAdminStats } from '@/hooks/useAdmin'
 import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'
 import type { AdminRecentUser, AdminRecentResume } from '@/types/admin'
+import { useI18n } from '@/i18n'
 
 export default function AdminOverviewPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const { data: stats, isLoading } = useAdminStats()
 
   const userColumns = [
     {
-      title: '用户名',
+      title: t('admin.username'),
       dataIndex: 'username',
       key: 'username',
       render: (username: string, record: AdminRecentUser) => (
@@ -34,18 +36,18 @@ export default function AdminOverviewPage() {
       ),
     },
     {
-      title: '角色',
+      title: t('admin.role'),
       dataIndex: 'role',
       key: 'role',
       width: 80,
       render: (role: string) => (
         <Tag color={role === 'admin' ? 'red' : 'default'}>
-          {role === 'admin' ? '管理员' : '用户'}
+          {role === 'admin' ? t('admin.adminRole') : t('admin.userRole')}
         </Tag>
       ),
     },
     {
-      title: '注册时间',
+      title: t('admin.registeredAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
@@ -55,7 +57,7 @@ export default function AdminOverviewPage() {
 
   const resumeColumns = [
     {
-      title: '简历名称',
+      title: t('admin.resumeName'),
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: AdminRecentResume) => (
@@ -63,7 +65,7 @@ export default function AdminOverviewPage() {
       ),
     },
     {
-      title: '所属用户',
+      title: t('admin.owner'),
       dataIndex: 'username',
       key: 'username',
       width: 120,
@@ -72,18 +74,18 @@ export default function AdminOverviewPage() {
       ),
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       dataIndex: 'is_public',
       key: 'is_public',
       width: 80,
       render: (isPublic: boolean) => (
         <Tag color={isPublic ? 'blue' : 'default'}>
-          {isPublic ? '已公开' : '未公开'}
+          {isPublic ? t('admin.published') : t('admin.unpublished')}
         </Tag>
       ),
     },
     {
-      title: '更新时间',
+      title: t('admin.updatedAt'),
       dataIndex: 'updated_at',
       key: 'updated_at',
       width: 160,
@@ -92,7 +94,7 @@ export default function AdminOverviewPage() {
   ]
 
   return (
-    <PageContainer size="lg" title="管理后台" subtitle="全站概览数据">
+    <PageContainer size="lg" title={t('admin.title')} subtitle={t('admin.overviewSubtitle')}>
       {isLoading ? (
         <Skeleton active paragraph={{ rows: 4 }} />
       ) : (
@@ -102,7 +104,7 @@ export default function AdminOverviewPage() {
             <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
-                  title="用户总数"
+                  title={t('admin.totalUsers')}
                   value={stats?.total_users ?? 0}
                   prefix={<UserOutlined />}
                 />
@@ -111,7 +113,7 @@ export default function AdminOverviewPage() {
             <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
-                  title="管理员数量"
+                  title={t('admin.adminCount')}
                   value={stats?.admin_count ?? 0}
                   prefix={<TeamOutlined />}
                 />
@@ -120,7 +122,7 @@ export default function AdminOverviewPage() {
             <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
-                  title="简历总数"
+                  title={t('admin.totalResumes')}
                   value={stats?.total_resumes ?? 0}
                   prefix={<FileTextOutlined />}
                 />
@@ -129,7 +131,7 @@ export default function AdminOverviewPage() {
             <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
-                  title="已公开简历"
+                  title={t('admin.publicResumes')}
                   value={stats?.public_resumes ?? 0}
                   prefix={<GlobalOutlined />}
                 />
@@ -141,9 +143,9 @@ export default function AdminOverviewPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={12}>
               <Card
-                title="最近注册用户"
+                title={t('admin.recentUsers')}
                 size="small"
-                extra={<a onClick={() => router.push('/admin/users')}>查看全部</a>}
+                extra={<a onClick={() => router.push('/admin/users')}>{t('admin.viewAll')}</a>}
               >
                 <Table
                   dataSource={stats?.recent_users || []}
@@ -157,9 +159,9 @@ export default function AdminOverviewPage() {
             </Col>
             <Col xs={24} lg={12}>
               <Card
-                title="最近更新简历"
+                title={t('admin.recentResumes')}
                 size="small"
-                extra={<a onClick={() => router.push('/admin/resumes')}>查看全部</a>}
+                extra={<a onClick={() => router.push('/admin/resumes')}>{t('admin.viewAll')}</a>}
               >
                 <Table
                   dataSource={stats?.recent_resumes || []}

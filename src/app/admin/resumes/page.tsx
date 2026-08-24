@@ -15,9 +15,11 @@ import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'
 import type { AdminResumeItem } from '@/types/admin'
 import type { TableRowSelection } from 'antd/es/table/interface'
+import { useI18n } from '@/i18n'
 
 export default function AdminResumesPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [search, setSearch] = useState('')
   const [publicFilter, setPublicFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -35,11 +37,11 @@ export default function AdminResumesPage() {
 
   const handleDelete = (id: string, name: string) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除简历"${name}"吗？此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmDeleteResumeTitle'),
+      content: t('admin.confirmDeleteResumeContent', { name }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => deleteResume(id, {
         onSuccess: () => {
           if (page > 1 && resumes?.length === 1) setPage(page - 1)
@@ -52,11 +54,11 @@ export default function AdminResumesPage() {
     const selected = (resumes || []).filter((r) => selectedRowKeys.includes(r.id))
     if (selected.length === 0) return
     Modal.confirm({
-      title: '确认批量删除',
-      content: `确定要删除选中的 ${selected.length} 份简历吗？此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmBatchDeleteResumesTitle'),
+      content: t('admin.confirmBatchDeleteResumesContent', { count: selected.length }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         batchDelete(selectedRowKeys, {
           onSuccess: () => {
@@ -77,7 +79,7 @@ export default function AdminResumesPage() {
 
   const columns = [
     {
-      title: '简历名称',
+      title: t('admin.resumeName'),
       dataIndex: 'name',
       key: 'name',
       fixed: 'left' as const,
@@ -87,7 +89,7 @@ export default function AdminResumesPage() {
       ),
     },
     {
-      title: '所属用户',
+      title: t('admin.owner'),
       dataIndex: 'username',
       key: 'username',
       width: 120,
@@ -96,13 +98,13 @@ export default function AdminResumesPage() {
       ),
     },
     {
-      title: '公开状态',
+      title: t('admin.publicStatus'),
       dataIndex: 'is_public',
       key: 'is_public',
       width: 100,
       render: (isPublic: boolean) => (
         <Tag color={isPublic ? 'blue' : 'default'}>
-          {isPublic ? '已公开' : '未公开'}
+          {isPublic ? t('admin.published') : t('admin.unpublished')}
         </Tag>
       ),
     },
@@ -115,27 +117,27 @@ export default function AdminResumesPage() {
       render: (slug: string | null) => slug || '-',
     },
     {
-      title: '模板',
+      title: t('admin.template'),
       dataIndex: 'template',
       key: 'template',
       width: 100,
     },
     {
-      title: '创建时间',
+      title: t('admin.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 170,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '更新时间',
+      title: t('admin.updatedAt'),
       dataIndex: 'updated_at',
       key: 'updated_at',
       width: 170,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 70,
       fixed: 'right' as const,
@@ -152,11 +154,11 @@ export default function AdminResumesPage() {
   ]
 
   return (
-    <PageContainer size="full" title="简历管理" subtitle="查看和管理所有简历">
+    <PageContainer size="full" title={t('admin.resumesTitle')} subtitle={t('admin.resumesSubtitle')}>
       <Card size="small">
         <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input.Search
-            placeholder="搜索简历名称、用户名、slug"
+            placeholder={t('admin.searchResumes')}
             allowClear
             onSearch={(value) => {
               setSearch(value)
@@ -174,14 +176,14 @@ export default function AdminResumesPage() {
             }}
             style={{ width: 120 }}
             options={[
-              { label: '全部', value: 'all' },
-              { label: '已公开', value: 'true' },
-              { label: '未公开', value: 'false' },
+              { label: t('admin.all'), value: 'all' },
+              { label: t('admin.published'), value: 'true' },
+              { label: t('admin.unpublished'), value: 'false' },
             ]}
           />
           {selectedRowKeys.length > 0 && (
             <>
-              <span style={{ color: '#666', fontSize: 13 }}>已选 {selectedRowKeys.length} 项</span>
+              <span style={{ color: '#666', fontSize: 13 }}>{t('admin.selectedCount', { count: selectedRowKeys.length })}</span>
               <Button
                 size="small"
                 danger
@@ -189,7 +191,7 @@ export default function AdminResumesPage() {
                 loading={isBatchDeleting}
                 onClick={handleBatchDelete}
               >
-                批量删除
+                {t('admin.batchDelete')}
               </Button>
             </>
           )}
@@ -205,7 +207,7 @@ export default function AdminResumesPage() {
             pageSize,
             total: resumePage?.pagination.total || 0,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 份简历`,
+            showTotal: (total) => t('admin.totalResumesText', { total }),
             onChange: (nextPage, nextPageSize) => {
               setPage(nextPageSize === pageSize ? nextPage : 1)
               setPageSize(nextPageSize)

@@ -12,11 +12,13 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Spin, Menu } from 'antd'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { ADMIN_NAV_ITEMS } from '@/config/navigation'
+import { useI18n } from '@/i18n'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isAuthenticated } = useAuthStore()
+  const { t } = useI18n()
   const [hydrated, setHydrated] = useState(false)
 
   // 订阅 Zustand persist 水合完成事件（回调内 setState，非 effect 同步调用）
@@ -63,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const menuItems = ADMIN_NAV_ITEMS.map((item) => ({
     key: item.key,
     icon: item.icon ? <item.icon /> : undefined,
-    label: item.label,
+    label: item.labelKey ? t(item.labelKey) : item.label,
   }))
 
   return (

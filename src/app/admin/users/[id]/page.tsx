@@ -38,12 +38,13 @@ import {
   useAdminUserOAuthAccounts,
   useDeleteAdminUserOAuthAccount,
 } from '@/hooks/useAdmin'
-import { AUTH_PROVIDER_LABELS } from '@/constants/auth'
+import { AUTH_PROVIDER } from '@/constants/auth'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'
 import ProfileViewer from '@/components/admin/ProfileViewer'
 import type { AdminResumeItem } from '@/types/admin'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
@@ -60,6 +61,7 @@ const ACCOUNT_DESCRIPTION_COLUMNS = {
 export default function AdminUserDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const { t } = useI18n()
   const id = params.id as string
   const { message, modal } = App.useApp()
   const { user: currentUser } = useAuthStore()
@@ -82,22 +84,30 @@ export default function AdminUserDetailPage() {
 
   const [activeTab, setActiveTab] = useState('account')
   const resumes = resumePage?.items
+  const authProviderLabel = (authProvider: number) => {
+    if (authProvider === AUTH_PROVIDER.PASSWORD) return t('admin.passwordProvider')
+    if (authProvider === AUTH_PROVIDER.GITHUB) return 'GitHub'
+    if (authProvider === (AUTH_PROVIDER.PASSWORD | AUTH_PROVIDER.GITHUB)) {
+      return t('admin.passwordGithubProvider')
+    }
+    return t('admin.unknownProvider', { provider: authProvider })
+  }
 
   const handleRoleChange = () => {
     if (!userDetail) return
     const newRole = userDetail.role === 'admin' ? 'user' : 'admin'
-    const label = newRole === 'admin' ? '管理员' : '普通用户'
+    const label = newRole === 'admin' ? t('admin.adminRole') : t('admin.normalUserRole')
 
     if (userDetail.id === currentUser?.id && newRole !== 'admin') {
-      message.warning('不能将自己的角色降级为普通用户')
+      message.warning(t('admin.cannotDemoteSelfLong'))
       return
     }
 
     modal.confirm({
-      title: '确认修改角色',
-      content: `确定将用户"${userDetail.username}"的角色修改为${label}吗？`,
-      okText: '确认',
-      cancelText: '取消',
+      title: t('admin.confirmRoleTitle'),
+      content: t('admin.confirmRoleContent', { username: userDetail.username, role: label }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       onOk: () => updateRole({ id: userDetail.id, role: newRole }),
     })
   }
@@ -108,24 +118,24 @@ export default function AdminUserDetailPage() {
     if (isDisabled) {
       // 启用用户
       modal.confirm({
-        title: '确认启用用户',
-        content: `确定要启用用户"${userDetail.username}"吗？`,
-        okText: '确认',
-        cancelText: '取消',
+        title: t('admin.confirmEnableUserTitle'),
+        content: t('admin.confirmEnableUserContent', { username: userDetail.username }),
+        okText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: userDetail.id, disabled: false }),
       })
     } else {
       // 禁用用户
       if (userDetail.id === currentUser?.id) {
-        message.warning('不能禁用自己的账号')
+        message.warning(t('admin.cannotDisableSelf'))
         return
       }
       modal.confirm({
-        title: '确认禁用用户',
-        content: `确定要禁用用户"${userDetail.username}"吗？禁用后该用户将无法登录和使用系统。`,
-        okText: '禁用',
+        title: t('admin.confirmDisableUserTitle'),
+        content: t('admin.confirmDisableUserDetailContent', { username: userDetail.username }),
+        okText: t('admin.disableUser'),
         okType: 'danger',
-        cancelText: '取消',
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: userDetail.id, disabled: true }),
       })
     }
@@ -134,15 +144,15 @@ export default function AdminUserDetailPage() {
   const handleDeleteUser = () => {
     if (!userDetail) return
     if (userDetail.id === currentUser?.id) {
-      message.warning('不能删除自己的账号')
+      message.warning(t('admin.cannotDeleteSelf'))
       return
     }
     modal.confirm({
-      title: '确认删除用户',
-      content: `确定要删除用户"${userDetail.username}"吗？该用户的所有简历和个人信息将一并删除，此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmDeleteUserTitle'),
+      content: t('admin.confirmDeleteUserContent', { username: userDetail.username }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         deleteUser(userDetail.id, {
           onSuccess: () => router.push('/admin/users'),
@@ -153,11 +163,11 @@ export default function AdminUserDetailPage() {
 
   const handleDeleteResume = (resumeId: string, resumeName: string) => {
     modal.confirm({
-      title: '确认删除',
-      content: `确定要删除简历"${resumeName}"吗？此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmDeleteResumeTitle'),
+      content: t('admin.confirmDeleteResumeContent', { name: resumeName }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => deleteResume(resumeId, {
         onSuccess: () => {
           if (resumePageNumber > 1 && resumes?.length === 1) {
@@ -171,18 +181,18 @@ export default function AdminUserDetailPage() {
   const handleUnbindOAuth = (oauthAccountId: string, provider: string, providerUsername: string | null) => {
     const label = providerUsername ? `${provider} (${providerUsername})` : provider
     modal.confirm({
-      title: '确认解绑',
-      content: `确定要解绑 ${label} 吗？解绑后该用户将不能再通过此账号登录。`,
-      okText: '解绑',
+      title: t('admin.confirmUnbindTitle'),
+      content: t('admin.confirmUnbindContent', { label }),
+      okText: t('admin.unbind'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => unbindOAuth({ userId: id, oauthAccountId }),
     })
   }
 
   const oauthColumns = [
     {
-      title: '平台',
+      title: 'OAuth',
       dataIndex: 'provider',
       key: 'provider',
       width: 100,
@@ -193,33 +203,33 @@ export default function AdminUserDetailPage() {
       ),
     },
     {
-      title: '用户名',
+      title: t('admin.username'),
       dataIndex: 'provider_username',
       key: 'provider_username',
       render: (v: string | null) => v || '-',
     },
     {
-      title: '邮箱',
+      title: t('admin.email'),
       dataIndex: 'email',
       key: 'email',
       render: (v: string | null) => v || '-',
     },
     {
-      title: '头像',
+      title: t('admin.avatar'),
       dataIndex: 'avatar_url',
       key: 'avatar_url',
       width: 60,
       render: (url: string | null) => url ? <Avatar src={url} size="small" /> : '-',
     },
     {
-      title: '绑定时间',
+      title: t('admin.boundAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 80,
       render: (_: unknown, record: { id: string; provider: string; provider_username: string | null }) => (
@@ -230,7 +240,7 @@ export default function AdminUserDetailPage() {
           loading={isUnbinding}
           onClick={() => handleUnbindOAuth(record.id, record.provider, record.provider_username)}
         >
-          解绑
+          {t('admin.unbind')}
         </Button>
       ),
     },
@@ -238,7 +248,7 @@ export default function AdminUserDetailPage() {
 
   const resumeColumns = [
     {
-      title: '简历名称',
+      title: t('admin.resumeName'),
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: AdminResumeItem) => (
@@ -246,13 +256,13 @@ export default function AdminUserDetailPage() {
       ),
     },
     {
-      title: '公开状态',
+      title: t('admin.publicStatus'),
       dataIndex: 'is_public',
       key: 'is_public',
       width: 100,
       render: (isPublic: boolean) => (
         <Tag color={isPublic ? 'blue' : 'default'}>
-          {isPublic ? '已公开' : '未公开'}
+          {isPublic ? t('admin.published') : t('admin.unpublished')}
         </Tag>
       ),
     },
@@ -264,27 +274,27 @@ export default function AdminUserDetailPage() {
       render: (slug: string | null) => slug || '-',
     },
     {
-      title: '模板',
+      title: t('admin.template'),
       dataIndex: 'template',
       key: 'template',
       width: 100,
     },
     {
-      title: '创建时间',
+      title: t('admin.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '更新时间',
+      title: t('admin.updatedAt'),
       dataIndex: 'updated_at',
       key: 'updated_at',
       width: 160,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 140,
       render: (_: unknown, record: AdminResumeItem) => (
@@ -312,7 +322,7 @@ export default function AdminUserDetailPage() {
 
   if (isLoading) {
     return (
-      <PageContainer size="lg" title="用户详情">
+      <PageContainer size="lg" title={t('admin.userDetail')}>
         <Skeleton active paragraph={{ rows: 6 }} />
       </PageContainer>
     )
@@ -320,8 +330,8 @@ export default function AdminUserDetailPage() {
 
   if (!userDetail) {
     return (
-      <PageContainer size="lg" title="用户详情">
-        <Empty description="用户不存在" />
+      <PageContainer size="lg" title={t('admin.userDetail')}>
+        <Empty description={t('admin.userNotFound')} />
       </PageContainer>
     )
   }
@@ -330,17 +340,17 @@ export default function AdminUserDetailPage() {
     <PageContainer
       size="lg"
       title={userDetail.username}
-      subtitle="用户详情"
+      subtitle={t('admin.userDetail')}
       extra={
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={() => router.push('/admin/users')}>返回用户列表</Button>
+          <Button onClick={() => router.push('/admin/users')}>{t('admin.backToUsers')}</Button>
           {userDetail.disabled_at ? (
             <Button
               type="primary"
               icon={<CheckCircleOutlined />}
               onClick={handleToggleDisable}
             >
-              启用用户
+              {t('admin.enableUser')}
             </Button>
           ) : (
             <Button
@@ -349,7 +359,7 @@ export default function AdminUserDetailPage() {
               disabled={userDetail.id === currentUser?.id}
               onClick={handleToggleDisable}
             >
-              禁用用户
+              {t('admin.disableUser')}
             </Button>
           )}
           <Button
@@ -358,7 +368,7 @@ export default function AdminUserDetailPage() {
             disabled={userDetail.id === currentUser?.id}
             onClick={handleDeleteUser}
           >
-            删除用户
+            {t('admin.deleteUser')}
           </Button>
         </div>
       }
@@ -369,52 +379,52 @@ export default function AdminUserDetailPage() {
         items={[
           {
             key: 'account',
-            label: '账号信息',
+            label: t('admin.accountInfo'),
             children: (
               <Descriptions bordered column={ACCOUNT_DESCRIPTION_COLUMNS} size="small">
-                <Descriptions.Item label="用户名">{userDetail.username}</Descriptions.Item>
-                <Descriptions.Item label="角色">
+                <Descriptions.Item label={t('admin.username')}>{userDetail.username}</Descriptions.Item>
+                <Descriptions.Item label={t('admin.role')}>
                   <Tag color={userDetail.role === 'admin' ? 'red' : 'default'}>
-                    {userDetail.role === 'admin' ? '管理员' : '用户'}
+                    {userDetail.role === 'admin' ? t('admin.adminRole') : t('admin.userRole')}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="认证来源">
-                  {AUTH_PROVIDER_LABELS[userDetail.auth_provider] || `未知 (${userDetail.auth_provider})`}
+                <Descriptions.Item label={t('admin.authProvider')}>
+                  {authProviderLabel(userDetail.auth_provider)}
                 </Descriptions.Item>
-                <Descriptions.Item label="账号状态">
+                <Descriptions.Item label={t('admin.accountStatus')}>
                   {userDetail.disabled_at ? (
-                    <Tag color="red">已禁用</Tag>
+                    <Tag color="red">{t('admin.disabled')}</Tag>
                   ) : (
-                    <Tag color="green">正常</Tag>
+                    <Tag color="green">{t('admin.normal')}</Tag>
                   )}
                 </Descriptions.Item>
-                <Descriptions.Item label="OTP 二次验证">
+                <Descriptions.Item label={t('security.otpTab')}>
                   {userDetail.otp_enabled ? (
-                    <Tag color="green">已启用</Tag>
+                    <Tag color="green">{t('admin.enabled')}</Tag>
                   ) : (
-                    <Tag>未启用</Tag>
+                    <Tag>{t('admin.notEnabled')}</Tag>
                   )}
                 </Descriptions.Item>
-                <Descriptions.Item label="简历数量">
+                <Descriptions.Item label={t('admin.resumeTotalCount')}>
                   {resumePage?.pagination.total ?? '-'}
                 </Descriptions.Item>
-                <Descriptions.Item label="注册时间">
+                <Descriptions.Item label={t('admin.registeredAt')}>
                   {formatDate(userDetail.created_at, 'YYYY-MM-DD HH:mm')}
                 </Descriptions.Item>
-                <Descriptions.Item label="更新时间">
+                <Descriptions.Item label={t('admin.updatedAt')}>
                   {formatDate(userDetail.updated_at, 'YYYY-MM-DD HH:mm')}
                 </Descriptions.Item>
-                <Descriptions.Item label="角色调整" span={ACCOUNT_DESCRIPTION_COLUMNS}>
+                <Descriptions.Item label={t('admin.roleAdjustment')} span={ACCOUNT_DESCRIPTION_COLUMNS}>
                   <Button
                     type={userDetail.role === 'admin' ? 'default' : 'primary'}
                     disabled={userDetail.id === currentUser?.id && userDetail.role === 'admin'}
                     onClick={handleRoleChange}
                   >
-                    {userDetail.role === 'admin' ? '降为普通用户' : '设为管理员'}
+                    {userDetail.role === 'admin' ? t('admin.demoteToUser') : t('admin.promoteToAdmin')}
                   </Button>
                   {userDetail.id === currentUser?.id && userDetail.role === 'admin' && (
                     <Text type="secondary" style={{ marginLeft: 12, fontSize: 12 }}>
-                      不能降级自己
+                      {t('admin.cannotDemoteSelf')}
                     </Text>
                   )}
                 </Descriptions.Item>
@@ -423,18 +433,18 @@ export default function AdminUserDetailPage() {
           },
           {
             key: 'profile',
-            label: '个人信息',
+            label: t('admin.profile'),
             children: profileLoading ? (
               <Skeleton active paragraph={{ rows: 6 }} />
             ) : profile ? (
               <ProfileViewer profile={profile} />
             ) : (
-              <Empty description="该用户暂未填写个人信息" />
+              <Empty description={t('admin.noProfile')} />
             ),
           },
           {
             key: 'oauth',
-            label: `OAuth 绑定 (${oauthAccounts?.length ?? 0})`,
+            label: t('admin.oauthBindings', { count: oauthAccounts?.length ?? 0 }),
             children: oauthLoading ? (
               <Skeleton active paragraph={{ rows: 4 }} />
             ) : oauthAccounts && oauthAccounts.length > 0 ? (
@@ -447,12 +457,12 @@ export default function AdminUserDetailPage() {
                 scroll={{ x: 600 }}
               />
             ) : (
-              <Empty description="该用户暂无 OAuth 绑定" />
+              <Empty description={t('admin.noOauth')} />
             ),
           },
           {
             key: 'resumes',
-            label: `简历列表 (${resumePage?.pagination.total ?? 0})`,
+            label: t('admin.resumeList', { count: resumePage?.pagination.total ?? 0 }),
             children: (
               <Table
                 dataSource={resumes || []}
@@ -464,7 +474,7 @@ export default function AdminUserDetailPage() {
                   pageSize: resumePageSize,
                   total: resumePage?.pagination.total || 0,
                   showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 份简历`,
+                  showTotal: (total) => t('admin.totalResumesText', { total }),
                   onChange: (nextPage, nextPageSize) => {
                     setResumePageNumber(
                       nextPageSize === resumePageSize ? nextPage : 1,

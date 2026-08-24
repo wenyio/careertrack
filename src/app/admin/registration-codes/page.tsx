@@ -32,19 +32,21 @@ import {
 import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'
 import type { RegistrationCode } from '@/types/admin'
+import { useI18n } from '@/i18n'
 
 const { Text } = Typography
 
 /** 注册码状态标签 */
-function getStatusTag(record: RegistrationCode) {
-  if (record.disabled_at) return <Tag color="orange">已禁用</Tag>
-  if (record.used_at) return <Tag color="blue">已使用</Tag>
-  if (record.expires_at && new Date(record.expires_at) <= new Date()) return <Tag color="red">已过期</Tag>
-  return <Tag color="green">未使用</Tag>
+function getStatusTag(record: RegistrationCode, t: (key: string, params?: Record<string, string | number>) => string) {
+  if (record.disabled_at) return <Tag color="orange">{t('admin.disabled')}</Tag>
+  if (record.used_at) return <Tag color="blue">{t('admin.used')}</Tag>
+  if (record.expires_at && new Date(record.expires_at) <= new Date()) return <Tag color="red">{t('admin.expired')}</Tag>
+  return <Tag color="green">{t('admin.unused')}</Tag>
 }
 
 export default function RegistrationCodesPage() {
   const { message, modal } = App.useApp()
+  const { t } = useI18n()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -81,7 +83,7 @@ export default function RegistrationCodesPage() {
   const handleCopyCode = () => {
     if (newCode) {
       navigator.clipboard.writeText(newCode)
-      message.success('注册码已复制到剪贴板')
+      message.success(t('admin.codeCopied'))
     }
   }
 
@@ -89,7 +91,7 @@ export default function RegistrationCodesPage() {
     if (newCode) {
       const registrationLink = `${window.location.origin}/auth/register?code=${encodeURIComponent(newCode)}`
       navigator.clipboard.writeText(registrationLink)
-      message.success('注册链接已复制到剪贴板')
+      message.success(t('admin.registrationLinkCopied'))
     }
   }
 
@@ -97,19 +99,19 @@ export default function RegistrationCodesPage() {
     const isDisabled = !!record.disabled_at
     if (isDisabled) {
       modal.confirm({
-        title: '确认启用注册码',
-        content: '确定要启用该注册码吗？',
-        okText: '确认',
-        cancelText: '取消',
+        title: t('admin.confirmEnableCodeTitle'),
+        content: t('admin.confirmEnableCodeContent'),
+        okText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: record.id, disabled: false }),
       })
     } else {
       modal.confirm({
-        title: '确认禁用注册码',
-        content: '确定要禁用该注册码吗？禁用后将无法用于注册。',
-        okText: '禁用',
+        title: t('admin.confirmDisableCodeTitle'),
+        content: t('admin.confirmDisableCodeContent'),
+        okText: t('admin.disableCode'),
         okType: 'danger',
-        cancelText: '取消',
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: record.id, disabled: true }),
       })
     }
@@ -117,11 +119,11 @@ export default function RegistrationCodesPage() {
 
   const handleDelete = (record: RegistrationCode) => {
     modal.confirm({
-      title: '确认删除注册码',
-      content: '确定要删除该注册码吗？此操作不可恢复。',
-      okText: '删除',
+      title: t('admin.confirmDeleteCodeTitle'),
+      content: t('admin.confirmDeleteCodeContent'),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => deleteCode(record.id, {
         onSuccess: () => {
           if (page > 1 && codes?.length === 1) setPage(page - 1)
@@ -132,40 +134,40 @@ export default function RegistrationCodesPage() {
 
   const columns = [
     {
-      title: '标签',
+      title: t('admin.label'),
       dataIndex: 'label',
       key: 'label',
       render: (label: string | null) => label || '-',
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       key: 'status',
       width: 100,
-      render: (_: unknown, record: RegistrationCode) => getStatusTag(record),
+      render: (_: unknown, record: RegistrationCode) => getStatusTag(record, t),
     },
     {
-      title: '创建时间',
+      title: t('admin.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '过期时间',
+      title: t('admin.expiresAt'),
       dataIndex: 'expires_at',
       key: 'expires_at',
       width: 160,
-      render: (v: string | null) => v ? formatDate(v, 'YYYY-MM-DD HH:mm') : '永不过期',
+      render: (v: string | null) => v ? formatDate(v, 'YYYY-MM-DD HH:mm') : t('admin.neverExpires'),
     },
     {
-      title: '使用时间',
+      title: t('admin.usedAt'),
       dataIndex: 'used_at',
       key: 'used_at',
       width: 160,
       render: (v: string | null) => v ? formatDate(v, 'YYYY-MM-DD HH:mm') : '-',
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 150,
       render: (_: unknown, record: RegistrationCode) => {
@@ -176,8 +178,8 @@ export default function RegistrationCodesPage() {
         // 已使用：所有按钮禁用
         if (isUsed) {
           return (
-            <Tooltip title="已使用的注册码不能操作">
-              <span style={{ color: '#999', fontSize: 12 }}>已使用，不可操作</span>
+            <Tooltip title={t('admin.usedCodeCannotOperate')}>
+              <span style={{ color: '#999', fontSize: 12 }}>{t('admin.usedCodeNoAction')}</span>
             </Tooltip>
           )
         }
@@ -185,7 +187,7 @@ export default function RegistrationCodesPage() {
         return (
           <div style={{ display: 'flex', gap: 2 }}>
             {isDisabled ? (
-              <Tooltip title="启用注册码">
+              <Tooltip title={t('admin.enableCode')}>
                 <Button
                   size="small"
                   type="text"
@@ -194,7 +196,7 @@ export default function RegistrationCodesPage() {
                 />
               </Tooltip>
             ) : (
-              <Tooltip title="禁用注册码">
+              <Tooltip title={t('admin.disableCode')}>
                 <Button
                   size="small"
                   type="text"
@@ -205,7 +207,7 @@ export default function RegistrationCodesPage() {
                 />
               </Tooltip>
             )}
-            <Tooltip title="删除注册码">
+            <Tooltip title={t('admin.deleteCode')}>
               <Button
                 size="small"
                 type="text"
@@ -223,15 +225,15 @@ export default function RegistrationCodesPage() {
   return (
     <PageContainer
       size="lg"
-      title="注册码管理"
-      subtitle="生成和管理账号密码注册所需的邀请码"
+      title={t('admin.registrationCodesTitle')}
+      subtitle={t('admin.registrationCodesSubtitle')}
       extra={
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setCreateModalVisible(true)}
         >
-          生成注册码
+          {t('admin.generateRegistrationCode')}
         </Button>
       }
     >
@@ -243,7 +245,7 @@ export default function RegistrationCodesPage() {
           style={{ marginBottom: 16 }}
           title={
             <div>
-              <Text strong>注册码已生成，请立即复制！关闭后将无法再次查看明文。</Text>
+              <Text strong>{t('admin.codeGeneratedWarning')}</Text>
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Text
                   code
@@ -258,14 +260,14 @@ export default function RegistrationCodesPage() {
                     icon={<CopyOutlined />}
                     onClick={handleCopyRegistrationLink}
                   >
-                    复制注册链接
+                    {t('admin.copyRegistrationLink')}
                   </Button>
                   <Button
                     size="small"
                     icon={<CopyOutlined />}
                     onClick={handleCopyCode}
                   >
-                    复制注册码
+                    {t('admin.copyRegistrationCode')}
                   </Button>
                 </Space>
               </div>
@@ -278,7 +280,7 @@ export default function RegistrationCodesPage() {
       {/* 状态筛选 */}
       <div style={{ marginBottom: 16 }}>
         <Space>
-          <Text type="secondary">状态筛选：</Text>
+          <Text type="secondary">{t('admin.statusFilter')}</Text>
           <Select
             value={statusFilter}
             onChange={(value) => {
@@ -287,11 +289,11 @@ export default function RegistrationCodesPage() {
             }}
             style={{ width: 120 }}
             options={[
-              { value: 'all', label: '全部' },
-              { value: 'unused', label: '未使用' },
-              { value: 'used', label: '已使用' },
-              { value: 'disabled', label: '已禁用' },
-              { value: 'expired', label: '已过期' },
+              { value: 'all', label: t('admin.all') },
+              { value: 'unused', label: t('admin.unused') },
+              { value: 'used', label: t('admin.used') },
+              { value: 'disabled', label: t('admin.disabled') },
+              { value: 'expired', label: t('admin.expired') },
             ]}
           />
         </Space>
@@ -307,7 +309,7 @@ export default function RegistrationCodesPage() {
           pageSize,
           total: codePage?.pagination.total || 0,
           showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 个注册码`,
+          showTotal: (total) => t('admin.totalCodesText', { total }),
           onChange: (nextPage, nextPageSize) => {
             setPage(nextPageSize === pageSize ? nextPage : 1)
             setPageSize(nextPageSize)
@@ -318,28 +320,28 @@ export default function RegistrationCodesPage() {
 
       {/* 创建注册码弹窗 */}
       <Modal
-        title="生成注册码"
+        title={t('admin.generateRegistrationCode')}
         open={createModalVisible}
         onOk={handleCreate}
         onCancel={() => { setCreateModalVisible(false); form.resetFields() }}
         confirmLoading={isCreating}
-        okText="生成"
-        cancelText="取消"
+        okText={t('admin.generate')}
+        cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="label"
-            label="标签（可选）"
-            extra="用于记录发放对象或用途，如：张三内测邀请"
+            label={t('admin.labelOptional')}
+            extra={t('admin.labelHelp')}
           >
-            <Input placeholder="如：张三内测邀请" />
+            <Input placeholder={t('admin.labelPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="expires_at"
-            label="过期时间（可选）"
-            extra="留空表示永不过期"
+            label={t('admin.expiresOptional')}
+            extra={t('admin.expiresHelp')}
           >
-            <DatePicker showTime style={{ width: '100%' }} placeholder="选择过期时间" />
+            <DatePicker showTime style={{ width: '100%' }} placeholder={t('admin.expiresPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

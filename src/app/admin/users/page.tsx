@@ -19,15 +19,17 @@ import {
   useUpdateUserStatus,
 } from '@/hooks/useAdmin'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { AUTH_PROVIDER_LABELS } from '@/constants/auth'
+import { AUTH_PROVIDER } from '@/constants/auth'
 import { formatDate } from '@/utils/format'
 import PageContainer from '@/components/layout/PageContainer'
 import type { AdminUserItem } from '@/types/admin'
 import type { TableRowSelection } from 'antd/es/table/interface'
+import { useI18n } from '@/i18n'
 
 export default function AdminUsersPage() {
   const router = useRouter()
   const { message, modal } = App.useApp()
+  const { t } = useI18n()
   const { user: currentUser } = useAuthStore()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -40,21 +42,29 @@ export default function AdminUsersPage() {
   const { mutate: batchRole, isPending: isBatchRole } = useBatchUpdateAdminUserRole()
   const { mutate: updateStatus } = useUpdateUserStatus()
   const users = userPage?.items
+  const authProviderLabel = (authProvider: number) => {
+    if (authProvider === AUTH_PROVIDER.PASSWORD) return t('admin.passwordProvider')
+    if (authProvider === AUTH_PROVIDER.GITHUB) return 'GitHub'
+    if (authProvider === (AUTH_PROVIDER.PASSWORD | AUTH_PROVIDER.GITHUB)) {
+      return t('admin.passwordGithubProvider')
+    }
+    return t('admin.unknownProvider', { provider: authProvider })
+  }
 
   const handleRoleChange = (record: AdminUserItem) => {
     const newRole = record.role === 'admin' ? 'user' : 'admin'
-    const label = newRole === 'admin' ? '管理员' : '普通用户'
+    const label = newRole === 'admin' ? t('admin.adminRole') : t('admin.normalUserRole')
 
     if (record.id === currentUser?.id && newRole !== 'admin') {
-      message.warning('不能将自己的角色降级为普通用户')
+      message.warning(t('admin.cannotDemoteSelfLong'))
       return
     }
 
     modal.confirm({
-      title: '确认修改角色',
-      content: `确定将用户"${record.username}"的角色修改为${label}吗？`,
-      okText: '确认',
-      cancelText: '取消',
+      title: t('admin.confirmRoleTitle'),
+      content: t('admin.confirmRoleContent', { username: record.username, role: label }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       onOk: () => updateRole({ id: record.id, role: newRole }),
     })
   }
@@ -63,23 +73,23 @@ export default function AdminUsersPage() {
     const isDisabled = !!record.disabled_at
     if (isDisabled) {
       modal.confirm({
-        title: '确认启用用户',
-        content: `确定要启用用户"${record.username}"吗？`,
-        okText: '确认',
-        cancelText: '取消',
+        title: t('admin.confirmEnableUserTitle'),
+        content: t('admin.confirmEnableUserContent', { username: record.username }),
+        okText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: record.id, disabled: false }),
       })
     } else {
       if (record.id === currentUser?.id) {
-        message.warning('不能禁用自己的账号')
+        message.warning(t('admin.cannotDisableSelf'))
         return
       }
       modal.confirm({
-        title: '确认禁用用户',
-        content: `确定要禁用用户"${record.username}"吗？`,
-        okText: '禁用',
+        title: t('admin.confirmDisableUserTitle'),
+        content: t('admin.confirmDisableUserContent', { username: record.username }),
+        okText: t('admin.disableUser'),
         okType: 'danger',
-        cancelText: '取消',
+        cancelText: t('common.cancel'),
         onOk: () => updateStatus({ id: record.id, disabled: true }),
       })
     }
@@ -87,15 +97,15 @@ export default function AdminUsersPage() {
 
   const handleDelete = (record: AdminUserItem) => {
     if (record.id === currentUser?.id) {
-      message.warning('不能删除自己的账号')
+      message.warning(t('admin.cannotDeleteSelf'))
       return
     }
     modal.confirm({
-      title: '确认删除用户',
-      content: `确定要删除用户"${record.username}"吗？该用户的所有简历和个人信息将一并删除，此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmDeleteUserTitle'),
+      content: t('admin.confirmDeleteUserContent', { username: record.username }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => deleteUser(record.id, {
         onSuccess: () => {
           if (page > 1 && users?.length === 1) setPage(page - 1)
@@ -111,11 +121,11 @@ export default function AdminUsersPage() {
     const selected = getSelectedUsers()
     if (selected.length === 0) return
     modal.confirm({
-      title: '确认批量删除',
-      content: `确定要删除选中的 ${selected.length} 个用户吗？他们的所有简历和个人信息将一并删除，此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmBatchDeleteUsersTitle'),
+      content: t('admin.confirmBatchDeleteUsersContent', { count: selected.length }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         batchDelete(selectedRowKeys, {
           onSuccess: () => {
@@ -132,12 +142,12 @@ export default function AdminUsersPage() {
   const handleBatchRole = (role: 'admin' | 'user') => {
     const selected = getSelectedUsers()
     if (selected.length === 0) return
-    const label = role === 'admin' ? '管理员' : '普通用户'
+    const label = role === 'admin' ? t('admin.adminRole') : t('admin.normalUserRole')
     modal.confirm({
-      title: '确认批量修改',
-      content: `确定将选中的 ${selected.length} 个用户的角色修改为${label}吗？`,
-      okText: '确认',
-      cancelText: '取消',
+      title: t('admin.confirmBatchRoleTitle'),
+      content: t('admin.confirmBatchRoleContent', { count: selected.length, role: label }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       onOk: () => {
         batchRole({ ids: selectedRowKeys, role }, {
           onSuccess: () => setSelectedRowKeys([]),
@@ -156,7 +166,7 @@ export default function AdminUsersPage() {
 
   const columns = [
     {
-      title: '用户名',
+      title: t('admin.username'),
       dataIndex: 'username',
       key: 'username',
       fixed: 'left' as const,
@@ -166,31 +176,31 @@ export default function AdminUsersPage() {
       ),
     },
     {
-      title: '角色',
+      title: t('admin.role'),
       dataIndex: 'role',
       key: 'role',
       width: 100,
       render: (role: string) => (
         <Tag color={role === 'admin' ? 'red' : 'default'}>
-          {role === 'admin' ? '管理员' : '用户'}
+          {role === 'admin' ? t('admin.adminRole') : t('admin.userRole')}
         </Tag>
       ),
     },
     {
-      title: '认证来源',
+      title: t('admin.authProvider'),
       dataIndex: 'auth_provider',
       key: 'auth_provider',
       width: 130,
       render: (authProvider: number) => (
-        AUTH_PROVIDER_LABELS[authProvider] || `未知 (${authProvider})`
+        authProviderLabel(authProvider)
       ),
     },
     {
-      title: '状态',
+      title: t('admin.status'),
       key: 'status',
       width: 90,
       render: (_: unknown, record: AdminUserItem) => (
-        record.disabled_at ? <Tag color="red">已禁用</Tag> : <Tag color="green">正常</Tag>
+        record.disabled_at ? <Tag color="red">{t('admin.disabled')}</Tag> : <Tag color="green">{t('admin.normal')}</Tag>
       ),
     },
     {
@@ -198,23 +208,23 @@ export default function AdminUsersPage() {
       dataIndex: 'otp_enabled',
       key: 'otp_enabled',
       width: 90,
-      render: (v: boolean) => v ? <Tag color="green">已启用</Tag> : <Tag>未启用</Tag>,
+      render: (v: boolean) => v ? <Tag color="green">{t('admin.enabled')}</Tag> : <Tag>{t('admin.notEnabled')}</Tag>,
     },
     {
-      title: '简历数',
+      title: t('admin.resumeCount'),
       dataIndex: 'resume_count',
       key: 'resume_count',
       width: 80,
     },
     {
-      title: '注册时间',
+      title: t('admin.registeredAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 170,
       render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm'),
     },
     {
-      title: '管理员',
+      title: t('admin.adminColumn'),
       key: 'admin',
       width: 90,
       fixed: 'right' as const,
@@ -222,7 +232,7 @@ export default function AdminUsersPage() {
         const isSelf = record.id === currentUser?.id
         const isAdmin = record.role === 'admin'
         return (
-          <Tooltip title={isSelf && isAdmin ? '不能取消自己的管理员权限' : undefined}>
+          <Tooltip title={isSelf && isAdmin ? t('admin.cannotCancelOwnAdmin') : undefined}>
             <Switch
               checked={isAdmin}
               size="small"
@@ -234,7 +244,7 @@ export default function AdminUsersPage() {
       },
     },
     {
-      title: '操作',
+      title: t('admin.action'),
       key: 'action',
       width: 100,
       fixed: 'right' as const,
@@ -243,7 +253,7 @@ export default function AdminUsersPage() {
         const isDisabled = !!record.disabled_at
         return (
           <div style={{ display: 'flex', gap: 2 }}>
-            <Tooltip title={isDisabled ? '启用用户' : '禁用用户'}>
+            <Tooltip title={isDisabled ? t('admin.enableUser') : t('admin.disableUser')}>
               <Button
                 size="small"
                 type="text"
@@ -268,11 +278,11 @@ export default function AdminUsersPage() {
   ]
 
   return (
-    <PageContainer size="full" title="用户管理" subtitle="查看和管理所有用户">
+    <PageContainer size="full" title={t('admin.usersTitle')} subtitle={t('admin.usersSubtitle')}>
       <Card size="small">
         <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input.Search
-            placeholder="搜索用户名"
+            placeholder={t('admin.searchUsername')}
             allowClear
             onSearch={(value) => {
               setSearch(value)
@@ -283,14 +293,14 @@ export default function AdminUsersPage() {
           />
           {selectedRowKeys.length > 0 && (
             <>
-              <span style={{ color: '#666', fontSize: 13 }}>已选 {selectedRowKeys.length} 项</span>
+              <span style={{ color: '#666', fontSize: 13 }}>{t('admin.selectedCount', { count: selectedRowKeys.length })}</span>
               <Button
                 size="small"
                 icon={<ArrowUpOutlined />}
                 loading={isBatchRole}
                 onClick={() => handleBatchRole('admin')}
               >
-                批量升为管理员
+                {t('admin.batchPromote')}
               </Button>
               <Button
                 size="small"
@@ -298,7 +308,7 @@ export default function AdminUsersPage() {
                 loading={isBatchRole}
                 onClick={() => handleBatchRole('user')}
               >
-                批量降为用户
+                {t('admin.batchDemote')}
               </Button>
               <Button
                 size="small"
@@ -307,7 +317,7 @@ export default function AdminUsersPage() {
                 loading={isBatchDeleting}
                 onClick={handleBatchDelete}
               >
-                批量删除
+                {t('admin.batchDelete')}
               </Button>
             </>
           )}
@@ -323,7 +333,7 @@ export default function AdminUsersPage() {
             pageSize,
             total: userPage?.pagination.total || 0,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 个用户`,
+            showTotal: (total) => t('admin.totalUsersText', { total }),
             onChange: (nextPage, nextPageSize) => {
               setPage(nextPageSize === pageSize ? nextPage : 1)
               setPageSize(nextPageSize)

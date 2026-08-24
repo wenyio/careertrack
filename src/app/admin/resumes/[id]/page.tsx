@@ -28,10 +28,12 @@ import { DEFAULT_MODULES_ORDER } from '@/types/resume'
 import PageContainer from '@/components/layout/PageContainer'
 import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import { A4_PAGE_HEIGHT_PX, A4_PAGE_WIDTH_PX } from '@/constants'
+import { useI18n } from '@/i18n'
 
 export default function AdminResumeDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const { t } = useI18n()
   const id = params.id as string
 
   const { data: resume, isLoading } = useAdminResume(id)
@@ -41,11 +43,11 @@ export default function AdminResumeDetailPage() {
   const handleDelete = () => {
     if (!resume) return
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除简历"${resume.name}"吗？此操作不可恢复。`,
-      okText: '删除',
+      title: t('admin.confirmDeleteResumeTitle'),
+      content: t('admin.confirmDeleteResumeContent', { name: resume.name }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         deleteResume(resume.id, {
           onSuccess: () => router.push('/admin/resumes'),
@@ -56,7 +58,7 @@ export default function AdminResumeDetailPage() {
 
   if (isLoading) {
     return (
-      <PageContainer size="lg" title="简历详情">
+      <PageContainer size="lg" title={t('admin.resumeDetail')}>
         <Skeleton active paragraph={{ rows: 6 }} />
       </PageContainer>
     )
@@ -64,8 +66,8 @@ export default function AdminResumeDetailPage() {
 
   if (!resume) {
     return (
-      <PageContainer size="lg" title="简历详情">
-        <Empty description="简历不存在" />
+      <PageContainer size="lg" title={t('admin.resumeDetail')}>
+        <Empty description={t('admin.resumeNotFound')} />
       </PageContainer>
     )
   }
@@ -74,14 +76,14 @@ export default function AdminResumeDetailPage() {
     <PageContainer
       size="full"
       title={resume.name}
-      subtitle="简历详情"
+      subtitle={t('admin.resumeDetail')}
       extra={
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
             icon={<UserOutlined />}
             onClick={() => router.push(`/admin/users/${resume.user_id}`)}
           >
-            所属用户
+            {t('admin.owner')}
           </Button>
           {resume.is_public && resume.public_slug && (
             <Button
@@ -89,7 +91,7 @@ export default function AdminResumeDetailPage() {
               href={`/resume/${resume.public_slug}`}
               target="_blank"
             >
-              查看公开链接
+              {t('admin.openPublicLink')}
             </Button>
           )}
           <Button
@@ -97,7 +99,7 @@ export default function AdminResumeDetailPage() {
             icon={<DeleteOutlined />}
             onClick={handleDelete}
           >
-            删除简历
+            {t('admin.deleteResume')}
           </Button>
         </div>
       }
@@ -105,30 +107,30 @@ export default function AdminResumeDetailPage() {
       {/* 基础信息 */}
       <Card size="small" style={{ marginBottom: 16 }}>
         <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }} size="small">
-          <Descriptions.Item label="简历名称">{resume.name}</Descriptions.Item>
-          <Descriptions.Item label="所属用户">
+          <Descriptions.Item label={t('admin.resumeName')}>{resume.name}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.owner')}>
             <a onClick={() => router.push(`/admin/users/${resume.user_id}`)}>
               {resume.username}
             </a>
           </Descriptions.Item>
-          <Descriptions.Item label="公开状态">
+          <Descriptions.Item label={t('admin.publicStatus')}>
             <Tag color={resume.is_public ? 'blue' : 'default'}>
-              {resume.is_public ? '已公开' : '未公开'}
+              {resume.is_public ? t('admin.published') : t('admin.unpublished')}
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="public_slug">{resume.public_slug || '-'}</Descriptions.Item>
-          <Descriptions.Item label="模板">{resume.template}</Descriptions.Item>
-          <Descriptions.Item label="创建时间">
+          <Descriptions.Item label={t('admin.template')}>{resume.template}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.createdAt')}>
             {formatDate(resume.created_at, 'YYYY-MM-DD HH:mm')}
           </Descriptions.Item>
-          <Descriptions.Item label="更新时间">
+          <Descriptions.Item label={t('admin.updatedAt')}>
             {formatDate(resume.updated_at, 'YYYY-MM-DD HH:mm')}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
       {/* 简历预览 */}
-      <Card title="简历预览" size="small">
+      <Card title={t('admin.preview')} size="small">
         <div
           style={{
             display: 'flex',

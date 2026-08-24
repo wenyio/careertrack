@@ -11,6 +11,7 @@ import { Descriptions, Tag, Typography, Card, Collapse } from 'antd'
 import type { Profile, Education, WorkExperience, Project, Skill, SelfEvaluation } from '@/types/profile'
 import { formatDate } from '@/utils/format'
 import { desc } from '@/utils/resume-preview'
+import { useI18n } from '@/i18n'
 
 const { Text, Paragraph } = Typography
 
@@ -27,7 +28,8 @@ function DescriptionView({ value }: { value: unknown }) {
 
 /** 教育经历列表 */
 function EducationList({ items }: { items: Education[] }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, i) => (
@@ -52,14 +54,15 @@ function EducationList({ items }: { items: Education[] }) {
 
 /** 工作经历列表 */
 function WorkExperienceList({ items }: { items: WorkExperience[] }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, i) => (
         <Card key={item.id || i} size="small">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <Text strong>{item.company}</Text>
-            <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : '至今'}</Text>
+            <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t('resume.present')}</Text>
           </div>
           <div>
             {item.department && <Text>{item.department}</Text>}
@@ -75,14 +78,15 @@ function WorkExperienceList({ items }: { items: WorkExperience[] }) {
 
 /** 项目经历列表 */
 function ProjectList({ items }: { items: Project[] }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, i) => (
         <Card key={item.id || i} size="small">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <Text strong>{item.name}</Text>
-            <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : '至今'}</Text>
+            <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t('resume.present')}</Text>
           </div>
           {item.role && <div><Text>{item.role}</Text></div>}
           {item.city && <div><Text type="secondary">{item.city}</Text></div>}
@@ -96,7 +100,8 @@ function ProjectList({ items }: { items: Project[] }) {
 
 /** 技能列表 */
 function SkillList({ items }: { items: Skill[] }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {items.map((item, i) => (
@@ -110,12 +115,13 @@ function SkillList({ items }: { items: Skill[] }) {
 }
 
 function SelfEvaluationList({ items }: { items: SelfEvaluation[] }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, index) => (
         <Card key={item.id || index} size="small">
-          <Text strong>{item.title || `自我评价 ${index + 1}`}</Text>
+          <Text strong>{item.title || t('admin.selfEvaluationIndexed', { index: index + 1 })}</Text>
           {item.description && <div style={{ marginTop: 4 }}><DescriptionView value={item.description} /></div>}
         </Card>
       ))}
@@ -126,7 +132,8 @@ function SelfEvaluationList({ items }: { items: SelfEvaluation[] }) {
 /** 通用列表渲染（奖项、作品、其他经历、研究经历） */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function SimpleList({ items, renderItem }: { items: any[]; renderItem: (item: any) => React.ReactNode }) {
-  if (!items.length) return <Text type="secondary">暂无</Text>
+  const { t } = useI18n()
+  if (!items.length) return <Text type="secondary">{t('admin.none')}</Text>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item: Record<string, unknown>, i: number) => (
@@ -139,63 +146,64 @@ function SimpleList({ items, renderItem }: { items: any[]; renderItem: (item: an
 }
 
 export default function ProfileViewer({ profile }: ProfileViewerProps) {
+  const { t } = useI18n()
   const basicInfo = profile.basic_info
 
   const collapseItems = [
     {
       key: 'basic',
-      label: '基本信息',
+      label: t('modules.basic_info'),
       children: (
         <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-          <Descriptions.Item label="姓名">{basicInfo?.name || '-'}</Descriptions.Item>
-          <Descriptions.Item label="电话">{basicInfo?.phone || '-'}</Descriptions.Item>
-          <Descriptions.Item label="邮箱">{basicInfo?.email || '-'}</Descriptions.Item>
-          <Descriptions.Item label="性别">{basicInfo?.other?.gender || '-'}</Descriptions.Item>
-          <Descriptions.Item label="年龄">{basicInfo?.other?.age || '-'}</Descriptions.Item>
-          <Descriptions.Item label="工作年限">{basicInfo?.other?.work_years ? `${basicInfo.other.work_years}年` : '-'}</Descriptions.Item>
-          <Descriptions.Item label="最高学历">{basicInfo?.other?.education_level || '-'}</Descriptions.Item>
-          <Descriptions.Item label="现居城市">{basicInfo?.other?.city || '-'}</Descriptions.Item>
-          <Descriptions.Item label="微信号">{basicInfo?.other?.wechat || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.name')}>{basicInfo?.name || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.phone')}>{basicInfo?.phone || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.email')}>{basicInfo?.email || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.gender')}>{basicInfo?.other?.gender || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.age')}>{basicInfo?.other?.age || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.workYears')}>{basicInfo?.other?.work_years ? t('resume.years', { count: basicInfo.other.work_years }) : '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.highestEducation')}>{basicInfo?.other?.education_level || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.currentCity')}>{basicInfo?.other?.city || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.wechat')}>{basicInfo?.other?.wechat || '-'}</Descriptions.Item>
           <Descriptions.Item label="GitHub">{basicInfo?.other?.github || '-'}</Descriptions.Item>
-          <Descriptions.Item label="个人网站">{basicInfo?.other?.website || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('basicInfo.website')}>{basicInfo?.other?.website || '-'}</Descriptions.Item>
         </Descriptions>
       ),
     },
     {
       key: 'intention',
-      label: '求职意向',
+      label: t('admin.jobIntention'),
       children: basicInfo?.job_intention ? (
         <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-          <Descriptions.Item label="当前状态">{basicInfo.job_intention.current_status || '-'}</Descriptions.Item>
-          <Descriptions.Item label="期望职位">{basicInfo.job_intention.position || '-'}</Descriptions.Item>
-          <Descriptions.Item label="期望城市">{basicInfo.job_intention.expected_city || '-'}</Descriptions.Item>
-          <Descriptions.Item label="期望薪资">{basicInfo.job_intention.expected_salary || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.currentStatus')}>{basicInfo.job_intention.current_status || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.expectedPosition')}>{basicInfo.job_intention.position || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.expectedCity')}>{basicInfo.job_intention.expected_city || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('admin.expectedSalary')}>{basicInfo.job_intention.expected_salary || '-'}</Descriptions.Item>
         </Descriptions>
-      ) : <Text type="secondary">暂无</Text>,
+      ) : <Text type="secondary">{t('admin.none')}</Text>,
     },
     {
       key: 'education',
-      label: `教育经历 (${profile.education?.length ?? 0})`,
+      label: `${t('modules.education')} (${profile.education?.length ?? 0})`,
       children: <EducationList items={profile.education || []} />,
     },
     {
       key: 'work',
-      label: `工作经历 (${profile.work_experience?.length ?? 0})`,
+      label: `${t('modules.work_experience')} (${profile.work_experience?.length ?? 0})`,
       children: <WorkExperienceList items={profile.work_experience || []} />,
     },
     {
       key: 'projects',
-      label: `项目经历 (${profile.projects?.length ?? 0})`,
+      label: `${t('modules.projects')} (${profile.projects?.length ?? 0})`,
       children: <ProjectList items={profile.projects || []} />,
     },
     {
       key: 'skills',
-      label: `专业技能 (${profile.skills?.length ?? 0})`,
+      label: `${t('modules.skills')} (${profile.skills?.length ?? 0})`,
       children: <SkillList items={profile.skills || []} />,
     },
     {
       key: 'awards',
-      label: `荣誉奖项 (${profile.awards?.length ?? 0})`,
+      label: `${t('modules.awards')} (${profile.awards?.length ?? 0})`,
       children: (
         <SimpleList
           items={profile.awards || []}
@@ -213,7 +221,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
     },
     {
       key: 'portfolio',
-      label: `个人作品 (${profile.portfolio?.length ?? 0})`,
+      label: `${t('modules.portfolio')} (${profile.portfolio?.length ?? 0})`,
       children: (
         <SimpleList
           items={profile.portfolio || []}
@@ -229,7 +237,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
     },
     {
       key: 'research',
-      label: `研究经历 (${profile.research?.length ?? 0})`,
+      label: `${t('modules.research')} (${profile.research?.length ?? 0})`,
       children: (
         <SimpleList
           items={profile.research || []}
@@ -237,7 +245,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Text strong>{item.name}</Text>
-                <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : '至今'}</Text>
+                <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t('resume.present')}</Text>
               </div>
               {item.role && <div><Text>{item.role}</Text></div>}
               {item.description && <DescriptionView value={item.description} />}
@@ -248,7 +256,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
     },
     {
       key: 'other',
-      label: `其他经历 (${profile.other_experience?.length ?? 0})`,
+      label: `${t('modules.other_experience')} (${profile.other_experience?.length ?? 0})`,
       children: (
         <SimpleList
           items={profile.other_experience || []}
@@ -256,7 +264,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Text strong>{item.name}</Text>
-                <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : '至今'}</Text>
+                <Text type="secondary">{formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t('resume.present')}</Text>
               </div>
               {item.role && <div><Text>{item.role}</Text></div>}
               {item.department && <div><Text type="secondary">{item.department}</Text></div>}
@@ -271,7 +279,7 @@ export default function ProfileViewer({ profile }: ProfileViewerProps) {
   return (
     <div>
       {(profile.self_evaluations?.length || profile.summary) && (
-        <Card size="small" title="自我评价" style={{ marginBottom: 16 }}>
+        <Card size="small" title={t('admin.selfEvaluation')} style={{ marginBottom: 16 }}>
           <SelfEvaluationList items={profile.self_evaluations || []} />
         </Card>
       )}

@@ -29,6 +29,7 @@ import {
   deleteRegistrationCode,
 } from '@/services/admin'
 import { getErrorMessage } from '@/utils/error'
+import { useI18n } from '@/i18n'
 
 /** 查询 key 常量 */
 export const ADMIN_STATS_KEY = ['admin', 'stats']
@@ -89,6 +90,7 @@ export function useAdminUser(id: string) {
 export function useUpdateAdminUserRole() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) =>
@@ -96,10 +98,10 @@ export function useUpdateAdminUserRole() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success('角色已更新')
+      message.success(t('admin.roleUpdated'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '修改失败'))
+      message.error(getErrorMessage(error, t('admin.roleUpdateFailed')))
     },
   })
 }
@@ -110,16 +112,17 @@ export function useUpdateAdminUserRole() {
 export function useDeleteAdminUser() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success('用户已删除')
+      message.success(t('admin.userDeleted'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '删除失败'))
+      message.error(getErrorMessage(error, t('admin.deleteFailed')))
     },
   })
 }
@@ -130,16 +133,17 @@ export function useDeleteAdminUser() {
 export function useBatchDeleteAdminUsers() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (ids: string[]) => batchDeleteAdminUsers(ids),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success(`已删除 ${data.deleted} 个用户`)
+      message.success(t('admin.usersDeleted', { count: data.deleted }))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '批量删除失败'))
+      message.error(getErrorMessage(error, t('admin.batchDeleteFailed')))
     },
   })
 }
@@ -150,6 +154,7 @@ export function useBatchDeleteAdminUsers() {
 export function useBatchUpdateAdminUserRole() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: ({ ids, role }: { ids: string[]; role: string }) =>
@@ -157,10 +162,10 @@ export function useBatchUpdateAdminUserRole() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success(`已更新 ${data.updated} 个用户的角色`)
+      message.success(t('admin.usersRoleUpdated', { count: data.updated }))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '批量修改失败'))
+      message.error(getErrorMessage(error, t('admin.batchRoleFailed')))
     },
   })
 }
@@ -219,6 +224,7 @@ export function useAdminResume(id: string) {
 export function useDeleteAdminResume() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => deleteAdminResume(id),
@@ -227,10 +233,10 @@ export function useDeleteAdminResume() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'user'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success('删除成功')
+      message.success(t('admin.resumeDeleted'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '删除失败'))
+      message.error(getErrorMessage(error, t('admin.deleteFailed')))
     },
   })
 }
@@ -241,6 +247,7 @@ export function useDeleteAdminResume() {
 export function useBatchDeleteAdminResumes() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (ids: string[]) => batchDeleteAdminResumes(ids),
@@ -249,10 +256,10 @@ export function useBatchDeleteAdminResumes() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'user'] })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success(`已删除 ${data.deleted} 份简历`)
+      message.success(t('admin.resumesDeleted', { count: data.deleted }))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '批量删除失败'))
+      message.error(getErrorMessage(error, t('admin.batchDeleteFailed')))
     },
   })
 }
@@ -279,16 +286,17 @@ export function useRegistrationCodes(
 export function useCreateRegistrationCode() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (data?: { label?: string; expires_at?: string }) =>
       createRegistrationCode(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'registration-codes'] })
-      message.success('注册码创建成功')
+      message.success(t('admin.registrationCodeCreated'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '创建注册码失败'))
+      message.error(getErrorMessage(error, t('admin.registrationCodeCreateFailed')))
     },
   })
 }
@@ -301,6 +309,7 @@ export function useCreateRegistrationCode() {
 export function useUpdateUserStatus() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: ({ id, disabled }: { id: string; disabled: boolean }) =>
@@ -309,10 +318,10 @@ export function useUpdateUserStatus() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: adminUserKey(variables.id) })
       queryClient.invalidateQueries({ queryKey: ADMIN_STATS_KEY })
-      message.success(variables.disabled ? '用户已禁用' : '用户已启用')
+      message.success(variables.disabled ? t('admin.userDisabled') : t('admin.userEnabled'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '操作失败'))
+      message.error(getErrorMessage(error, t('admin.operationFailed')))
     },
   })
 }
@@ -336,6 +345,7 @@ export function useAdminUserOAuthAccounts(userId: string) {
 export function useDeleteAdminUserOAuthAccount() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: ({ userId, oauthAccountId }: { userId: string; oauthAccountId: string }) =>
@@ -344,10 +354,10 @@ export function useDeleteAdminUserOAuthAccount() {
       queryClient.invalidateQueries({ queryKey: adminUserOAuthAccountsKey(variables.userId) })
       queryClient.invalidateQueries({ queryKey: adminUserKey(variables.userId) })
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
-      message.success('已解绑')
+      message.success(t('admin.unbound'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '解绑失败'))
+      message.error(getErrorMessage(error, t('admin.unbindFailed')))
     },
   })
 }
@@ -360,16 +370,17 @@ export function useDeleteAdminUserOAuthAccount() {
 export function useUpdateRegistrationCodeStatus() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: ({ id, disabled }: { id: string; disabled: boolean }) =>
       updateRegistrationCodeStatus(id, disabled),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'registration-codes'] })
-      message.success(variables.disabled ? '注册码已禁用' : '注册码已启用')
+      message.success(variables.disabled ? t('admin.registrationCodeDisabled') : t('admin.registrationCodeEnabled'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '操作失败'))
+      message.error(getErrorMessage(error, t('admin.operationFailed')))
     },
   })
 }
@@ -380,15 +391,16 @@ export function useUpdateRegistrationCodeStatus() {
 export function useDeleteRegistrationCode() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
+  const { t } = useI18n()
 
   return useMutation({
     mutationFn: (id: string) => deleteRegistrationCode(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'registration-codes'] })
-      message.success('注册码已删除')
+      message.success(t('admin.registrationCodeDeleted'))
     },
     onError: (error: Error) => {
-      message.error(getErrorMessage(error, '删除失败'))
+      message.error(getErrorMessage(error, t('admin.deleteFailed')))
     },
   })
 }
