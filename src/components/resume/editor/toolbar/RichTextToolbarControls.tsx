@@ -27,6 +27,7 @@ import {
 import { useCallback, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { isSafeUrl } from '@/utils/rich-text'
+import { useI18n } from '@/i18n'
 
 const FONT_SIZES = [
   '12px', '13px', '14px', '15px', '16px',
@@ -41,14 +42,15 @@ const COLORS = [
 
 /** 字号选择器 */
 export function FontSizeSelect({ editor }: { editor: Editor }) {
+  const { t } = useI18n()
   const currentSize = editor.getAttributes('textStyle').fontSize as string | undefined
 
   return (
-    <Tooltip title="字号">
+    <Tooltip title={t('resumeEditor.richText.fontSize')}>
       <Select
-        aria-label="富文本字号"
+        aria-label={t('resumeEditor.richText.fontSizeAria')}
         value={currentSize || undefined}
-        placeholder="字号"
+        placeholder={t('resumeEditor.richText.fontSize')}
         style={{ width: 72, fontSize: 12 }}
         size="small"
         variant="borderless"
@@ -69,17 +71,18 @@ export function FontSizeSelect({ editor }: { editor: Editor }) {
 
 /** 行高选择器 */
 export function LineHeightSelect({ editor }: { editor: Editor }) {
+  const { t } = useI18n()
   const currentLineHeight =
     editor.getAttributes('paragraph').lineHeight
     || editor.getAttributes('listItem').lineHeight
     || undefined
 
   return (
-    <Tooltip title="行高">
+    <Tooltip title={t('resumeEditor.richText.lineHeight')}>
       <Select
-        aria-label="富文本行高"
+        aria-label={t('resumeEditor.richText.lineHeightAria')}
         value={currentLineHeight || undefined}
-        placeholder="行高"
+        placeholder={t('resumeEditor.richText.lineHeight')}
         style={{ width: 68, fontSize: 12 }}
         size="small"
         variant="borderless"
@@ -100,10 +103,11 @@ export function LineHeightSelect({ editor }: { editor: Editor }) {
 
 /** 颜色控制 */
 export function ColorControl({ editor }: { editor: Editor }) {
+  const { t } = useI18n()
   const currentColor = (editor.getAttributes('textStyle').color as string) || '#000000'
 
   return (
-    <Tooltip title="字体颜色">
+    <Tooltip title={t('resumeEditor.richText.fontColor')}>
       <Popover
         trigger="click"
         placement="bottomLeft"
@@ -115,7 +119,7 @@ export function ColorControl({ editor }: { editor: Editor }) {
                 key={color}
                 type="button"
                 title={color}
-                aria-label={`颜色 ${color}`}
+                aria-label={t('resumeEditor.richText.colorAria', { color })}
                 onClick={() => editor.chain().focus().setColor(color).run()}
                 style={{
                   width: 22,
@@ -137,8 +141,8 @@ export function ColorControl({ editor }: { editor: Editor }) {
             />
             <button
               type="button"
-              title="清除颜色"
-              aria-label="清除颜色"
+              title={t('resumeEditor.richText.clearColor')}
+              aria-label={t('resumeEditor.richText.clearColor')}
               onClick={() => editor.chain().focus().unsetColor().run()}
               style={{
                 width: 22,
@@ -161,7 +165,7 @@ export function ColorControl({ editor }: { editor: Editor }) {
         }
       >
         <Button
-          aria-label="字体颜色"
+          aria-label={t('resumeEditor.richText.fontColor')}
           size="small"
           type="text"
           icon={<FontColorsOutlined />}
@@ -174,6 +178,7 @@ export function ColorControl({ editor }: { editor: Editor }) {
 
 /** 链接控制 */
 export function LinkControl({ editor }: { editor: Editor }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
 
@@ -191,8 +196,8 @@ export function LinkControl({ editor }: { editor: Editor }) {
       }
       if (!isSafeUrl(finalUrl)) {
         Modal.warning({
-          title: '不允许的链接协议',
-          content: '仅支持 http、https、mailto、tel 协议',
+          title: t('resumeEditor.richText.invalidLinkProtocolTitle'),
+          content: t('resumeEditor.richText.invalidLinkProtocolContent'),
         })
         return
       }
@@ -200,7 +205,7 @@ export function LinkControl({ editor }: { editor: Editor }) {
     }
     setOpen(false)
     setUrl('')
-  }, [editor, url])
+  }, [editor, t, url])
 
   return (
     <Space size={0}>
@@ -213,7 +218,7 @@ export function LinkControl({ editor }: { editor: Editor }) {
         content={
           <Space.Compact style={{ width: 260 }}>
             <Input
-              aria-label="链接地址"
+              aria-label={t('resumeEditor.richText.linkAddress')}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://..."
@@ -231,14 +236,14 @@ export function LinkControl({ editor }: { editor: Editor }) {
               }}
             />
             <Button size="small" type="primary" onClick={handleConfirm}>
-              确定
+              {t('common.confirm')}
             </Button>
           </Space.Compact>
         }
       >
-        <Tooltip title="插入/编辑链接">
+        <Tooltip title={t('resumeEditor.richText.insertEditLink')}>
           <Button
-            aria-label="插入或编辑链接"
+            aria-label={t('resumeEditor.richText.insertOrEditLink')}
             size="small"
             type="text"
             icon={<LinkOutlined />}
@@ -248,9 +253,9 @@ export function LinkControl({ editor }: { editor: Editor }) {
           />
         </Tooltip>
       </Popover>
-      <Tooltip title="取消链接">
+      <Tooltip title={t('resumeEditor.richText.removeLink')}>
         <Button
-          aria-label="取消链接"
+          aria-label={t('resumeEditor.richText.removeLink')}
           size="small"
           type="text"
           disabled={!editor.isActive('link')}
@@ -283,11 +288,12 @@ function AlignJustifyIcon() {
 
 /** 对齐按钮组 */
 export function AlignButtons({ editor }: { editor: Editor }) {
+  const { t } = useI18n()
   const alignments = [
-    { value: 'left', icon: <AlignLeftOutlined />, title: '左对齐' },
-    { value: 'center', icon: <AlignCenterOutlined />, title: '居中' },
-    { value: 'right', icon: <AlignRightOutlined />, title: '右对齐' },
-    { value: 'justify', icon: <AlignJustifyIcon />, title: '两端对齐' },
+    { value: 'left', icon: <AlignLeftOutlined />, title: t('resumeEditor.richText.alignLeft') },
+    { value: 'center', icon: <AlignCenterOutlined />, title: t('resumeEditor.richText.alignCenter') },
+    { value: 'right', icon: <AlignRightOutlined />, title: t('resumeEditor.richText.alignRight') },
+    { value: 'justify', icon: <AlignJustifyIcon />, title: t('resumeEditor.richText.alignJustify') },
   ] as const
 
   return (

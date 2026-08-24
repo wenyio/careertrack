@@ -38,7 +38,7 @@ export const WORK_EXPERIENCE_FIELDS: ModuleFieldConfig[] = [
   { field: 'company', label: '公司名称', labelKey: 'fields.company', kind: 'input', placeholder: '请输入公司名称', placeholderKey: 'fields.companyPlaceholder' },
   { field: 'position', label: '岗位名称', labelKey: 'fields.position', kind: 'input', placeholder: '请输入岗位名称', placeholderKey: 'fields.positionPlaceholder', hideable: true },
   { field: 'department', label: '部门名称', labelKey: 'fields.department', kind: 'input', placeholder: '请输入部门名称', placeholderKey: 'fields.departmentPlaceholder', hideable: true },
-  { field: 'city', label: '工作城市', labelKey: 'fields.workCity', kind: 'input', placeholder: '请输入工作城市', placeholderKey: 'fields.cityPlaceholder', hideable: true },
+  { field: 'city', label: '工作城市', labelKey: 'fields.workCity', kind: 'input', placeholder: '请输入工作城市', placeholderKey: 'fields.workCityPlaceholder', hideable: true },
   { field: 'start_date', label: '工作时间', labelKey: 'fields.workTime', kind: 'dateRange', span: 'wide' },
   { field: 'description', label: '工作详情', labelKey: 'fields.workDescription', kind: 'richText', placeholder: '请描述工作内容、职责和成就...', placeholderKey: 'fields.workDescriptionPlaceholder', span: 'full' },
 ]

@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
+import { useI18n } from '@/i18n'
 import {
   AlignButtons,
   ColorControl,
@@ -44,6 +45,7 @@ export default function RichTextToolbar({
   onToggleFullscreen,
   onClearContent,
 }: RichTextToolbarProps) {
+  const { t } = useI18n()
   /** 清除选区内样式（保留文本和列表结构） */
   const clearFormatting = useCallback(() => {
     const { state } = editor
@@ -68,7 +70,7 @@ export default function RichTextToolbar({
   return (
     <div
       role="toolbar"
-      aria-label="富文本编辑工具"
+      aria-label={t('resumeEditor.richText.toolbar')}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -80,9 +82,9 @@ export default function RichTextToolbar({
         flexShrink: 0,
       }}
     >
-      <Tooltip title="撤回 (Ctrl+Z)">
+      <Tooltip title={t('resumeEditor.richText.undoTooltip')}>
         <Button
-          aria-label="撤回"
+          aria-label={t('resumeEditor.richText.undo')}
           size="small"
           type="text"
           icon={<UndoOutlined />}
@@ -90,9 +92,9 @@ export default function RichTextToolbar({
           onClick={() => editor.chain().focus().undo().run()}
         />
       </Tooltip>
-      <Tooltip title="反撤回 (Ctrl+Shift+Z)">
+      <Tooltip title={t('resumeEditor.richText.redoTooltip')}>
         <Button
-          aria-label="反撤回"
+          aria-label={t('resumeEditor.richText.redo')}
           size="small"
           type="text"
           icon={<RedoOutlined />}
@@ -106,9 +108,9 @@ export default function RichTextToolbar({
       <LineHeightSelect editor={editor} />
 
       <Divider orientation="vertical" style={{ margin: '0 2px', height: 18 }} />
-      <Tooltip title="加粗 (Ctrl+B)">
+      <Tooltip title={t('resumeEditor.richText.boldTooltip')}>
         <Button
-          aria-label="加粗"
+          aria-label={t('resumeEditor.richText.bold')}
           size="small"
           type="text"
           icon={<BoldOutlined />}
@@ -118,9 +120,9 @@ export default function RichTextToolbar({
           onClick={() => editor.chain().focus().toggleBold().run()}
         />
       </Tooltip>
-      <Tooltip title="斜体 (Ctrl+I)">
+      <Tooltip title={t('resumeEditor.richText.italicTooltip')}>
         <Button
-          aria-label="斜体"
+          aria-label={t('resumeEditor.richText.italic')}
           size="small"
           type="text"
           icon={<ItalicOutlined />}
@@ -130,9 +132,9 @@ export default function RichTextToolbar({
           onClick={() => editor.chain().focus().toggleItalic().run()}
         />
       </Tooltip>
-      <Tooltip title="下划线 (Ctrl+U)">
+      <Tooltip title={t('resumeEditor.richText.underlineTooltip')}>
         <Button
-          aria-label="下划线"
+          aria-label={t('resumeEditor.richText.underline')}
           size="small"
           type="text"
           icon={<UnderlineOutlined />}
@@ -144,9 +146,9 @@ export default function RichTextToolbar({
       </Tooltip>
 
       <Divider orientation="vertical" style={{ margin: '0 2px', height: 18 }} />
-      <Tooltip title="无序列表">
+      <Tooltip title={t('resumeEditor.richText.bulletList')}>
         <Button
-          aria-label="无序列表"
+          aria-label={t('resumeEditor.richText.bulletList')}
           size="small"
           type="text"
           icon={<UnorderedListOutlined />}
@@ -156,9 +158,9 @@ export default function RichTextToolbar({
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
       </Tooltip>
-      <Tooltip title="有序列表">
+      <Tooltip title={t('resumeEditor.richText.orderedList')}>
         <Button
-          aria-label="有序列表"
+          aria-label={t('resumeEditor.richText.orderedList')}
           size="small"
           type="text"
           icon={<OrderedListOutlined />}
@@ -179,9 +181,9 @@ export default function RichTextToolbar({
       <AlignButtons editor={editor} />
 
       <Divider orientation="vertical" style={{ margin: '0 2px', height: 18 }} />
-      <Tooltip title="增加缩进">
+      <Tooltip title={t('resumeEditor.richText.increaseIndent')}>
         <Button
-          aria-label="增加缩进"
+          aria-label={t('resumeEditor.richText.increaseIndent')}
           size="small"
           type="text"
           style={{ fontSize: 12, fontWeight: 500 }}
@@ -202,9 +204,9 @@ export default function RichTextToolbar({
           →|
         </Button>
       </Tooltip>
-      <Tooltip title="减少缩进">
+      <Tooltip title={t('resumeEditor.richText.decreaseIndent')}>
         <Button
-          aria-label="减少缩进"
+          aria-label={t('resumeEditor.richText.decreaseIndent')}
           size="small"
           type="text"
           style={{ fontSize: 12, fontWeight: 500 }}
@@ -228,38 +230,38 @@ export default function RichTextToolbar({
 
       <div style={{ flex: 1 }} />
 
-      <Tooltip title="清除样式（保留文本）">
+      <Tooltip title={t('resumeEditor.richText.clearFormattingTooltip')}>
         <Button
-          aria-label="清除样式"
+          aria-label={t('resumeEditor.richText.clearFormatting')}
           size="small"
           type="text"
           icon={<ClearOutlined />}
           onClick={clearFormatting}
         />
       </Tooltip>
-      <Tooltip title={isFullscreen ? '退出全屏' : '全屏编辑'}>
+      <Tooltip title={isFullscreen ? t('resumeEditor.richText.exitFullscreen') : t('resumeEditor.richText.fullscreen')}>
         <Button
-          aria-label={isFullscreen ? '退出全屏编辑' : '全屏编辑'}
+          aria-label={isFullscreen ? t('resumeEditor.richText.exitFullscreenEditor') : t('resumeEditor.richText.fullscreen')}
           size="small"
           type="text"
           icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
           onClick={onToggleFullscreen}
         />
       </Tooltip>
-      <Tooltip title="清空内容">
+      <Tooltip title={t('resumeEditor.richText.clearContent')}>
         <Button
-          aria-label="清空富文本内容"
+          aria-label={t('resumeEditor.richText.clearRichTextContent')}
           size="small"
           type="text"
           icon={<DeleteOutlined />}
           danger
           onClick={() => {
             Modal.confirm({
-              title: '确认清空',
-              content: '将删除全部内容，此操作不可撤销。',
-              okText: '清空',
+              title: t('resumeEditor.richText.confirmClearTitle'),
+              content: t('resumeEditor.richText.confirmClearContent'),
+              okText: t('resumeEditor.richText.clear'),
               okType: 'danger',
-              cancelText: '取消',
+              cancelText: t('common.cancel'),
               onOk: onClearContent,
             })
           }}
