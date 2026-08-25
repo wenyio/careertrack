@@ -13,6 +13,7 @@ import {
   EditOutlined,
   CopyOutlined,
   DeleteOutlined,
+  EyeOutlined,
   GlobalOutlined,
   LockOutlined,
   PrinterOutlined,
@@ -49,6 +50,7 @@ interface ResumeListCardProps {
   popoverResumeId: string | null
   exportingId: string | null
   onEdit: (id: string) => void
+  onPreview: (id: string) => void
   onRename: (id: string, name: string) => void
   onDuplicate: (id: string) => void
   onDelete: (id: string, name: string) => void
@@ -94,6 +96,7 @@ export default function ResumeListCard({
   popoverResumeId,
   exportingId,
   onEdit,
+  onPreview,
   onRename,
   onDuplicate,
   onDelete,
@@ -115,9 +118,12 @@ export default function ResumeListCard({
   return (
     <Card
       hoverable
+      data-resume-card-id={resume.id}
+      onClick={() => onEdit(resume.id)}
       style={{
         borderRadius: 12,
         overflow: 'hidden',
+        cursor: 'pointer',
         transition: 'box-shadow 0.2s, transform 0.2s',
       }}
       styles={{ body: { padding: 0 } }}
@@ -126,10 +132,24 @@ export default function ResumeListCard({
         {/* 左侧：缩略图预览 */}
         <div
           ref={targetRef}
+          className="resume-list-preview-trigger"
           data-preview-mode={livePreview ? 'live' : 'summary'}
-          style={{ flexShrink: 0, cursor: 'pointer' }}
-          onClick={() => onEdit(resume.id)}
-          aria-hidden="true"
+          data-resume-preview-id={resume.id}
+          style={{ flexShrink: 0, cursor: 'pointer', position: 'relative' }}
+          role="button"
+          tabIndex={0}
+          aria-label={`预览 ${resume.name}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onPreview(resume.id)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              event.stopPropagation()
+              onPreview(resume.id)
+            }
+          }}
         >
           {livePreview?.content && livePreview.modules_config ? (
             <ResumeMiniPreview
@@ -147,6 +167,9 @@ export default function ResumeListCard({
               width={120}
             />
           )}
+          <div className="resume-list-preview-overlay" aria-hidden="true">
+            <EyeOutlined />
+          </div>
         </div>
 
         {/* 右侧：信息与操作 */}
@@ -160,10 +183,14 @@ export default function ResumeListCard({
               role="link"
               tabIndex={0}
               aria-label={`编辑 ${resume.name}`}
-              onClick={() => onEdit(resume.id)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onEdit(resume.id)
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
+                  event.stopPropagation()
                   onEdit(resume.id)
                 }
               }}
@@ -184,14 +211,20 @@ export default function ResumeListCard({
               size="small"
               aria-label={`重命名 ${resume.name}`}
               icon={<EditOutlined />}
-              onClick={() => onRename(resume.id, resume.name)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onRename(resume.id, resume.name)
+              }}
             />
             <Button
               type="text"
               size="small"
               aria-label={`复制 ${resume.name}`}
               icon={<CopyOutlined />}
-              onClick={() => onDuplicate(resume.id)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onDuplicate(resume.id)
+              }}
             />
             {showPublic && onTogglePublic && (
               <Popover
@@ -211,7 +244,7 @@ export default function ResumeListCard({
                 placement="bottomRight"
                 destroyOnHidden={false}
               >
-                <span>
+                <span onClick={(event) => event.stopPropagation()}>
                   <Button
                     type="text"
                     size="small"
@@ -227,7 +260,10 @@ export default function ResumeListCard({
               aria-label={`打印 ${resume.name}`}
               icon={<PrinterOutlined />}
               loading={exportingId === resume.id}
-              onClick={() => onPrint(resume.id)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onPrint(resume.id)
+              }}
             />
             <Button
               type="text"
@@ -235,7 +271,10 @@ export default function ResumeListCard({
               danger
               aria-label={`删除 ${resume.name}`}
               icon={<DeleteOutlined />}
-              onClick={() => onDelete(resume.id, resume.name)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onDelete(resume.id, resume.name)
+              }}
             />
           </div>
         </div>

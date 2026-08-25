@@ -9,12 +9,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Row, Col, Empty, Spin, App, Pagination } from 'antd'
+import { Button, Row, Col, Empty, Spin, App, Pagination, Modal } from 'antd'
 import { PlusOutlined, UserOutlined } from '@ant-design/icons'
 import PageContainer from '@/components/layout/PageContainer'
+import { StandardResumePreview } from '@/components/resume/ResumePreviewShared'
 import ResumeListCard from './ResumeListCard'
 import ResumeCreateModal from './ResumeCreateModal'
 import ResumeRenameModal from './ResumeRenameModal'
+import { DEFAULT_MODULES_ORDER } from '@/types/resume'
 import type { ResumeListResume } from './ResumeListCard'
 import type { Profile } from '@/types/profile'
 import type { PaginationMeta } from '@/types/pagination'
@@ -37,6 +39,8 @@ interface ResumeListViewProps {
   showInitFromProfile: boolean
   /** 点击简历卡片/名称的跳转回调 */
   onEdit: (id: string) => void
+  /** 点击缩略图预览回调，返回完整简历正文用于只读预览 */
+  onPreview: (id: string) => Promise<ResumeListResume | null>
   /** 创建简历回调 */
   onCreate: (name: string, initFromProfile: boolean) => void
   /** 删除简历回调 */
@@ -65,6 +69,7 @@ export default function ResumeListView({
   showPublic,
   showInitFromProfile,
   onEdit,
+  onPreview,
   onCreate,
   onDelete,
   onDuplicate,
@@ -86,6 +91,9 @@ export default function ResumeListView({
   const [renamingResumeName, setRenamingResumeName] = useState('')
   const [popoverResumeId, setPopoverResumeId] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<string | null>(null)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewResume, setPreviewResume] = useState<ResumeListResume | null>(null)
 
   // 创建简历
   const handleCreate = (name: string, initFromProfile: boolean) => {
@@ -139,6 +147,26 @@ export default function ResumeListView({
     }
   }
 
+  const handlePreview = async (id: string) => {
+    setPreviewModalOpen(true)
+    setPreviewLoading(true)
+    setPreviewResume(null)
+    try {
+      const resume = await onPreview(id)
+      if (!resume?.content || !resume.modules_config) {
+        message.warning(t('resume.previewUnavailable'))
+        setPreviewModalOpen(false)
+        return
+      }
+      setPreviewResume(resume)
+    } catch {
+      message.error(t('resume.previewFailed'))
+      setPreviewModalOpen(false)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
   return (
     <PageContainer
       size="lg"
@@ -170,6 +198,7 @@ export default function ResumeListView({
                   popoverResumeId={popoverResumeId}
                   exportingId={exportingId}
                   onEdit={onEdit}
+                  onPreview={handlePreview}
                   onRename={handleRenameClick}
                   onDuplicate={onDuplicate}
                   onDelete={handleDelete}
@@ -240,6 +269,40 @@ export default function ResumeListView({
           setRenamingResumeName('')
         }}
       />
+
+      <Modal
+        open={previewModalOpen}
+        title={previewResume?.name || t('resume.previewTitle')}
+        footer={null}
+        width={920}
+        centered
+        destroyOnHidden
+        onCancel={() => {
+          setPreviewModalOpen(false)
+          setPreviewResume(null)
+        }}
+      >
+        <div className="resume-list-preview-modal-body">
+          {previewLoading ? (
+            <div style={{ minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Spin />
+            </div>
+          ) : previewResume?.content && previewResume.modules_config ? (
+            <div
+              aria-label={t('resume.readonlyPreview')}
+              className="resume-a4-preview resume-list-preview-document"
+            >
+              <StandardResumePreview
+                content={previewResume.content}
+                modulesConfig={previewResume.modules_config}
+                modulesOrder={previewResume.modules_order || DEFAULT_MODULES_ORDER}
+                template={previewResume.template || 'classic'}
+                profile={profile ?? undefined}
+              />
+            </div>
+          ) : null}
+        </div>
+      </Modal>
     </PageContainer>
   )
 }

@@ -29,6 +29,28 @@ test.describe('简历列表页', () => {
     await expect(page.getByText(name2)).toBeVisible()
     await screenshot(page, '简历列表', '两份简历可见')
 
+    // 缩略图 hover 后点击眼睛图标，在列表内打开统一只读预览，不跳转编辑页。
+    await page.locator(`[data-resume-preview-id="${resume1.id}"]`).hover()
+    await page.getByRole('button', { name: `预览 ${name1}` }).click()
+    await expect(page).toHaveURL(/\/resumes$/)
+    await expect(page.getByRole('dialog', { name: name1 })).toBeVisible()
+    await expect(page.locator('.resume-list-preview-document')).toBeVisible()
+    await screenshot(page, '简历列表', '点击眼睛打开预览弹窗')
+    await page.locator('.ant-modal-close').click()
+    await expect(page.getByRole('dialog', { name: name1 })).toBeHidden()
+
+    // 点击卡片右侧信息/空白区域进入编辑页，已有操作图标不受影响。
+    await page.locator(`[data-resume-card-id="${resume1.id}"]`).click({ position: { x: 260, y: 76 } })
+    await expect(page).toHaveURL(new RegExp(`/resumes/${resume1.id}/edit`))
+    await expect(page.locator('.resume-a4-preview')).toBeVisible()
+    await screenshot(page, '简历列表', '点击卡片信息区域进入编辑页')
+
+    // 返回列表
+    let backBtn = page.locator('button').filter({ has: page.locator('[aria-label="arrow-left"]') })
+    await backBtn.click()
+    await expect(page).toHaveURL(/\/resumes/)
+    await expect(page.getByText(name2)).toBeVisible()
+
     // 点击编辑按钮进入编辑页
     await page.getByRole('link', { name: `编辑 ${name1}` }).click()
     await expect(page).toHaveURL(new RegExp(`/resumes/${resume1.id}/edit`))
@@ -36,7 +58,7 @@ test.describe('简历列表页', () => {
     await screenshot(page, '简历列表', '点击编辑进入编辑页')
 
     // 返回列表
-    const backBtn = page.locator('button').filter({ has: page.locator('[aria-label="arrow-left"]') })
+    backBtn = page.locator('button').filter({ has: page.locator('[aria-label="arrow-left"]') })
     await backBtn.click()
     await expect(page).toHaveURL(/\/resumes/)
     await expect(page.getByText(name2)).toBeVisible()

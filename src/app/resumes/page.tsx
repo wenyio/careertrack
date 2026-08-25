@@ -84,6 +84,22 @@ function AuthenticatedResumeList() {
     }
   }, [message, t])
 
+  const handlePreview = useCallback(async (id: string) => {
+    const resume = await getResume(id)
+    cacheResumeDetail(queryClient, resume)
+    return {
+      id: resume.id,
+      name: resume.name,
+      content: resume.content,
+      modules_config: resume.modules_config,
+      modules_order: resume.modules_order,
+      template: resume.template || 'classic',
+      updated_at: resume.updated_at,
+      is_public: resume.is_public,
+      public_slug: resume.public_slug,
+    }
+  }, [queryClient])
+
   const handleTogglePublic = useCallback(async (resumeId: string, isPublic: boolean, slug?: string) => {
     if (isPublic) {
       try {
@@ -119,6 +135,7 @@ function AuthenticatedResumeList() {
       showInitFromProfile
       isCreating={isCreating}
       onEdit={handleEdit}
+      onPreview={handlePreview}
       onCreate={handleCreate}
       onDelete={handleDelete}
       onDuplicate={handleDuplicate}
@@ -187,6 +204,20 @@ function GuestResumeList() {
     await printResume(resume as Parameters<typeof printResume>[0])
   }, [message, t])
 
+  const handlePreview = useCallback(async (id: string) => {
+    const resume = getGuestResume(id)
+    if (!resume) return null
+    return {
+      id: resume.id,
+      name: resume.name,
+      content: resume.content,
+      modules_config: resume.modules_config,
+      modules_order: resume.modules_order,
+      template: resume.template || 'classic',
+      updated_at: resume.updated_at,
+    }
+  }, [])
+
   const handleEdit = useCallback((id: string) => {
     router.push(`/resumes/${id}/edit`)
   }, [router])
@@ -211,6 +242,7 @@ function GuestResumeList() {
       showPublic={false}
       showInitFromProfile={false}
       onEdit={handleEdit}
+      onPreview={handlePreview}
       onCreate={handleCreate}
       onDelete={handleDelete}
       onDuplicate={handleDuplicate}
