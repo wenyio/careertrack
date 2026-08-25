@@ -245,6 +245,17 @@ img {
   opacity: 1;
 }
 
+.resume-list-navigation-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(1px);
+}
+
 .resume-list-preview-modal-body {
   max-height: min(78vh, 920px);
   overflow: auto;

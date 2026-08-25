@@ -8,7 +8,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Card, Button, Tag, Popover, Typography } from 'antd'
+import { Card, Button, Tag, Popover, Typography, Spin } from 'antd'
 import {
   EditOutlined,
   CopyOutlined,
@@ -49,6 +49,8 @@ interface ResumeListCardProps {
   showPublic: boolean
   popoverResumeId: string | null
   exportingId: string | null
+  isNavigating: boolean
+  isNavigationPending: boolean
   onEdit: (id: string) => void
   onPreview: (id: string) => void
   onRename: (id: string, name: string) => void
@@ -95,6 +97,8 @@ export default function ResumeListCard({
   showPublic,
   popoverResumeId,
   exportingId,
+  isNavigating,
+  isNavigationPending,
   onEdit,
   onPreview,
   onRename,
@@ -114,20 +118,33 @@ export default function ResumeListCard({
   const livePreview = hasInlinePreview
     ? resume
     : previewResume
+  const isDisabledByNavigation = isNavigationPending && !isNavigating
 
   return (
     <Card
       hoverable
+      aria-busy={isNavigating}
+      aria-disabled={isNavigationPending}
       data-resume-card-id={resume.id}
-      onClick={() => onEdit(resume.id)}
+      data-resume-navigation-state={isNavigating ? 'loading' : isDisabledByNavigation ? 'disabled' : 'idle'}
+      onClick={() => {
+        if (!isNavigationPending) onEdit(resume.id)
+      }}
       style={{
         borderRadius: 12,
         overflow: 'hidden',
-        cursor: 'pointer',
-        transition: 'box-shadow 0.2s, transform 0.2s',
+        cursor: isNavigationPending ? 'progress' : 'pointer',
+        opacity: isDisabledByNavigation ? 0.55 : 1,
+        position: 'relative',
+        transition: 'box-shadow 0.2s, transform 0.2s, opacity 0.18s',
       }}
       styles={{ body: { padding: 0 } }}
     >
+      {isNavigating && (
+        <div className="resume-list-navigation-overlay" aria-hidden="true">
+          <Spin size="small" />
+        </div>
+      )}
       <div style={{ display: 'flex', padding: 16, gap: 16 }}>
         {/* 左侧：缩略图预览 */}
         <div
@@ -135,19 +152,19 @@ export default function ResumeListCard({
           className="resume-list-preview-trigger"
           data-preview-mode={livePreview ? 'live' : 'summary'}
           data-resume-preview-id={resume.id}
-          style={{ flexShrink: 0, cursor: 'pointer', position: 'relative' }}
+          style={{ flexShrink: 0, cursor: isNavigationPending ? 'progress' : 'pointer', position: 'relative' }}
           role="button"
-          tabIndex={0}
+          tabIndex={isNavigationPending ? -1 : 0}
           aria-label={`预览 ${resume.name}`}
           onClick={(event) => {
             event.stopPropagation()
-            onPreview(resume.id)
+            if (!isNavigationPending) onPreview(resume.id)
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
               event.stopPropagation()
-              onPreview(resume.id)
+              if (!isNavigationPending) onPreview(resume.id)
             }
           }}
         >
@@ -179,19 +196,19 @@ export default function ResumeListCard({
             <Text
               strong
               ellipsis
-              style={{ fontSize: 15, cursor: 'pointer', flex: 1, minWidth: 0 }}
+              style={{ fontSize: 15, cursor: isNavigationPending ? 'progress' : 'pointer', flex: 1, minWidth: 0 }}
               role="link"
-              tabIndex={0}
+              tabIndex={isNavigationPending ? -1 : 0}
               aria-label={`编辑 ${resume.name}`}
               onClick={(event) => {
                 event.stopPropagation()
-                onEdit(resume.id)
+                if (!isNavigationPending) onEdit(resume.id)
               }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
                   event.stopPropagation()
-                  onEdit(resume.id)
+                  if (!isNavigationPending) onEdit(resume.id)
                 }
               }}
             >
@@ -211,6 +228,7 @@ export default function ResumeListCard({
               size="small"
               aria-label={`重命名 ${resume.name}`}
               icon={<EditOutlined />}
+              disabled={isNavigationPending}
               onClick={(event) => {
                 event.stopPropagation()
                 onRename(resume.id, resume.name)
@@ -221,6 +239,7 @@ export default function ResumeListCard({
               size="small"
               aria-label={`复制 ${resume.name}`}
               icon={<CopyOutlined />}
+              disabled={isNavigationPending}
               onClick={(event) => {
                 event.stopPropagation()
                 onDuplicate(resume.id)
@@ -250,6 +269,7 @@ export default function ResumeListCard({
                     size="small"
                     aria-label={`公开设置 ${resume.name}`}
                     icon={resume.is_public ? <LockOutlined /> : <GlobalOutlined />}
+                    disabled={isNavigationPending}
                   />
                 </span>
               </Popover>
@@ -260,6 +280,7 @@ export default function ResumeListCard({
               aria-label={`打印 ${resume.name}`}
               icon={<PrinterOutlined />}
               loading={exportingId === resume.id}
+              disabled={isNavigationPending}
               onClick={(event) => {
                 event.stopPropagation()
                 onPrint(resume.id)
@@ -271,6 +292,7 @@ export default function ResumeListCard({
               danger
               aria-label={`删除 ${resume.name}`}
               icon={<DeleteOutlined />}
+              disabled={isNavigationPending}
               onClick={(event) => {
                 event.stopPropagation()
                 onDelete(resume.id, resume.name)

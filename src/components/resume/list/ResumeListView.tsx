@@ -91,9 +91,11 @@ export default function ResumeListView({
   const [renamingResumeName, setRenamingResumeName] = useState('')
   const [popoverResumeId, setPopoverResumeId] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<string | null>(null)
+  const [navigatingResumeId, setNavigatingResumeId] = useState<string | null>(null)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewResume, setPreviewResume] = useState<ResumeListResume | null>(null)
+  const isNavigationPending = Boolean(navigatingResumeId)
 
   // 创建简历
   const handleCreate = (name: string, initFromProfile: boolean) => {
@@ -147,6 +149,13 @@ export default function ResumeListView({
     }
   }
 
+  const handleEdit = (id: string) => {
+    if (navigatingResumeId) return
+    setPopoverResumeId(null)
+    setNavigatingResumeId(id)
+    onEdit(id)
+  }
+
   const handlePreview = async (id: string) => {
     setPreviewModalOpen(true)
     setPreviewLoading(true)
@@ -197,7 +206,9 @@ export default function ResumeListView({
                   showPublic={showPublic}
                   popoverResumeId={popoverResumeId}
                   exportingId={exportingId}
-                  onEdit={onEdit}
+                  isNavigating={navigatingResumeId === resume.id}
+                  isNavigationPending={isNavigationPending}
+                  onEdit={handleEdit}
                   onPreview={handlePreview}
                   onRename={handleRenameClick}
                   onDuplicate={onDuplicate}
